@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style>
+
+.graticule {
+  fill: none;
+  stroke: #777;
+  stroke-opacity: .5;
+  stroke-width: .5px;
+}
+
+.land_border {
+  fill: #FF6600;
+}
+
+.eddy_track {
+  fill: none;
+  stroke: #FF0000;
+  stroke-width: .05px;
+}
+
+</style>
+<body>
+<script src="http://d3js.org/d3.v3.min.js"></script>
+<script src="http://d3js.org/topojson.v1.min.js"></script>
+<script>
+
+function read_csv_ints(text) {
+  return d3.csv.parseRows(text).map(function(row) {
+    return row.map(function(value) {  // Converting a row to ints
+      return +value; // Convert a value to int
+    });
+  });  
+}
+
+// Define constants
+var width = 960,
+    height = 480;
+var svg = d3.select("body").append("svg")
+    .attr("width", width)
+    .attr("height", height)
+    .style("position", "absolute")
+    .style("top", 0)
+    .style("left", 0);
+
+var projection = d3.geo.equirectangular()
+    .scale(153)
+    .translate([width / 2, height / 2]);
+var path = d3.geo.path().projection(projection);
+
+var background_group = svg.append("g")
+  .attr("id", "background_group");
+var land_group = svg.append("g")
+  .attr("id", "land_group");
+var eddy_group = svg.append("g")
+  .attr("id", "eddy_group");
+var colorbar_group = svg.append("g")
+  .attr("id", "colorbar_group");
+
+// Add grid lines to the map
+graticule = d3.geo.graticule().step([10, 10]);
+land_group.append("path")
+    .datum(graticule)
+    .attr("d", path)
+    .attr("class", "graticule");
+
+d3.json("land.json", function(error, data) {
+  land_group.selectAll("path.land_border")
+    .data(data.features)
+    .enter()
+    .append("path")
+    .attr("class", "land_border")
+    .attr("d", path);
+});
+
+// TODO: have a line function background grid that work with different projections
+// Test plotting tracks
+var pathLine = d3.svg.line()
+  .interpolate("linear")
+  .x(function(d) { 
+    return projection([d.lon, d.lat])[0]; 
+  })
+  .y(function(d) { 
+    return projection([d.lon, d.lat])[1]; 
+  });
+d3.json("eddy_tracks.json", function(error, track_data) {
+  eddy_group.selectAll("path.eddy_track")
+    .data(track_data)
+    .enter()
+    .append("path")
+    .attr("class", "eddy_track")
+    .attr("d", function(d) {
+      return pathLine(d.coordinates);
+    });
+});
+
+// Make a color scale similar to Matlab's jet colormap http://blogs.mathworks.com/images/loren/73/colormapManip_14.png https://bugs.launchpad.net/inkscape/+bug/236508
+var color_scale = d3.scale.linear()
+  .domain([0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1])
+  .range(["#00007F", "blue", "#007FFF", "cyan", "#7FFF7F", "yellow", "#FF7F00", "red", "#7F0000"]);
+// for(var i = 0; i <= 1; i = i + 0.1) {
+//   colorbar_group.append("rect")
+//     .attr("x", 0)
+//     .attr("y", i * 1000/4)
+//     .attr("width", 100/4)
+//     .attr("height", 100/4)
+//     .style("fill", color_scale(i));  
+// }
+
+// // SVG performance test
+// var last_time_in_sec = new Date().getTime() / 1000;
+// var ssh_grid_distance = projection([0.25, 0])[0] - projection([0, 0])[0];
+// console.log(ssh_grid_distance);
+// for(var i = 0; i <= 100; i++) {
+//   for(var j = 0; j <= 10; j++) {
+//     background_group.append("rect")
+//       .attr("x", i * ssh_grid_distance)
+//       .attr("y", j * ssh_grid_distance)
+//       .attr("width", ssh_grid_distance)
+//       .attr("height", ssh_grid_distance)
+//       .attr("fill", color_scale((i + j)/(100 + 10)))
+//       .attr("stroke", "none");
+//   }
+// }
+// var curr_time_in_sec = new Date().getTime() / 1000;
+// console.log("Time passed: " + (curr_time_in_sec - last_time_in_sec).toString());
+
+
+// // Canvas test
+// var canvas_background = d3.select("body").append("canvas")
+//     .attr("id", "canvas_background")
+//     .attr("width", width)
+//     .attr("height", height)
+//     .style("position", "absolute")
+//     .style("top", 0)
+//     .style("left", 0);
+
+// var canvas_context = document.getElementById("canvas_background").getContext("2d");
+// canvas_context.strokeStyle = "red";
+// canvas_context.rect(0, 0, 100, 100);
+// canvas_context.stroke();
+// var last_time_in_sec = new Date().getTime() / 1000;
+// var ssh_grid_distance = projection([0.25, 0])[0] - projection([0, 0])[0];
+// console.log(ssh_grid_distance);
+// for(var i = 0; i <= 1400; i++) {
+//   for(var j = 0; j <= 100; j++) {
+//     canvas_context.strokeStyle = color_scale((i + j)/(100 + 10));
+//     canvas_context.rect(i * ssh_grid_distance, j * ssh_grid_distance, ssh_grid_distance, ssh_grid_distance);
+//   }
+// }
+// canvas_context.stroke();
+// var curr_time_in_sec = new Date().getTime() / 1000;
+// console.log("Time passed: " + (curr_time_in_sec - last_time_in_sec).toString());
+
+
+// Image overlay test
+svg_image = background_group.append("svg:image")
+  .attr('x',0)
+  .attr('y',0)
+  .attr('width', width)
+  .attr('height', height)
+//   .attr("xlink:href","test_grs2rgb.png");
+  .attr("xlink:href","test_ssh_image_x5.png");
+
+// Handle zoom and pan
+var zoom = d3.behavior.zoom()
+    .on("zoom",function() {
+        land_group.attr("transform","translate("+ 
+            d3.event.translate.join(",")+")scale("+d3.event.scale+")");
+        eddy_group.attr("transform","translate("+ 
+            d3.event.translate.join(",")+")scale("+d3.event.scale+")");
+        background_group.attr("transform","translate("+ 
+            d3.event.translate.join(",")+")scale("+d3.event.scale+")");
+});
+svg.call(zoom);
+
+</script>

@@ -1,0 +1,67 @@
+%% Mathematics documenting solution to perspective ray tracing.
+%%
+%% To generate the PNG web image from this document, run the following
+%% commands in order:
+%%   latex perspective_math.tex
+%%   dvips perspective_math.dvi -o perspective_math.ps
+%%   convert -density 161x161 -trim perspective_math.ps perspective_math.png
+%%   rm perspective_math.aux perspective_math.log perspective_math.dvi \
+%%     perspective_math.ps
+%%
+%% Optionally, you might want to make the image have an opaque white
+%% background so that the image does cause problems for IE6 users.
+%% You should also keep the alpha channel in the PNG rather than
+%% removing it, since for some odd reason, some versions of
+%% semi-modern software don't cope well with rendering PNG images with
+%% no alpha channel.
+%%
+%% blahtexml <http://gva.noekeon.org/blahtexml> can be used to
+%% generate MathML from this LaTeX code.  To generate the MathML
+%% fragments from this document, start blahtexml with the `--mathml'
+%% option and run each portion of mathematics between the `\[' and
+%% `\]' that is marked with ``New blahtexml run'' through blahtexml.
+%% This will give you back a series of MathML fragments.
+%%
+%% After that, you will have to merge the fragments into
+%% `perspective_math.xhtml'.
+\documentclass{article}
+\usepackage{amsmath}
+\pagestyle{empty}
+\begin{document}
+
+\[ %% New blahtexml run.
+\begin{pmatrix}
+x^2 + y^2 = r^2 \\
+y = mx + b
+\end{pmatrix}
+\]
+
+\[ %% New blahtexml run.
+\begin{aligned}
+m &= f/p \\
+b &= r + d
+\end{aligned}
+\]
+
+\[ %% New blahtexml run.
+\begin{aligned}
+x^2 + \left(\frac{f}{p}x + (r + d)\right)^2 &= r^2 \\
+x^2 + \left(\frac{f}{p}\right)^2 x^2 + 2\left(\frac{f}{p}\right)(r + d)x +
+  (r + d)^2 &= r^2 \\
+\left(1 + \left(\frac{f}{p}\right)^2\right)x^2 +
+  2\left(\frac{f}{p}\right)(r + d)x +
+  (r^2 - r^2 + 2rd + d^2) &= 0
+\end{aligned}
+\]
+
+\[ %% New blahtexml run.
+\begin{aligned}
+a &= 1 + \left(\frac{f}{p}\right)^2 \\
+b &= 2\left(\frac{f}{p}\right)(r + d) \\
+c &= 2rd + d^2 \\
+x &= \frac{-b \pm \sqrt{b^2 - 4ac}}{2a} \\
+x &= \frac{-b + \sqrt{b^2 - 4ac}}{2a}
+\end{aligned}
+\]
+
+\end{document}

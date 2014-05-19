@@ -1,0 +1,681 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"
+      lang="en" xml:lang="en">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <title>Ocean Eddies Web Viewer Notes</title>
+</head>
+<body>
+
+<h1>Ocean Eddies Web Viewer Notes</h1>
+
+<h2><a name="contents" id="contents">Contents</a></h2>
+
+<ul>
+  <li>
+    <a href="#intro">Introduction</a>
+    <ul>
+      <li><a href="#intro_interact">Interactivity Basis</a></li>
+      <li><a href="#intro_graph_render">Graphics Rendering</a></li>
+      <li><a href="#intro_min_req">Minimum Browser Requirements</a></li>
+      <li><a href="#intro_ftr_missing">Features not available when
+      only minimum requirements are met</a></li>
+      <li><a href="#intro_max_req">Maximum Useful Browser
+      Requirements</a></li>
+      <li><a href="#intro_old_support">Why bother supporting older
+      browsers?</a></li>
+      <li><a href="#intro_core_js_lib">Core JavaScript
+      Libraries</a></li>
+    </ul>
+  </li>
+  <li><a href="#goals">
+      Goals and Progress Center</a></li>
+  <li><a href="#icosahedron">
+      Mathematically Build an Icosahedron</a></li>
+  <li><a href="#projections">
+      Projections</a></li>
+  <li><a href="#imp_center">
+      Implementation Center</a></li>
+  <li><a href="#scratch_notes">
+      Scratch Style Notes</a></li>
+</ul>
+
+<hr />
+<!-- ________________________________________ -->
+
+<h2><a name="intro" id="intro">
+    Introduction</a></h2>
+
+<p>The goal of the Ocean Eddies Web Viewer is to make the data from
+the Ocean Eddies project more accessible to a wider audience.  The
+Eddy Web Viewer should be very well designed so that all of the
+following hold true:</p>
+
+<ol>
+  <li>The data can be accessed from a large variety of browsers, all
+  the way down to Firefox 3.x, Internet Explorer 6, and versions of
+  Safari from 2004.</li>
+  <li>The viewer is easy to use.</li>
+  <li>The viewer has an attractive look, feel, and feature set.  Think
+  Google Earth: the viewer will have both 2D and 3D map views.</li>
+  <li>The viewer has to be fast and responsive: high resolution images
+  should be broken up into tiles and loaded individually.</li>
+</ol>
+
+<p>These are some links to general resources for this project.</p>
+
+<ul>
+  <li>Main Ocean Eddies website:
+    <a href="http://climatechange.cs.umn.edu/eddies/">
+      http://climatechange.cs.umn.edu/eddies/</a></li>
+  <li>Main Ocean Eddies Github:
+    <a href="https://github.com/jfaghm/OceanEddies">
+      https://github.com/jfaghm/OceanEddies</a></li>
+  <li>Example 2D interactive wind map that works okay with older
+    browsers: <a href="http://hint.fm/wind/">http://hint.fm/wind/</a></li>
+  <li>Example interactive map that has more features, but is somewhat
+  slow and doesn't work well with older browsers:
+    <a href="http://earth.nullschool.net/">
+      http://earth.nullschool.net/</a></li>
+  <li>Good public domain dataset for images of the Earth:
+    <a href="http://www.naturalearthdata.com/">
+      http://www.naturalearthdata.com/</a></li>
+</ul>
+
+<h3><a name="intro_interact" id="intro_interact">Interactivity
+Basis</a></h3>
+
+<p>The primary technology that will be used to provide interactive
+user interface elements within the web browser will be using
+JavaScript to manipulate Dynamic HTML.  Interactive display of
+graphics will be handled by a variety of different technologies.</p>
+
+<p>For 2D vector graphics, there are four choices for display, listed
+in order from least compatibility issues to most compatibility
+issues:</p>
+
+<ol>
+  <li>SVG</li>
+  <li>HTML Canvas</li>
+  <li>VML (Internet Explorer Only)</li>
+  <li>WebGL</li>
+</ol>
+
+<p>3D graphics can be achieved through either manual projection before
+rendering 2D vector graphics, per-pixel ray tracing of textures onto
+an HTML Canvas, or through WebGL GLSL pixel shaders.</p>
+
+<h3><a name="intro_graph_render" id="intro_graph_render">
+    Graphics Rendering</a></h3>
+
+<p>Interactive graphics rendering for the sea surface height and
+eddies on the Earth poses a variety of design challenges from
+compatibility to performance.</p>
+
+<h4>Problem: Render the land masses of the Earth.</h4>
+
+<p>Land details are not really important for the Eddy Web Viewer,
+mostly so that you can see the nearby continents.  Thus, only outlines
+of the land masses need to be rendered, although rendering textured
+land masses isn't that much harder.</p>
+
+<h4>Problem: Render the eddy paths and boundaries.</h4>
+
+<p>Eddy paths and boundaries need to be updated dynamically when the
+user changes display settings.  Rendering vector graphics on demand is
+probably a better idea than storing the prerendered paths in a
+backbuffer.</p>
+
+<h4>Problem: Rendering lots of vector graphics can be slow.</h4>
+
+<p>Solution: Have the default settings only show a few vector
+graphics.  Only render what is within the viewing bounds.  Decrease
+vector graphics density at low zoom levels.  Draw less geometry during
+globe rotation and zoom.</p>
+
+<h4>Problem: Old JavaScript interpreters can be slow.</h4>
+
+<p>Solution: Careful testing and benchmarking of the JavaScript in the
+essential loop paths.  Preliminary testing has shown that handwritten
+JavaScript, as opposed to JavaScript from libraries such as D3.js, can
+have sufficient performance even on old JavaScript interpreters.</p>
+
+<h4>Problem: Render the sea surface heights of the Earth on a 2D
+map.</h4>
+
+<p>Solution: HTML Canvas rendering JavaScript should yield sufficient
+performance.  Otherwise, the image maps can be pre-generated on the
+server and downloaded by the client.</p>
+
+<h4>Problem: Downloading large datasets can be slow.</h4>
+
+<p>Solution: Break up large images into tiles that are loaded one at a
+time and combined on the local computer.  Break up large numeric
+datasets into multiple files and prioritize loading of high resolution
+data at the position that is currently visible to the user.</p>
+
+<h4>Problem: Render an orthgraphic projection of the Earth as a
+globe.</h4>
+
+<p>Solution: HTML Canvas provides sufficient performance for this
+task.  For GPU-enabled computers, a WebGL GLSL pixel shader can be
+used for even higher performance.</p>
+
+<h4>Problem: Internet Explorer 6 does not support the HTML
+Canvas.</h4>
+
+<p>The ExplorerCanvas JavaScript library can be used as a
+compatibility wrapper to emulate an HTML Canvas by using VML.
+However, ExplorerCanvas cannot emulate getImageData() and
+putImageData(), so 3D texture mapping will have to be disabled when
+using ExplorerCanvas.</p>
+
+<h4>Problem: There is a lot of variation in the features that browsers
+support.</h4>
+
+<p>Solution: Maintain a browser feature test suite that individually
+tests each component feature in the browser.</p>
+
+<h3><a name="intro_min_req" id="intro_min_req">
+    Minimum Browser Requirements</a></h3>
+
+<ul>
+  <li>JavaScript interpreter</li>
+  <li>CSS 2</li>
+  <li>Raster image display</li>
+  <li>Vector graphics rendering, either SVG, VML, or HTML Canvas</li>
+</ul>
+
+<h3><a name="intro_ftr_missing" id="intro_ftr_missing">
+    Features not available when only minimum requirements are met</a></h3>
+
+<ul>
+  <li>3D Textured Earth View</li>
+  <li>Local download and processing of Sea Surface Height data</li>
+</ul>
+
+<p>In order to support browsers that cannot perform tasks like
+downloading and rendering the Sea Surface Height directly, the server
+will also need to meet a minimum requirement of providing batch
+processing of any new data to generate the necessary image maps.</p>
+
+<h3><a name="intro_max_req" id="intro_max_req">
+    Maximum Useful Browser Requirements</a></h3>
+
+<p>A browser/computer system that exceeds these requirements will have
+no additional advantages when using the Eddy Web Viewer.</p>
+
+<ul>
+  <li>High performance JavaScript interpreter</li>
+  <li>CSS 2</li>
+  <li>Raster image display</li>
+  <li>Vector graphics rendering, preferably SVG</li>
+  <li>Full support for HTML Canvas.  Support for getImageData() and
+  putImageData() raster operations on HTML Canvas.</li>
+  <li>WebGL, GPGPU hardware acceleration</li>
+</ul>
+
+<h3><a name="intro_old_support" id="intro_old_support">
+    Why bother supporting older browsers?</a></h3>
+
+<p>The thing about communication services is they involve sending
+messages to other people's devices, and because those devices
+are <em>their</em> devices, not yours, you generally cannot force an
+immediate change to the device.  Considering it is likely that they're
+a non-technical person, they're probably going to be ignorant of the
+tech news channels that document all the shortcomings of their device,
+and if you require them to change their hardware or software to access
+your site, you're probably going to just end up chasing away a
+potential user.  There is really a "take it or leave it" ethic if you
+want to get the message across with communication technologies.</p>
+
+<h3><a name="intro_core_js_lib" id="intro_core_js_lib">
+    Core JavaScript Libraries</a></h3>
+
+<p>These are a variety of JavaScript libraries or libraries that
+process JavaScript code that are likely to prove useful for the
+implementation of the Eddy Web Viewer.</p>
+
+<ul>
+  <li>D3.js -- data-driven document library, works with both SVG and
+  HTML Canvas rendering backends<br />
+  <a href="http://d3js.org/">http://d3js.org/</a></li>
+  <li>ExplorerCanvas -- HTML Canvas compatibility library for old
+  versions of Internet Explorer (IE6)<br />
+  <a href="http://excanvas.sourceforge.net/">
+    http://excanvas.sourceforge.net/</a></li>
+  <li>Three.js -- 3D rendering helper library, works with both HTML 2D
+  Canvas and WebGL 3D Canvas backends<br />
+  <a href="http://threejs.org/">http://threejs.org/</a></li>
+  <li>jsdoc3 -- Documentation extractor for Doxygen-style
+  documentation comments<br />
+  <a href="https://github.com/jsdoc3/jsdoc">
+    https://github.com/jsdoc3/jsdoc</a></li>
+</ul>
+
+<hr />
+<!-- ________________________________________ -->
+
+<h2><a name="goals" id="goals">
+    Goals and Progress Center</a></h2>
+
+<p>Future goals:</p>
+
+<ul>
+  <li>GUI Design</li>
+  <li>Data parsing and loading</li>
+  <li>Server side data generation</li>
+  <li>Browser feature test suite</li>
+  <li>Icosahedron isosphere mesh equal angle subdivision (used only
+  for native non-web viewer running on older graphics hardware with a
+  fixed function pipeline)</li>
+</ul>
+
+<p>Work in progress:</p>
+
+<ul>
+  <li>This info document.</li>
+  <li>Transforming between lat/lon and map projections</li>
+</ul>
+
+<p>Completed goals:</p>
+
+<ul>
+  <li>Overview of the project and overarching organizing
+  notes/documentation.</li>
+</ul>
+
+<hr />
+<!-- ________________________________________ -->
+
+<h2><a name="icosahedron" id="icosahedron">
+    Mathematically Build an Icosahedron</a></h2>
+
+<p style="page-break-inside: avoid">
+<object type="image/svg+xml" data="pentagon.svg" width="202" height="202">
+  <img src="pentagon.png" alt="Pentagon construction"
+       width="202" height="202" />
+</object>
+
+<object type="image/svg+xml" data="elevation.svg"
+	style="margin-left: 3em" width="202" height="202">
+  <img src="elevation.png" alt="&quot;Top hat&quot; construction diagram"
+       width="202" height="202" />
+</object>
+
+<object type="image/svg+xml" data="topview.svg"
+	style="margin-left: 3em" width="202" height="202">
+  <img src="topview.png" alt="Flattened top view"
+       width="202" height="202" />
+</object>
+
+<object type="image/svg+xml" data="sideview.svg"
+	style="margin-left: 3em" width="202" height="202">
+  <img src="sideview.png" alt="Side view construction"
+       width="202" height="202" />
+</object>
+</p>
+
+<h3>Instructions</h3>
+
+<ol>
+  <li>Create a pentagon by plotting 5 points on a circle, each spaced
+  by 72 degrees.  Each vertex should be one unit distance from the
+  center.  Connect the points to form the pentagon.</li>
+
+  <li>Pick one edge of the pentagon.  Draw two lines from the center
+  of the pentagon to each vertex of the chosen edge.  Draw a line from
+  the center of the pentagon to the median of the edge.  Note that
+  this forms a bisected isosceles triangle, which means (a) the two
+  halves are right triangles, (b) the interior angle of each right
+  triangle at the center of the pentagon is exactly 36 degrees, and
+  (c) trigonometry can be used to determine the length of the chosen
+  edge of the pentagon.</li>
+
+  <li>Use trigonometry to determine the length of the chosen edge of
+  the pentagon:<br />
+  sin(36&deg;) &times; 2 = 1.17557050458</li>
+
+  <li>Use trigonometry to determine the length of the line that
+  bisects the chosen edge:<br />
+  cos(36&deg;) = 0.809016994375</li>
+
+  <li>Determine the additional length needed to extend the bisecting
+  line from the chosen edge of the pentagon to the circumference of
+  the circle:<br />
+  1 - cos(36&deg;) = 0.190983005625</li>
+
+  <li>Using trigonometry, determine the altitude that the center
+  vertex of the pentagon should be elevated to form the "top" five
+  equilateral triangles in the icosahedron:<br />
+  sin(acos(1/1.17557050458)) &times; 1.17557050458 = 0.618033988739
+  </li>
+
+  <li>The "bottom hat" of the icosahedron should be identical to the
+  "top hat", except that it is rotated 36 degrees from the orientation
+  of the "top hat" and points down rather than up.</li>
+
+  <li>The two "hats" will be connected with a series of equilateral
+  triangles.  Each triangle will have one of its edges connect to the
+  "top hat" and the opposite vertex connect to the "bottom hat".  Each
+  such triangle will be tilted at an angle such that when looking at
+  the icosahedron flattened from above, the X-Y planar distance
+  between the median of the edge on one hat and the vertex on the
+  other will be equal to the distance calculated in step 5.  With this
+  information, a right triangle can be formed that extends
+  horizontally out by the distance from step 5 and has a hypotenuse
+  (running along the length of one of the new triangles to be added)
+  equal to the length from step 4.  Trigonometry can then be used to
+  calculate the vertical Z-axis distance between the rims of the
+  hats: <br />
+  cos(asin(0.190983005625/0.809016994375)) &times; 0.809016994375 =
+    0.786151377757</li>
+
+  <li>Center and scale the vertices so that each vertex is one unit
+  distance from the origin of the coordinate system.</li>
+
+  <li>Skin the faces on the calculated vertices to create the complete
+  3D model of the icosahedron.</li>
+</ol>
+
+<hr />
+<!-- ________________________________________ -->
+
+<h2><a name="projections" id="projections">
+    Projections</a></h2>
+
+<p>The primary metrics used to indicate the positions on the Earth in
+the eddies dataset are latitude and longitude.  In order to
+interoperate this data with other data such as maps of the Earth and
+rendering on screen, <em>projection methods</em> are needed.  The only
+logic needed by the eddy web viewer for projections are two abstract
+functions for each projection class: a <code>project()</code> method
+and an <code>unproject()</code> method.  <em>Projection</em> is
+defined as translating a latitude and a longitude into a Y and X
+coordinate, and unprojection is the reverse operation.</p>
+
+<h3>Map Projections</h3>
+
+<p>Some datasets of the Earth, such as images of the land masses, are
+often be stored in 2D image-based formats.  The following summaries of
+common map projections are useful to know when dealing with such
+images:</p>
+
+<ul>
+  <li><strong>Equirectangular projection:</strong> Simply maps
+  latitude angles linearly along the Y-axis of the image and longitude
+  angles linearly along the X-axis of the image.</li>
+  <li><strong>Mercator projection:</strong> A cylindrical projection
+  that stretches the map vertically at high and low latitudes in order
+  to preserve projected angles (a conformal map).<br /> 
+  X-coordinates map linearly to longitudes.<br />
+  Y-coordinate to latitude mapping: y = R ln [ tan(&pi;/4 + &phi;/2) ]
+  (R = radius = 1)<br />
+  Latitude to y-coordinate mapping: &phi; = 2 atan[exp(y/R)] - &pi;/2
+  (R = radius = 1)<br />
+  <a href="http://en.wikipedia.org/wiki/Mercator_projection">
+    http://en.wikipedia.org/wiki/Mercator_projection</a></li>
+</ul>
+
+<h3>3D Rendering Projections</h3>
+
+<p>Raytrace rendering a 3D view of the Earth is less trivial than one
+would think at first.  The process of backtracing from screen pixels
+to a a map pixel is a multistep process.</p>
+
+<p style="page-break-inside: avoid">
+<object type="image/svg+xml" data="orthographic.svg">
+  <img src="orthographic.png" alt="Orthographic projection diagram"
+       width="202" height="142" />
+</object>
+
+<object type="image/svg+xml" data="earth_rotate.svg">
+  <img src="earth_rotate.png" alt="Point rotation diagram"
+       width="202" height="142" />
+</object>
+
+<object type="image/svg+xml" data="angle_measure.svg">
+  <img src="angle_measure.png" alt="Angle measurement diagram"
+       width="202" height="142" />
+</object>
+</p>
+
+<ol>
+<li>The first step of the process is to backtrace from a screen pixel
+to a point on an generic globe that the pixel maps to.  The main point
+of this process is to determine a vector from the center of the globe
+to this point.  To keep things simple, assume this vector will be
+represented as a normalized 3-dimensional rectangular vector.  The
+coordinate system at this step will be assumed to have the X-Y plane
+coincide with the screen and the Z-axis run from the center of the
+screen through the center of the globe.</li>
+
+<li>Once a vector describing the point on the globe in relation to the
+center has been found, the vector should be inverse rotated by the
+current rotation of the Earth to generate a vector that describes a
+position on the Earth.  At this step, the coordinate system should
+also be transformed so that the X-Y plane coincides with the equator
+and the Z-axis runs through the poles.</li>
+
+<li>Now it is possible to determine the latitude and longitude of the
+point.  The longitude can be determined by using <code>atan2()</code>
+on a normalized vector from the X and Y coordinates, and the latitude
+can be determined by using <code>sin()</code> on the Z
+coordinate.</li>
+</ol>
+
+<p>Projection rendering vector geometry is basically the reverse
+process, except that there is one additional step: after transforming
+the geometry, determine if the projected point is visible or not.  If
+it is not visible, don't render it.</p>
+
+<p>The specific mathematics used for backtracing a ray or projecting a
+vector in step 1 depends on whether perspective is used for rendering
+or not.</p>
+
+<h4 style="clear: left">Orthographic Projection</h4>
+
+<p style="margin: 0; float: left; clear: left; page-break-inside: avoid">
+<object type="image/svg+xml" data="orthographic.svg">
+  <img src="orthographic.png" alt="Orthographic projection diagram"
+       width="202" height="142" />
+</object>
+</p>
+
+<p>Orthographic projection is simply a flattening of 3D geometry onto
+a 2D plane of a sufficiently large size to contain the 3D geometry.
+To obtain the necessary rectangular vector for step 1 above, the X and
+Y offsets from the center of the globe are simply the same as the X
+and Y offsets from the center of the projection plane, and the Z
+offset along the direction of projection can be obtained via
+<code>sin(acos(sqrt(x^2 + y^2)))</code>.</p>
+
+<h4 style="clear: left">Perspective Projection</h4>
+
+<p style="page-break-inside: avoid" >
+<object type="image/svg+xml" data="perspective.svg"
+	style="margin-right: 1em; vertical-align: top">
+  <img src="perspective.png" alt="Perspective projection diagram"
+       width="244" height="142" />
+</object>
+
+<object type="image/svg+xml" data="persp_graph2d.svg"
+	style="margin-right: 1em" width="202" height="202">
+  <img src="persp_graph2d.png" alt="2D perspective graph"
+       width="202" height="202" />
+</object>
+</p>
+
+<p>Perspective projection operates by tracing straight lines from an
+object through the screen to the <em>focal point</em>, the point
+behind the screen where all lines converge.  For rendering the Earth,
+it is primarily used for aesthetic purposes to make the rendered Earth
+look like it does from geosynchronous orbit.  To get a physically
+accurate rendering of how the Earth looks from geosynchronous orbit,
+these two parameters are essential: the mean radius of the Earth
+(6371.0 km) and the altitude of geosynchronous orbit (35,786 km).</p>
+
+<p>Given a pixel screen coordinate, it is somewhat more difficult to
+solve for the point on the generic globe with perspective projection
+than is the case with orthographic projection.  However, by
+simplifying the problem into two 2D cases, one for the X coordinate
+and the other for the Y coordinate, it can be easily seen that this is
+only a problem of solving for the intersection between a line and a
+hemicircle.  A system of two equations in two unknowns can be setup
+and the quadratic formula can be used on the resulting equation.
+Since only a hemicircle is considered, only one of the two solutions
+of the quadratic formula needs to be considered.  The solution process
+is mathematically written below:</p>
+
+<!-- BAD BAD!  Many old browsers have no way of figuring out the
+actual height of an embedded HTML object, so we must code in a
+reasonable height manually.  Maybe there is some browser setting that
+I don't know about that limits the maximum intrinsic height of
+embedded objects. -->
+<p>
+<object width="100%" height="650"
+	type="application/xhtml+xml" data="perspective_math.xhtml">
+<div style="text-align: center">
+<img src="perspective_math.png" alt="[mathematics rendering available]"
+     width="604" height="678" />
+</div>
+</object>
+</p>
+
+<p>A similar equation can be derived for Y coordinates by substituting
+the relevant variables in the above solution.  Once the X and Y
+coordinates of the point on the generic globe have been found, the Z
+coordinate can be found by using <code>z = sin(acos(sqrt(x^2 +
+y^2)))</code>, the same equation given above for the orthographic
+projection.</p>
+
+<h3>Display Considerations</h3>
+
+<p>All of the above algorithms assume that there is no rotation along
+the axis that points directly away from the viewer.  Any such rotation
+along this axis would simply result in the 2D image onscreen appearing
+at a different rotation.  Thus, it is not necessary to factor this
+rotation into these calculations that are concerned with the more
+difficult math.  If there is any rotation along this axis, then an
+inverse rotation can simply be used to preprocess the screen
+coordinate before backtracing it to the globe.</p>
+
+<hr />
+<!-- ________________________________________ -->
+
+<h2><a name="imp_center" id="imp_center">
+    Implementation Center</a></h2>
+
+<p>This is where I keep track of more advanced details of the
+implementation as it is progressing.</p>
+
+<hr />
+<!-- ________________________________________ -->
+
+<h2><a name="scratch_notes" id="scratch_notes">
+    Scratch Style Notes</a></h2>
+
+<p>These are notes that are far less organized than the rest.</p>
+
+<p>Note oversampling.</p>
+
+<p>Note document all APIs and provide examples on basic usage
+throughout.</p>
+
+<p>Other mathematical constructs: clipping, bézier smoothing of a
+polyline, pixel interpolation (bilinear, bicubic), great circle
+subdivision.</p>
+
+<p>Fixed function pipeline, graphics card is not capable of performing
+general purpose non-linear computations.</p>
+
+<p><a href="http://html5center.sourceforge.net/">
+    http://html5center.sourceforge.net/</a></p>
+
+<p><a href="http://www.html5canvastutorials.com/">
+    http://www.html5canvastutorials.com/</a></p>
+
+<p><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Canvas">
+    https://developer.mozilla.org/en-US/docs/Web/HTML/Canvas</a></p>
+
+<p><a href="http://www.lukew.com/ff/entry.asp?1514">
+    http://www.lukew.com/ff/entry.asp?1514</a></p>
+
+<p><a href="https://developer.mozilla.org/en-US/docs/Web/API">
+    https://developer.mozilla.org/en-US/docs/Web/API</a></p>
+
+<p><a href="https://developer.mozilla.org/en-US/docs/Web/API/CSS_Object_Model/Determining_the_dimensions_of_elements">
+    https://developer.mozilla.org/en-US/docs/Web/API/CSS_Object_Model/Determining_the_dimensions_of_elements</a></p>
+
+<p><a href="http://stackoverflow.com/questions/1664785/resize-html5-canvas-to-fit-window">
+    http://stackoverflow.com/questions/1664785/resize-html5-canvas-to-fit-window</a></p>
+
+<p><a href="http://excanvas.sourceforge.net/">
+    http://excanvas.sourceforge.net/</a></p>
+
+<p><a href="http://www.w3.org/TR/2011/REC-CSS2-20110607/">
+    http://www.w3.org/TR/2011/REC-CSS2-20110607/</a></p>
+
+<p><a href="http://joshondesign.com/p/books/canvasdeepdive/title.html">
+    http://joshondesign.com/p/books/canvasdeepdive/title.html</a></p>
+
+<p><a href="http://en.wikipedia.org/wiki/Equirectangular_projection">
+    http://en.wikipedia.org/wiki/Equirectangular_projection</a></p>
+
+<p>Very important to note when maintaining compatibility with IE6:
+<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Memory_Management">
+https://developer.mozilla.org/en-US/docs/Web/JavaScript/Memory_Management</a></p>
+
+<p><a href="http://stackoverflow.com/questions/10652513/html5-dynamically-create-canvas">
+http://stackoverflow.com/questions/10652513/html5-dynamically-create-canvas</a></p>
+
+<p><a href="http://stackoverflow.com/questions/358538/getimagedata-in-firefox-3-causing-ns-error-dom-security-err">
+http://stackoverflow.com/questions/358538/getimagedata-in-firefox-3-causing-ns-error-dom-security-err</a></p>
+
+<p><a href="http://www-archive.mozilla.org/projects/security/components/jssec.html">
+http://www-archive.mozilla.org/projects/security/components/jssec.html</a></p>
+
+<p><a href="https://developer.mozilla.org/en-US/docs/Web/API/Event">
+    https://developer.mozilla.org/en-US/docs/Web/API/Event</a></p>
+
+<p><a href="https://developer.mozilla.org/en-US/docs/Web/Reference/Events">
+    https://developer.mozilla.org/en-US/docs/Web/Reference/Events</a></p>
+
+<p>Possible solution to my MathML embedding problems:
+  <a href="http://webdesignerwall.com/tutorials/css-elastic-videos">
+    http://webdesignerwall.com/tutorials/css-elastic-videos</a></p>
+
+<p><a href="http://stackoverflow.com/questions/8865458/how-to-align-text-vertically-center-in-div-with-css">
+    http://stackoverflow.com/questions/8865458/how-to-align-text-vertically-center-in-div-with-css</a></p>
+
+<p><a href="https://developers.google.com/maps/documentation/javascript/v2/overlays?csw=1#Google_Maps_Coordinates">
+    https://developers.google.com/maps/documentation/javascript/v2/overlays?csw=1#Google_Maps_Coordinates</a></p>
+
+<p><a href="http://bost.ocks.org/mike/map/">
+    http://bost.ocks.org/mike/map/</a></p>
+
+<!--
+<div style="display: inline; border-style: solid;"
+     onclick="var gooder = document.getElementById('gooder');
+document.getElementById('badder').
+setAttribute('style', 'width: 100%; height: ' + gooder.scrollHeight + 'px');
+alert(gooder.scrollHeight); alert(gooder.children.length); alert(gooder.outerHTML); alert(document.getElementById('badder').outerHTML); alert(gooder.tagName);">
+  Expand!
+</div>
+-->
+
+<div style="display: inline-block; background-color: orange">
+  <div style="display: inline-block; border-style: solid; width: 4em; height: 1.2em; margin: 0.5em; background-color: green">
+    <div style="display: block; width: 4em; color: white; text-align: center">Previous</div>
+  </div>
+  <div style="display: inline-block; border-style: solid; width: 4em; height: 1.2em; margin: 0.5em; background-color: red">
+    <div style="display: block; width: 4em; color: white; text-align: center">Up</div>
+  </div>
+  <div style="display: inline-block; border-style: solid; width: 4em; height: 1.2em; margin: 0.5em; background-color: blue">
+    <div style="display: block; width: 4em; color: white; text-align: center">Next</div>
+  </div>
+</div>
+
+</body>
+</html>

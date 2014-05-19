@@ -5,7 +5,7 @@
   <meta charset="utf-8" />
 </head>
 <body style="margin: 0; padding: 0; height: 100%"
-      onkeydown="keyEvent(event)" onmousedown="lon_rot += 5; render_globe();">
+      onkeydown="keyEvent(event)" onmousedown="if (!rotating) rotating = window.setTimeout(periodic_render, 10); else rotating = 0;">
 
 <div id="drawing_container"
      style="margin: 0px auto; width: 6in; height: 5in; min-height: 100%; border-style: solid; border-color: black; overflow: hidden">
@@ -21,6 +21,7 @@
     var lon_rot = 85;
     /* latitude rotation */
     var lat_rot = 90;
+    var rotating = 0;
   var container = document.getElementById('drawing_container');
   // Resize canvas to fit CSS allocated space.
   // Warning: clientWidth and clientHeight marked as unstable in MDN.
@@ -118,6 +119,14 @@ function render_globe() {
     }
     c.putImageData(dest_data, 0, 0);
   }
+}
+
+function periodic_render() {
+  lon_rot += 5;
+  render_globe();
+  // alert('You loose.');
+  if (rotating)
+  return rotating = setTimeout(periodic_render, 10);
 }
 
 function keyEvent (event) {

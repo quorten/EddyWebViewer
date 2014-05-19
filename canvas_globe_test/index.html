@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>HTML 5 Canvas Test</title>
+  <meta charset="utf-8" />
+</head>
+<body style="margin: 0; padding: 0; height: 100%"
+      onkeydown="keyEvent(event)" onmousedown="lon_rot += 5; render_globe();">
+
+<div id="drawing_container"
+     style="margin: 0px auto; width: 6in; height: 5in; min-height: 100%; border-style: solid; border-color: black; overflow: hidden">
+  <canvas id="drawing_pad" width="1" height="1" />
+</div>
+
+<script>
+  var canvas = document.getElementById('drawing_pad');
+  var c = canvas.getContext('2d');
+  var ec;
+  var src_data;
+    /* longitude rotation */
+    var lon_rot = 85;
+    /* latitude rotation */
+    var lat_rot = 90;
+  var container = document.getElementById('drawing_container');
+  // Resize canvas to fit CSS allocated space.
+  // Warning: clientWidth and clientHeight marked as unstable in MDN.
+  canvas.width = container.clientWidth;
+  canvas.height = container.clientHeight;
+  /* window.innerWidth, window.innerHeight */
+
+  // Create a backbuffer canvas to pull pixels from.
+  var earth_buffer = document.createElement('canvas');
+  earth_buffer.id = 'earth_buffer';
+
+  // NOTE: Verify if HTML 5 style image loading works with IE6.
+
+  { // WARNING: Large image loading is slow.
+    var earth_tex = new Image();
+    earth_tex.onload = function () {
+      earth_buffer.width = earth_tex.width;
+      earth_buffer.height = earth_tex.height;
+      ec = earth_buffer.getContext('2d');
+      ec.drawImage(earth_tex, 0, 0);
+
+  try {
+    try {
+      src_data = ec.getImageData(0, 0, earth_buffer.width, earth_buffer.height);
+    } catch (e) {
+// BAD QUIRK FOR LOCAL TESTING
+      alert('Your browser seems to require elevated privileges in order to read pixel data from the HTML Canvas.  You will be asked if you want to enable these elevated privileges for this script.');
+netscape.security.PrivilegeManager.enablePrivilege("UniversalBrowserRead");
+      src_data = ec.getImageData(0, 0, earth_buffer.width, earth_buffer.height);
+    }
+  } catch (e) {
+    throw new Error("unable to access image data: " + e);
+  }
+
+      render_globe();
+    }
+    // earth_tex.src = "Equirectangular_projection_SW.png";
+    earth_tex.src = "../web_eddy_viewer_test/test_grs2rgb.png";
+  }
+
+// TODO: This function should be a tile-based rendering engine that
+// gets called from a callback to complete the render.  In general,
+// JavaScript cannot support threads.
+function render_globe() {
+  { // Project and render the image.
+    var dest_data = c.createImageData(canvas.width, canvas.height);
+    var dest_index = 0;
+    var y_center = dest_data.height / 2;
+    var x_center = dest_data.width / 2;
+    /* display radius */
+    var disp_rad = Math.min(dest_data.height, dest_data.width) / 2.0;
+    for (var y = 0; y < dest_data.height; y++) {
+      for (var x = 0; x < dest_data.width; x++) {
+        var lat_pre = Math.asin((y - y_center) / disp_rad);
+        var latitude = lat_pre * 180 / Math.PI + lat_rot;
+        var lat_scaler = (x - x_center) / disp_rad / Math.cos((latitude - 90) * Math.PI / 180);
+        var longitude = Math.asin(lat_scaler) * 180 / Math.PI + lon_rot;
+        /* if (longitude >= 0)
+          longitude -= latitude - lat_rot;
+        else
+          longitude += latitude - lat_rot; */
+        longitude += lon_rot;
+        while (longitude < 0)
+          longitude += 360;
+        while (longitude >= 360)
+          longitude -= 360;
+        if (latitude < 0) {
+          latitude = -latitude;
+          longitude += 180;
+        }
+        while (latitude >= 360)
+          latitude -= 360;
+        if (latitude >= 180) {
+          latitude = 180 - (latitude - 180);
+          longitude += 180;
+        }
+        while (longitude >= 360)
+          longitude -= 360;
+        // var in_circle = Math.sqrt(Math.pow(x - x_center, 2) + Math.pow(y - y_center, 2)) < disp_rad;
+        if (!isNaN(latitude) && !isNaN(longitude)) {
+          var src_index = (src_data.width *
+                      ~~(latitude * src_data.height / 180) +
+                      ~~(longitude * src_data.width / 360)) * 4;
+          dest_data.data[dest_index++] = src_data.data[src_index++];
+          dest_data.data[dest_index++] = src_data.data[src_index++];
+          dest_data.data[dest_index++] = src_data.data[src_index++];
+          dest_data.data[dest_index++] = 255;
+        } else {
+          dest_data.data[dest_index++] = 255;
+          dest_data.data[dest_index++] = 0;
+          dest_data.data[dest_index++] = 0;
+          dest_data.data[dest_index++] = 255;
+        }
+      }
+    }
+    c.putImageData(dest_data, 0, 0);
+  }
+}
+
+function keyEvent (event) {
+  /* if (event.defaultPrevented) {
+    return; // Should do nothing if the key event was already consumed.
+  } */
+
+  switch (event.code) {
+    case "KeyA":
+      lon_rot -= 5;
+      break;
+    case "KeyD":
+      lon_rot += 5;
+      break;
+    case "KeyS":
+      lat_rot -= 5;
+      break;
+    case "KeyW":
+      lat_rot += 5;
+      break;
+    default:
+      return;
+  }
+
+  render_globe();
+}
+
+/* //create a new 300 x 300 pixel buffer
+var data = c.createImageData(300,200);
+
+//loop over every pixel
+for(var x=0; x < data.width; x++) {
+    for(var y=0; y < data.height; y++) {
+        
+        var val = 0;
+        var horz = (Math.floor(x/4) % 2 == 0); //loop every 4 pixels
+        var vert = (Math.floor(y/4) % 2 == 0); // loop every 4 pixels
+        if( (horz && !vert) || (!horz && vert)) {
+            val = 255;
+        } else {
+            val = 0;
+        }
+        
+        var index = (y*data.width+x)*4;  //calculate index
+        data.data[index] = val;   // red
+        data.data[index+1] = val; // green
+        data.data[index+2] = val; // blue
+        data.data[index+3] = 255; // force alpha to 100%
+    }
+}
+//set the data back
+c.putImageData(data,0,0); */
+
+
+  /* c.beginPath();
+  c.fillStyle = "#aaffaa";
+  c.strokeStyle = "#ff0000";
+  c.lineCap = "round";
+  c.lineJoin = "round";
+  c.lineWidth = 15;
+  c.fillRect(0, 0, canvas.width, canvas.height);
+  c.moveTo(32, 32);
+  c.lineTo(canvas.width - 32, canvas.height - 32);
+  c.lineTo(canvas.width / 2, 32);
+  c.stroke(); */
+</script>
+
+</body>
+</html>

@@ -20,7 +20,7 @@
     /* longitude rotation */
     var lon_rot = 85;
     /* latitude rotation */
-    var lat_rot = 90;
+    var lat_rot = 0;
     var rotating = 0;
   var container = document.getElementById('drawing_container');
   // Resize canvas to fit CSS allocated space.
@@ -75,9 +75,9 @@ function render_globe() {
     var disp_rad = Math.min(dest_data.height, dest_data.width) / 2.0;
     for (var y = 0; y < dest_data.height; y++) {
       for (var x = 0; x < dest_data.width; x++) {
-        var lat_pre = Math.asin((y - y_center) / disp_rad);
-        var latitude = lat_pre * 180 / Math.PI + lat_rot;
-        var lat_scaler = (x - x_center) / disp_rad / Math.cos((latitude - 90) * Math.PI / 180);
+        var lat_pre = Math.asin((y - y_center) / disp_rad / Math.cos(lat_rot * Math.PI / 180));
+        var latitude = lat_pre * 180 / Math.PI + 90;
+        var lat_scaler = (x - x_center) / disp_rad / Math.cos(lat_pre);
         var longitude = Math.asin(lat_scaler) * 180 / Math.PI + lon_rot;
         /* if (longitude >= 0)
           longitude -= latitude - lat_rot;
@@ -122,11 +122,12 @@ function render_globe() {
 }
 
 function periodic_render() {
+  if (!rotating)
+    return;
   lon_rot += 5;
   render_globe();
-  // alert('You loose.');
   if (rotating)
-  return rotating = setTimeout(periodic_render, 10);
+    return rotating = setTimeout(periodic_render, 10);
 }
 
 function keyEvent (event) {

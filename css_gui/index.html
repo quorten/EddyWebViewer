@@ -1,0 +1,37 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"
+      lang="en" xml:lang="en">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <title>Ocean Eddies Web Viewer</title>
+  <style type="text/css">
+    /* body { margin: 0; padding: 0; height: 100%; } */
+    .topbar { margin: 4px; border-style: solid; }
+    .cdiv { margin: 4px; padding: 4px;
+            width: auto; min-width: 4in; height: 5in; min-height: 100%;
+            overflow: hidden; clear: top;
+            border-style: solid; border-color: black; }
+    .sidebar { float: right; margin: 0px 4px 4px 4px; padding: 4px;
+               width: 3in; height: 5in;
+               border-style: solid; }
+  </style>
+  <!-- <script type="text/javascript" src="" /> -->
+</head>
+<body>
+
+<div class="topbar">
+  <p>This is the UI top bar for main controls.</p>
+</div>
+<div class="sidebar">
+  <p>This is the UI side bar for displaying eddy information.</p>
+</div>
+<div class="cdiv" id="drawingContainer">
+  <p>The drawing pad will be in this space, but in future versions of
+  this UI, this will also be able to function as a unified touchpad
+  without the surrounding sidebars.</p>
+  <canvas id="drawingPad" width="1" height="1" />
+</div>
+
+</body>
+</html>

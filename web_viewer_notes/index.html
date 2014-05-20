@@ -182,7 +182,7 @@ tests each component feature in the browser.</p>
 
 <ul>
   <li>JavaScript interpreter</li>
-  <li>CSS 2</li>
+  <li>CSS 2 (possibly support CSS 1 if the differences are manageable)</li>
   <li>Raster image display</li>
   <li>Vector graphics rendering, either SVG, VML, or HTML Canvas</li>
 </ul>
@@ -589,6 +589,11 @@ subdivision.</p>
 
 <p>Fixed function pipeline, graphics card is not capable of performing
 general purpose non-linear computations.</p>
+
+<p>With CSS styling, never set a foreground color without also setting
+a background color.  You need to take into consideration that white
+page backrounds are an <em>assumption</em>, not a <em>requirement</em>
+of web browsers.</p>
 
 <p><a href="http://html5center.sourceforge.net/">
     http://html5center.sourceforge.net/</a></p>

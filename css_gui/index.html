@@ -15,6 +15,22 @@
     .sidebar { float: right; margin: 0px 4px 4px 4px; padding: 4px;
                width: 3in; height: 5in;
                border-style: solid; }
+    .cssbtn { display: inline-block;
+              border-style: solid; border-color: black;
+              width: 4em; height: 1.2em; margin: 0.5em; }
+    .green { background-color: green; }
+    .red { background-color: red; }
+    .blue { background-color: blue; }
+
+    /* Warning: The following styles used for CSS buttons may have
+       browser compatibility issues.  */
+    .cssbtn * { -webkit-touch-callout: none;
+                -webkit-user-select: none;
+                -khtml-user-select: none;
+                -moz-user-select: none;
+                -ms-user-select: none;
+                user-select: none;
+                cursor: default; }
   </style>
   <!-- <script type="text/javascript" src="" /> -->
 </head>
@@ -22,6 +38,82 @@
 
 <div class="topbar">
   <p>This is the UI top bar for main controls.</p>
+
+  <p>Here is an example of CSS-only decorated buttons:</p>
+
+<!-- TODO: These CSS buttons need slightly more sophisticated
+JavaScript to prevent them from being highlighted when the cursor
+enters the button already clicked. -->
+
+<!-- Note: MouseEvent.buttons requires DOM level 3. -->
+
+<div style="display: inline-block; background-color: orange">
+  <div class="cssbtn green"
+       onmousedown="event.currentTarget.setAttribute('style', 'background-color: black; border-color: white');"
+       onmouseup="event.currentTarget.setAttribute('style', '');"
+       onmouseenter="if (event.buttons == 1) event.currentTarget.setAttribute('style', 'background-color: black; border-color: white');"
+       onmouseleave="event.currentTarget.setAttribute('style', '');"
+       onclick="alert('Changing to previous node.');">
+    <div style="display: block; width: 4em; color: white; text-align: center">Previous</div>
+  </div>
+  <div class="cssbtn red"
+       onmousedown="event.currentTarget.setAttribute('style', 'background-color: black; border-color: white');"
+       onmouseup="event.currentTarget.setAttribute('style', '');"
+       onmouseenter="if (event.buttons == 1) event.currentTarget.setAttribute('style', 'background-color: black; border-color: white');"
+       onmouseleave="event.currentTarget.setAttribute('style', '');"
+       onclick="alert('Changing to upper node.');">
+    <div style="display: block; width: 4em; color: white; text-align: center">Up</div>
+  </div>
+  <div class="cssbtn blue"
+       onmousedown="event.currentTarget.setAttribute('style', 'background-color: black; border-color: white');"
+       onmouseup="event.currentTarget.setAttribute('style', '');"
+       onmouseenter="if (event.buttons == 1) event.currentTarget.setAttribute('style', 'background-color: black; border-color: white');"
+       onmouseleave="event.currentTarget.setAttribute('style', '');"
+       onclick="alert('Changing to next node.');">
+    <div style="display: block; width: 4em; color: white; text-align: center">Next</div>
+  </div>
+</div>
+
+  <p>Here is an example of FORM-style buttons:</p>
+
+  <form action="">
+    <fieldset style="display: inline">
+      <input id="changeClicker" type="button" value="Click Me"
+	     onclick="alert('The screen will be updated.');" />
+      <input id="backDate" type="button" value="&lt; Backward"
+	     onclick="alert('Moving to earlier time.');" />
+      <input id="fwdDate" type="button" value="Forward &gt;"
+	     onclick="alert('Moving to later time.');" />
+    </fieldset>
+    <fieldset>
+      <!-- Note: width="auto" does not result in the text input taking
+      up all of the available space, so I used "width: 100%" instead.
+      I will have to check the compatibility of this with CSS 1.  -->
+      <input id="textField" type="text" style="width: 100%"
+      value="Delete this and type your own text." />
+    </fieldset>
+    <fieldset style="display: inline">
+      <input id="cycShow" type="checkbox" />
+      <label for="cycShow">Cyclonic Eddies</label><br />
+      <input id="anticycShow" type="checkbox" />
+      <label for="anticycShow">Anticyclonic Eddies</label><br />
+      <input id="cheltonShow" type="checkbox" />
+      <label for="cycShow">Chelton Tracks</label>
+    </fieldset>
+    <fieldset style="display: inline; vertical-align: top">
+      <select id="projectionSel">
+	<option>Equirectangular</option>
+	<option>Mercator</option>
+	<option>Orthographic</option>
+	<option>Perspective</option>
+      </select><br />
+      <!-- And if you want the user to be able to type in text like a
+      combobox on control in most desktop GUIs, then you have to
+      manually add an additional text input below.  -->
+      <input id="prjSelComboText" type="text" />
+    </fieldset>
+  </form>
+
 </div>
 <div class="sidebar">
   <p>This is the UI side bar for displaying eddy information.</p>
@@ -32,6 +124,20 @@
   without the surrounding sidebars.</p>
   <!-- <canvas id="drawingPad" width="1" height="1" /> -->
 </div>
+
+<!-- Some JavaScript to resize an element inside a <div> container to
+take up all of the available space.  Depending on what this is used
+for, it may or may not be useful. -->
+
+<!--
+<div style="display: inline; border-style: solid;"
+     onclick="var gooder = document.getElementById('gooder');
+document.getElementById('badder').
+setAttribute('style', 'width: 100%; height: ' + gooder.scrollHeight + 'px');
+alert(gooder.scrollHeight); alert(gooder.children.length); alert(gooder.outerHTML); alert(document.getElementById('badder').outerHTML); alert(gooder.tagName);">
+  Expand!
+</div>
+-->
 
 </body>
 </html>

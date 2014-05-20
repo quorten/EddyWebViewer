@@ -146,7 +146,9 @@ map.</h4>
 
 <p>Solution: HTML Canvas rendering JavaScript should yield sufficient
 performance.  Otherwise, the image maps can be pre-generated on the
-server and downloaded by the client.</p>
+server and downloaded by the client.  Notably, modern versions of
+Internet Explorer have a slower Canvas rendering performance than
+other modern browsers.</p>
 
 <h4>Problem: Downloading large datasets can be slow.</h4>
 
@@ -211,7 +213,7 @@ no additional advantages when using the Eddy Web Viewer.</p>
   <li>CSS 2</li>
   <li>Raster image display</li>
   <li>Vector graphics rendering, preferably SVG</li>
-  <li>Full support for HTML Canvas.  Support for getImageData() and
+  <li>Full support for HTML 5 Canvas.  Support for getImageData() and
   putImageData() raster operations on HTML Canvas.</li>
   <li>WebGL, GPGPU hardware acceleration</li>
 </ul>
@@ -263,7 +265,6 @@ implementation of the Eddy Web Viewer.</p>
 <p>Future goals:</p>
 
 <ul>
-  <li>GUI Design</li>
   <li>Data parsing and loading</li>
   <li>Server side data generation</li>
   <li>Browser feature test suite</li>
@@ -275,8 +276,9 @@ implementation of the Eddy Web Viewer.</p>
 <p>Work in progress:</p>
 
 <ul>
-  <li>This info document.</li>
+  <li>This info document</li>
   <li>Transforming between lat/lon and map projections</li>
+  <li>Building the CSS user interface</li>
 </ul>
 
 <p>Completed goals:</p>
@@ -293,25 +295,30 @@ implementation of the Eddy Web Viewer.</p>
     Mathematically Build an Icosahedron</a></h2>
 
 <p style="page-break-inside: avoid">
-<object type="image/svg+xml" data="pentagon.svg" width="202" height="202">
+<object type="image/svg+xml" data="pentagon.svg"
+	style="margin-left: 1.5em; margin-right: 1.5em"
+	width="202" height="202">
   <img src="pentagon.png" alt="Pentagon construction"
        width="202" height="202" />
 </object>
 
 <object type="image/svg+xml" data="elevation.svg"
-	style="margin-left: 3em" width="202" height="202">
+	style="margin-left: 1.5em; margin-right: 1.5em"
+	width="202" height="202">
   <img src="elevation.png" alt="&quot;Top hat&quot; construction diagram"
        width="202" height="202" />
 </object>
 
 <object type="image/svg+xml" data="topview.svg"
-	style="margin-left: 3em" width="202" height="202">
+	style="margin-left: 1.5em; margin-right: 1.5em"
+	width="202" height="202">
   <img src="topview.png" alt="Flattened top view"
        width="202" height="202" />
 </object>
 
 <object type="image/svg+xml" data="sideview.svg"
-	style="margin-left: 3em" width="202" height="202">
+	style="margin-left: 1.5em; margin-right: 1.5em"
+	width="202" height="202">
   <img src="sideview.png" alt="Side view construction"
        width="202" height="202" />
 </object>
@@ -495,13 +502,14 @@ offset along the direction of projection can be obtained via
 
 <p style="page-break-inside: avoid" >
 <object type="image/svg+xml" data="perspective.svg"
-	style="margin-right: 1em; vertical-align: top">
+	style="margin-left: 0.5em; margin-right: 0.5em; vertical-align: top">
   <img src="perspective.png" alt="Perspective projection diagram"
        width="244" height="142" />
 </object>
 
 <object type="image/svg+xml" data="persp_graph2d.svg"
-	style="margin-right: 1em" width="202" height="202">
+	style="margin-left: 0.5em; margin-right: 0.5em"
+	width="202" height="202">
   <img src="persp_graph2d.png" alt="2D perspective graph"
        width="202" height="202" />
 </object>
@@ -567,8 +575,148 @@ coordinate before backtracing it to the globe.</p>
 <h2><a name="imp_center" id="imp_center">
     Implementation Center</a></h2>
 
-<p>This is where I keep track of more advanced details of the
-implementation as it is progressing.</p>
+<p>Overall, the implementation of the web interface is divided into
+three main areas: the CSS user interface (GUI), the renderer, and data
+I/O.</p>
+
+<ul>
+  <li>CSS User Interface</li>
+  <li>Renderer</li>
+  <li>Data I/O</li>
+</ul>
+
+<p>This design pattern (or a similar design pattern) is more often
+called Model/View/Controller (MVC), but for the purposes of this code,
+the names of the modules will be the names indicated above.</p>
+
+<p>A server-side component is also a necessary part of the
+implementation.</p>
+
+<h3>CSS User Interface</h3>
+
+<p>The overall design of the CSS user interface will be composed of a
+central rendering/touchscreen area surrounded by two optional, hidable
+panels: a top panel (topbar) and a side panel (sidebar).</p>
+
+<h4>General User Interface Design Requirements</h4>
+
+<ul>
+  <li>The UI needs to be able to consistenly respond when the user
+  presses the escape key.</li>
+  <li>There will be no "select eddy" button, since just clicking and
+  not moving the mouse will select an eddy if it is visible.</li>
+  <li>Clicking and dragging the mouse pans the Earth.</li>
+  <li>Rolling the mouse wheel forward zooms in, rolling it backward
+  zooms out.</li>
+  <li>Pulling fingers apart on touchscreen zooms out, pushing fingers
+  together zooms in.</li>
+  <li>The panels should be able to dynamically hide and show on small
+  screen layouts.</li>
+  <li>The UI needs to be able to dynamically resize the height on the
+  canvas area depending on how much vertical space there is in the
+  window.</li>
+  <li>There needs to be a legend on the map.  If the colors are to be
+  decided by the web application, they need to be specially chosen to
+  maximize clarity to colorblind individuals.</li>
+  <li>With as many widgets as there are going to be in the user
+  interface, there also needs to be a way to iconify the grouping
+  boxes.</li>
+</ul>
+
+<p>These are the required controls in the CSS user interface:</p>
+
+<h4>Top panel</h4>
+
+<ul>
+  <li>Zoom Factor: [text edit]</li>
+  <li>Earth Projection: [combo box]
+    <ul>
+      <li>Equirectangular</li>
+      <li>Mercator</li>
+      <li>Orthographic</li>
+      <li>Perspective</li>
+    </ul>
+  </li>
+  <li>Projection Properties [CSS box]
+    <ul>
+      <li>Perspective
+	<ul>
+	  <li>Altitude: [text edit] kilometers</li>
+	  <li>Field of View: [text edit] degrees</li>
+	</ul>
+      </li>
+    </ul>
+  </li>
+  <li>Grid Line Density (degrees/line)
+    <ul>
+      <li>Latitude: [text edit]</li>
+      <li>Longitude: [text edit]</li>
+    </ul>
+  </li>
+  <li>Eddy Track Styling
+    <ul>
+      <li>Track Length/Width Ratio [text edit]</li>
+    </ul>
+  </li>
+  <li>Background [combo box]
+    <ul>
+      <li>None</li>
+      <li>Land masses only</li>
+      <li>Sea surface height</li>
+    </ul>
+  </li>
+  <li>Eddy Filters [CSS box]
+    <ul>
+      <li>[checkbox] Cyclonic Eddies</li>
+      <li>[checkbox] Anticyclonic Eddies</li>
+      <li>[checkbox] Chelton Tracks</li>
+      <li>Length [CSS box]
+	<ul>
+	  <li>[checkbox] Minimum [text edit]</li>
+	  <li>[checkbox] Maximum [text edit]</li>
+	</ul>
+      </li>
+    </ul>
+  </li>
+</ul>
+
+<h4>Side panel</h4>
+
+<ul>
+  <li>Date slection box: Drop-down combo box to select date.
+  Backward/Forward date selectors.</li>
+  <li>Eddy Information
+    <ul>
+      <li>Eddy numeric ID</li>
+      <li>Latitude</li>
+      <li>Longitude</li>
+      <li>Aplitude</li>
+      <li>Area</li>
+      <li>Geodesic speed</li>
+    </ul>
+  </li>
+</ul>
+
+<h3>Renderer</h3>
+
+<p>The renderer contains the logic for projecting and unprojecting
+coordinates.  These modules are also used by the UI scripts to
+determine the latitude and logitude from a pixel selected on
+screen.</p>
+
+<h3>Data I/O</h3>
+
+<p>This part of the web viewer handles loading of data that is
+possibly segmented into multiple files on the server.  It can also
+provide mechanisms for exporting rendered raster/vector images and
+exporting image sequences that can be used for animations.</p>
+
+<h3>Server-side Component</h3>
+
+<p>The server-side component is likely to primarily be used to segment
+large datasets into individual files and pre-render image maps for
+browsers that don't have the scripting capabilities to generate them
+locally.</p>
 
 <hr />
 <!-- ________________________________________ -->

@@ -751,6 +751,11 @@ of web browsers.</p>
 that all widgets must be within a FORM element, just like has been
 demonstrated in the HTML 4 reference on the W3C's website.</p>
 
+<p>Although <code>requestAnimationFrame()</code> poses a number of
+advantages over setTimeout(), it has very bad browser compatibility,
+so if it is used, it will have to be wrapped in a try() block at
+initialization to determine if it is available or not.</p>
+
 <p><a href="http://html5center.sourceforge.net/">
     http://html5center.sourceforge.net/</a></p>
 
@@ -824,6 +829,9 @@ http://stackoverflow.com/questions/826782/css-rule-to-disable-text-selection-hig
 
 <p><a href="http://stackoverflow.com/questions/14614702/html-combo-box-with-option-to-type-an-entry">
     http://stackoverflow.com/questions/14614702/html-combo-box-with-option-to-type-an-entry</a></p>
+
+<p><a href="https://developer.mozilla.org/en-US/docs/Web/API/window.requestAnimationFrame">
+    https://developer.mozilla.org/en-US/docs/Web/API/window.requestAnimationFrame</a></p>
 
 </body>
 </html>

@@ -101,12 +101,15 @@ enters the button already clicked. -->
       <label for="cycShow">Chelton Tracks</label>
     </fieldset>
     <fieldset style="display: inline; vertical-align: top">
-      <select id="projectionSel">
+      <select id="projectionSel" onchange="alert('Changing projection.');">
 	<option>Equirectangular</option>
 	<option>Mercator</option>
 	<option>Orthographic</option>
 	<option>Perspective</option>
       </select><br />
+      <!-- Note: It's important that the scripts to handle the
+      combobox events have logic to prevent double pickups when the
+      user hits enter and focuses out afterward. -->
       <!-- And if you want the user to be able to type in text like a
       combobox on control in most desktop GUIs, then you have to
       manually add an additional text input below.  -->

@@ -184,6 +184,7 @@ tests each component feature in the browser.</p>
 
 <ul>
   <li>JavaScript interpreter</li>
+  <li>HTML 4.01 &amp; XHTML 1.0</li>
   <li>CSS 2 (possibly support CSS 1 if the differences are manageable)</li>
   <li>Raster image display</li>
   <li>Vector graphics rendering, either SVG, VML, or HTML Canvas</li>
@@ -210,6 +211,7 @@ no additional advantages when using the Eddy Web Viewer.</p>
 
 <ul>
   <li>High performance JavaScript interpreter</li>
+  <li>HTML 5</li>
   <li>CSS 2</li>
   <li>Raster image display</li>
   <li>Vector graphics rendering, preferably SVG</li>
@@ -240,17 +242,17 @@ process JavaScript code that are likely to prove useful for the
 implementation of the Eddy Web Viewer.</p>
 
 <ul>
-  <li>D3.js -- data-driven document library, works with both SVG and
+  <li>D3.js &mdash; data-driven document library, works with both SVG and
   HTML Canvas rendering backends<br />
   <a href="http://d3js.org/">http://d3js.org/</a></li>
-  <li>ExplorerCanvas -- HTML Canvas compatibility library for old
+  <li>ExplorerCanvas &mdash; HTML Canvas compatibility library for old
   versions of Internet Explorer (IE6)<br />
   <a href="http://excanvas.sourceforge.net/">
     http://excanvas.sourceforge.net/</a></li>
-  <li>Three.js -- 3D rendering helper library, works with both HTML 2D
+  <li>Three.js &mdash; 3D rendering helper library, works with both HTML 2D
   Canvas and WebGL 3D Canvas backends<br />
   <a href="http://threejs.org/">http://threejs.org/</a></li>
-  <li>jsdoc3 -- Documentation extractor for Doxygen-style
+  <li>jsdoc3 &mdash; Documentation extractor for Doxygen-style
   documentation comments<br />
   <a href="https://github.com/jsdoc3/jsdoc">
     https://github.com/jsdoc3/jsdoc</a></li>
@@ -461,9 +463,12 @@ screen through the center of the globe.</li>
 <li>Once a vector describing the point on the globe in relation to the
 center has been found, the vector should be inverse rotated by the
 current rotation of the Earth to generate a vector that describes a
-position on the Earth.  At this step, the coordinate system should
-also be transformed so that the X-Y plane coincides with the equator
-and the Z-axis runs through the poles.</li>
+position on the Earth.  It is critical that the pole tilt
+transformation is the independent transformation and the longitudinal
+rotation transformation is the dependent transformation.  At this
+step, the coordinate system should also be transformed so that the X-Y
+plane coincides with the equator and the Z-axis runs through the
+poles.</li>
 
 <li>Now it is possible to determine the latitude and longitude of the
 point.  The longitude can be determined by using <code>atan2()</code>
@@ -751,6 +756,12 @@ of web browsers.</p>
 that all widgets must be within a FORM element, just like has been
 demonstrated in the HTML 4 reference on the W3C's website.</p>
 
+<p>Although <code>requestAnimationFrame()</code> poses a number of
+advantages over <code>setTimeout()</code>, it has very bad browser
+compatibility, so if it is used, it will have to be wrapped in
+a <code>try()</code> block at initialization to determine if it is
+available or not.</p>
+
 <p><a href="http://html5center.sourceforge.net/">
     http://html5center.sourceforge.net/</a></p>
 
@@ -827,6 +838,12 @@ http://stackoverflow.com/questions/826782/css-rule-to-disable-text-selection-hig
 
 <p><a href="http://stackoverflow.com/questions/13987300/how-to-trigger-enter-key-press-of-textbox">
     http://stackoverflow.com/questions/13987300/how-to-trigger-enter-key-press-of-textbox</a></p>
+
+<p><a href="https://developer.mozilla.org/en-US/docs/Web/API/window.requestAnimationFrame">
+    https://developer.mozilla.org/en-US/docs/Web/API/window.requestAnimationFrame</a></p>
+
+<p><a href="http://www.scriptingmaster.com/html/versions-of-HTML.asp">
+    http://www.scriptingmaster.com/html/versions-of-HTML.asp</a></p>
 
 </body>
 </html>

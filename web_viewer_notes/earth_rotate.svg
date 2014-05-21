@@ -34,7 +34,7 @@
      inkscape:pageshadow="2"
      inkscape:zoom="2"
      inkscape:cx="109.54865"
-     inkscape:cy="76.412616"
+     inkscape:cy="75.412616"
      inkscape:document-units="px"
      inkscape:current-layer="layer1"
      showgrid="false"
@@ -87,7 +87,7 @@
        sodipodi:nodetypes="cc" />
     <path
        style="fill:none;stroke:#000000;stroke-width:0.99999994px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
-       d="m 63.920368,937.75528 c -18.586715,-2.00917 -30.140617,2.29939 -30.140617,9.54358"
+       d="m 58.920368,990.75528 c -18.586715,-2.00917 -30.140617,2.29939 -30.140617,9.54362"
        id="path3644"
        sodipodi:nodetypes="cs" />
     <path
@@ -126,21 +126,21 @@
     <path
        id="path3626"
        style="fill:none;stroke:#000000;stroke-width:0.99999994px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
-       d="m 59.901619,947.29886 9.544528,11.05046 -10.549216,8.03671"
+       d="m 54.901619,1000.2989 9.544528,11.0504 -10.549216,8.0367"
        sodipodi:nodetypes="ccc" />
     <path
        sodipodi:nodetypes="cc"
        id="path3637"
-       d="m 33.779751,947.29886 c 0,6.02753 13.563276,10.54817 35.666396,11.05046"
+       d="m 28.779751,1000.2989 c 0,6.0275 13.563276,10.5481 35.666396,11.0504"
        style="fill:none;stroke:#000000;stroke-width:0.99999994px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
     <path
        style="fill:none;stroke:#000000;stroke-width:0.99999994px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
-       d="m 72.840664,961.44926 c -9.189319,11.61369 -11.787225,31.76639 -4.901548,45.62254"
+       d="m 27.840664,943.94926 c -9.189319,11.61369 -11.787225,31.76639 -4.901548,45.62254"
        id="path3661"
        sodipodi:nodetypes="cc" />
     <path
        style="fill:none;stroke:#000000;stroke-width:0.99999994px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
-       d="m 57.389901,1001.5466 10.549215,5.5252 6.530469,-8.53899"
+       d="m 12.389901,984.0466 10.549215,5.5252 6.530469,-8.53899"
        id="path3663" />
     <path
        transform="matrix(1.4208423,0,0,1.4207011,-25.170455,963.02179)"

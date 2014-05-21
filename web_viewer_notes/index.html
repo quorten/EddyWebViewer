@@ -5,6 +5,10 @@
 <head>
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
   <title>Ocean Eddies Web Viewer Notes</title>
+  <style type="text/css">
+    p.image-flow { page-break-inside: avoid; }
+    p.image-flow object { vertical-align: top; }
+  </style>
 </head>
 <body>
 
@@ -226,13 +230,13 @@ no additional advantages when using the Eddy Web Viewer.</p>
 <p>The thing about communication services is they involve sending
 messages to other people's devices, and because those devices
 are <em>their</em> devices, not yours, you generally cannot force an
-immediate change to the device.  Considering it is likely that they're
-a non-technical person, they're probably going to be ignorant of the
-tech news channels that document all the shortcomings of their device,
-and if you require them to change their hardware or software to access
-your site, you're probably going to just end up chasing away a
-potential user.  There is really a "take it or leave it" ethic if you
-want to get the message across with communication technologies.</p>
+immediate change to the device.  Because of various restrictions such
+as IT department policies where the actual owner of the device is not
+the user of the device, if you require them to change their hardware
+or software to access your site, you're probably going to just end up
+chasing away a potential user.  There is really a "take it or leave
+it" ethic if you want to get the message across with communication
+technologies.</p>
 
 <h3><a name="intro_core_js_lib" id="intro_core_js_lib">
     Core JavaScript Libraries</a></h3>
@@ -296,7 +300,7 @@ implementation of the Eddy Web Viewer.</p>
 <h2><a name="icosahedron" id="icosahedron">
     Mathematically Build an Icosahedron</a></h2>
 
-<p style="page-break-inside: avoid">
+<p class="image-flow">
 <object type="image/svg+xml" data="pentagon.svg"
 	style="margin-left: 1.5em; margin-right: 1.5em"
 	width="202" height="202">
@@ -433,7 +437,7 @@ images:</p>
 would think at first.  The process of backtracing from screen pixels
 to a a map pixel is a multistep process.</p>
 
-<p style="page-break-inside: avoid">
+<p class="image-flow">
 <object type="image/svg+xml" data="orthographic.svg">
   <img src="orthographic.png" alt="Orthographic projection diagram"
        width="202" height="142" />
@@ -488,7 +492,7 @@ or not.</p>
 
 <h4 style="clear: left">Orthographic Projection</h4>
 
-<p style="margin: 0; float: left; clear: left; page-break-inside: avoid">
+<p class="image-flow" style="float: left">
 <object type="image/svg+xml" data="orthographic.svg">
   <img src="orthographic.png" alt="Orthographic projection diagram"
        width="202" height="142" />
@@ -505,9 +509,9 @@ offset along the direction of projection can be obtained via
 
 <h4 style="clear: left">Perspective Projection</h4>
 
-<p style="page-break-inside: avoid" >
+<p class="image-flow">
 <object type="image/svg+xml" data="perspective.svg"
-	style="margin-left: 0.5em; margin-right: 0.5em; vertical-align: top">
+	style="margin-left: 0.5em; margin-right: 0.5em">
   <img src="perspective.png" alt="Perspective projection diagram"
        width="244" height="142" />
 </object>
@@ -580,8 +584,8 @@ coordinate before backtracing it to the globe.</p>
 <h2><a name="imp_center" id="imp_center">
     Implementation Center</a></h2>
 
-<p>Overall, the implementation of the web interface is divided into
-three main areas: the CSS user interface (GUI), the renderer, and data
+<p>Overall, the implementation of the web viewer is divided into three
+main areas: the CSS user interface (GUI), the renderer, and data
 I/O.</p>
 
 <ul>
@@ -594,8 +598,16 @@ I/O.</p>
 called Model/View/Controller (MVC), but for the purposes of this code,
 the names of the modules will be the names indicated above.</p>
 
-<p>A server-side component is also a necessary part of the
-implementation.</p>
+<p>Since this is a web application rather than a traditional "native"
+application, a few extra components are also necessary:</p>
+
+<ul>
+  <li>Client-side browser compatibility layer</li>
+  <li>Server-side browser compatibility layer</li>
+</ul>
+
+<p>Both of the above components are used exclusively to work around
+limitations in the client's JavaScript interpreter.</p>
 
 <h3>CSS User Interface</h3>
 
@@ -630,6 +642,11 @@ panels: a top panel (topbar) and a side panel (sidebar).</p>
   <li>With as many widgets as there are going to be in the user
   interface, there also needs to be a way to iconify the grouping
   boxes.</li>
+  <li>Older browsers have had significant issues with providing a
+  standard way to determine the mouse/pointer position.  If the
+  browser makes retrieving pointer information too difficult or there
+  is no pointing device available, then the scripts may need to
+  provide a fallback that uses the keyboard as a replacement.</li>
 </ul>
 
 <p>These are the required controls in the CSS user interface:</p>
@@ -720,12 +737,12 @@ possibly segmented into multiple files on the server.  It can also
 provide mechanisms for exporting rendered raster/vector images and
 exporting image sequences that can be used for animations.</p>
 
-<h3>Server-side Component</h3>
-
-<p>The server-side component is likely to primarily be used to segment
-large datasets into individual files and pre-render image maps for
-browsers that don't have the scripting capabilities to generate them
-locally.</p>
+<p>There can also be a <em>server-side</em> data I/O component that is
+primarily used to segment large datasets into individual files for
+bandwidth optimized data downloading.  This would only be necessary if
+(1) the dataset needs to be parsed serially as opposed to random
+access and (2) low-level (HTTP) protocol control cannot be achieved by
+the web viewer.</p>
 
 <hr />
 <!-- ________________________________________ -->
@@ -761,6 +778,10 @@ advantages over <code>setTimeout()</code>, it has very bad browser
 compatibility, so if it is used, it will have to be wrapped in
 a <code>try()</code> block at initialization to determine if it is
 available or not.</p>
+
+<p>Use namespaces in the JavaScript code.</p>
+
+<p>The Ocean Eddies Web Viewer needs to have a favicon.</p>
 
 <p><a href="http://html5center.sourceforge.net/">
     http://html5center.sourceforge.net/</a></p>
@@ -844,6 +865,12 @@ http://stackoverflow.com/questions/826782/css-rule-to-disable-text-selection-hig
 
 <p><a href="http://www.scriptingmaster.com/html/versions-of-HTML.asp">
     http://www.scriptingmaster.com/html/versions-of-HTML.asp</a></p>
+
+<p><a href="http://www.quirksmode.org/">
+    http://www.quirksmode.org/</a></p>
+
+<p><a href="http://evolt.org/node/23335/">
+    http://evolt.org/node/23335/</a></p>
 
 </body>
 </html>

@@ -3,6 +3,7 @@ div.btest-content {
     border-width: 2pt;
     padding: 1em;
     margin: 1em;
+    overflow: auto;
 }
 
 .untested { color: olive; }

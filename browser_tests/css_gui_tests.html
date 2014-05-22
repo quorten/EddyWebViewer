@@ -2,19 +2,36 @@
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml"
       lang="en" xml:lang="en">
+
+<!-- <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN"
+  "http://www.w3.org/TR/html4/strict.dtd">
+<html lang="en"> -->
+
 <head>
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
   <title>CSS GUI Tests</title>
   <link rel="stylesheet" type="text/css" href="btest.css" />
   <style type="text/css">
+    /* ************************************************************ */
+    /* CSS Screen Layout Test Style Definitions */
+
+    /* Note: Arbitrary values for "height" in cdiv and sidebar are
+       needed to keep the heights of each element consistent.  */
+
     .topbar { margin: 4px; padding: 4px;  border-style: solid; }
     .cdiv { margin: 4px; padding: 4px;
-            width: auto; min-width: 4in; height: 5in; min-height: 100%;
+            width: auto; height: 3in;
             overflow: hidden;
             border-style: solid; border-color: black; }
     .sidebar { float: right; margin: 0px 4px 4px 4px; padding: 4px;
-               width: 3in; height: 5in;
+               width: 25%; max-width: 3in; height: 3in;
+               overflow: auto;
                border-style: solid; }
+
+    /* ************************************************************ */
+    /* CSS-Only Decorated Buttons with JavaScript Event Handlers Test 
+       Style Definitions */
+
     .cssbtn { display: inline-block;
               border-style: solid; border-color: black;
               width: 5em; height: 1.2em; margin: 0.5em; }
@@ -29,29 +46,42 @@
                 -khtml-user-select: none;
                 -moz-user-select: none;
                 -ms-user-select: none;
-                user-select: none;
+                /* user-select: none; */ /* Doesn't validate */
                 cursor: default; }
   </style>
   <script type="text/javascript">
+// General UI Definitions
 
-function cssButtonPress(event) {
-  event.currentTarget.setAttribute('style',
-    'background-color: black; border-color: white');
+function buttonClick(targetName) {
+  var targetElmt = document.getElementById(targetName);
+  if (targetElmt.value == 'Clicked') {
+    targetElmt.value = 'Clicked again';
+  } else {
+    targetElmt.setAttribute('class', 'passed');
+    targetElmt.value = 'Clicked';
+  }
 }
 
-function cssButtonRelease(event) {
-  event.currentTarget.setAttribute('style', '');
-}
+function init() {
+  /* Some browsers save the form state across pushing the "refresh"
+     button.  This is a way around this.  */
+  document.getElementById('prevBtnTgt').value = 'Untested';
+  document.getElementById('upBtnTgt').value = 'Untested';
+  document.getElementById('nextBtnTgt').value = 'Untested';
 
-function cssButtonClick(targetName) {
-  var targetName = document.getElementById(targetName);
-  targetName.setAttribute('class', 'passed');
-  targetName.value = 'Clicked';
+  document.getElementById('dateRstTgt').value = 'Untested';
+  document.getElementById('dateBackTgt').value = 'Untested';
+  document.getElementById('dateFwdTgt').value = 'Untested';
+  document.getElementById('fullTextTgt').value = 'Untested';
+  document.getElementById('cycTgt').value = 'Untested';
+  document.getElementById('antiCycTgt').value = 'Untested';
+  document.getElementById('cheltonTgt').value = 'Untested';
+  document.getElementById('projSelTgt').value = 'Untested';
+  document.getElementById('zoomFacTgt').value = 'Untested';
 }
-
   </script>
 </head>
-<body>
+<body onload="init()">
 
 <h1>CSS GUI Tests</h1>
 
@@ -71,7 +101,7 @@ function cssButtonClick(targetName) {
 <h2 class="btest-header"><a name="overall_layout_test" id="overall_layout_test">
     CSS Screen Layout Test</a></h2>
 
-<p class="btest-description"><strong>Description:</strong> Currently,
+<p class="btest-description"><strong>Description:</strong> The
 top-level &lt;div&gt; elements used to define the box containments of
 the panels and drawing pad in the real GUI are very similar to this
 test.</p>
@@ -102,7 +132,16 @@ fails.</p>
   </div>
   <div class="sidebar">
     <p>This is the UI side panel for displaying eddy information and
-    frequently accessed UI controls.</p>
+    frequently accessed UI controls.  <!-- This is the UI side panel for
+    displaying eddy information and frequently accessed UI controls.
+    This is the UI side panel for displaying eddy information and
+    frequently accessed UI controls.  This is the UI side panel for
+    displaying eddy information and frequently accessed UI controls.
+    This is the UI side panel for displaying eddy information and
+    frequently accessed UI controls.  This is the UI side panel for
+    displaying eddy information and frequently accessed UI controls.
+    This is the UI side panel for displaying eddy information and
+    frequently accessed UI controls. --></p>
   </div>
   <div class="cdiv" id="drawingContainer">
     <p>The drawing pad and unified touchscreen will be in this space.
@@ -110,7 +149,7 @@ fails.</p>
     and show the surrounding panels to increase the screen space of
     the drawing pad on small screen devices.</p>
   </div>
-</div>
+</div> <!-- END Content Zone -->
 
 <p class="btest-status"><strong>Status:</strong>
 
@@ -146,8 +185,8 @@ This is a demonstration of using only CSS to provide styled push buttons.</p>
   result in its colors changing to black and white while the pointer
   is in the button, but when the pointer leaves, the colors should
   revert.</li>
-  <li>Push down outside of a button, drag in, and release should not
-  change the buttons colors when the pointer enters the button.</li>
+  <!-- <li>Push down outside of a button, drag in, and release should not
+  change the buttons colors when the pointer enters the button.</li> -->
   <li>Push down outside of a button, drag in, and release should not
   activate the event handler.</li>
 </ul>
@@ -159,46 +198,91 @@ fails.</p>
 
 <div class="btest-content">
 
+<!-- NOTE: XHTML Does not allow wrapping the contents of a script in
+an XML comment.  -->
+<!-- NOTE: Unfortunately, browsers generally do not support
+<![CDATA[ ... ]]> wrappings when parsing in HTML 4.01 mode as opposed
+to XHTML mode.  -->
+<script type="text/javascript"><!--
+/* Note: This behavior that detects whether a cursor has entered the
+button space before the button is clicked may be undesirable on touch
+screens.  */
+function cssButtonHover(event) {
+  // Note: arbitrary properties may be assigned to objects in JavaScript.
+  if (event.buttons != 1)
+    event.currentTarget.hoverFlag = 1;
+}
+
+function cssButtonOut(event) {
+  event.currentTarget.hoverFlag = 0;
+}
+
+function cssButtonPress(event) {
+  if (event.buttons != 1) return;
+  // if (!event.currentTarget.hoverFlag) return;
+  event.currentTarget.setAttribute('style',
+    'background-color: black; border-color: white');
+}
+
+function cssButtonRelease(event) {
+  event.currentTarget.setAttribute('style', '');
+}
+
+function cssButtonInit() {
+  var cssBtns = document.getElementsByClassName('cssbtn');
+  for (var i = 0; i < cssBtns.length; i++) {
+    cssBtns[i].onmouseover = cssButtonHover;
+    cssBtns[i].onmouseout = cssButtonOut;
+    cssBtns[i].onmousedown = cssButtonPress;
+    cssBtns[i].onmouseup = cssButtonRelease;
+    cssBtns[i].onmouseenter = cssButtonPress;
+    cssBtns[i].onmouseleave = cssButtonRelease;
+    if (cssBtns[i].captureEvents) {
+      cssBtns[i].captureEvents(Event.MOUSEOVER);
+      cssBtns[i].captureEvents(Event.MOUSEOUT);
+      cssBtns[i].captureEvents(Event.MOUSEDOWN);
+      cssBtns[i].captureEvents(Event.MOUSEUP);
+      cssBtns[i].captureEvents(Event.MOUSEENTER);
+      cssBtns[i].captureEvents(Event.MOUSELEAVE);
+    }
+  }
+}
+// --></script>
+
 <div style="display: inline-block; background-color: orange">
   <div class="cssbtn green"
-       onmousedown="cssButtonPress(event)"
-       onmouseup="cssButtonRelease(event)"
-       onmouseenter="if (event.buttons == 1) cssButtonPress(event)"
-       onmouseleave="cssButtonRelease(event)"
-       onclick="cssButtonClick('pb_target')">
+       onclick="buttonClick('prevBtnTgt')">
     <div style="display: block; width: 5em; color: white; text-align: center">Previous</div>
   </div>
   <div class="cssbtn red"
-       onmousedown="cssButtonPress(event)"
-       onmouseup="cssButtonRelease(event)"
-       onmouseenter="if (event.buttons == 1) cssButtonPress(event)"
-       onmouseleave="cssButtonRelease(event)"
-       onclick="cssButtonClick('up_target')">
+       onclick="buttonClick('upBtnTgt')">
     <div style="display: block; width: 5em; color: white; text-align: center">Up</div>
   </div>
   <div class="cssbtn blue"
-       onmousedown="cssButtonPress(event)"
-       onmouseup="cssButtonRelease(event)"
-       onmouseenter="if (event.buttons == 1) cssButtonPress(event)"
-       onmouseleave="cssButtonRelease(event)"
-       onclick="cssButtonClick('nx_target')">
+       onclick="buttonClick('nextBtnTgt')">
     <div style="display: block; width: 5em; color: white; text-align: center">Next</div>
   </div>
 </div>
 
-</div>
+<!-- NOTE: XHTML Does not allow wrapping the contents of a script in
+an XML comment.  -->
+<script type="text/javascript"><!--
+  cssButtonInit();
+// --></script>
 
-<form action="">
+</div> <!-- END Content Zone -->
+
+<form class="btest-status" action="">
   <fieldset style="display: inline-block; text-align: right">
     <legend><strong>Status</strong></legend>
-    <label for="pb_target">"Previous" button:</label>
-    <input id="pb_target" class="untested"
+    <label for="prevBtnTgt">"Previous" button:</label>
+    <input id="prevBtnTgt" class="untested"
 	   type="text" value="Untested" /><br />
-    <label for="up_target">"Up" button:</label>
-    <input id="up_target" class="untested"
+    <label for="upBtnTgt">"Up" button:</label>
+    <input id="upBtnTgt" class="untested"
 	   type="text" value="Untested" /><br />
-    <label for="nx_target">"Next" button:</label>
-    <input id="nx_target" class="untested"
+    <label for="nextBtnTgt">"Next" button:</label>
+    <input id="nextBtnTgt" class="untested"
 	   type="text" value="Untested" /><br />
   </fieldset>
 </form>
@@ -209,25 +293,161 @@ fails.</p>
 <h2 class="btest-header"><a name="form_ctls" id="form_ctls">
     FORM Controls with JavaScript Event Handlers Test</a></h2>
 
-<p class="btest-description"><strong>Description:</strong>
-Test 1 overall description.</p>
+<p class="btest-description"><strong>Description:</strong> This test
+demonstrates rendering HTML FORM controls used within the GUI and
+JavaScript event handling for these controls.</p>
 
-<p class="btest-output"><strong>Expected Output:</strong>
-Test 1 expected output description, could include a linked and
-thumbnailed image or just text describing what should happen.  This
-description must include the detailed criteria for determining whether
-a test passed or failed.</p>
+<p class="btest-output"><strong>Expected Output:</strong></p>
 
-<div class="btest-content">Test 1 content zone</div>
+<ul>
+  <li>The "Date" box should only be as wide as it needs to be for its
+  internal controls, and it should not have any other boxes to its
+  right.</li>
+  <li>The "Full-Size Text Box" should take up all of the available
+  horizontal space within its containment.</li>
+  <li>The two fieldsets after the "Full-Size Text Box" should be
+  side-by side, and the top edge of each box should be aligned.</li>
+  <li>Whenever it is clear that the value of an element has been
+  changed by the user and the application should read the updated
+  value, the corresponding event handler should be activated.</li>
+  <li>Text box event handlers should be activated either when the text
+  box looses focus or when the user hits enter.</li>
+</ul>
 
-<p class="btest-status"><strong>Status:</strong>
-Test 1 status indicators.  These could be used to help give hints to
-the user as to whether the test passed or failed.  The actually "pass"
-or "fail" assessment must be clearly indicated in the expected output
-description above.<br />
-Event result 1: <span class="untested">Untested</span><br />
-Event result 2: <span class="passed">Passed</span><br />
-Event result 3: <span class="failed">Failed</span></p>
+<p class="failed">If these requirements are not met, then the test
+fails.</p>
+
+<p><strong>Content Zone:</strong></p>
+
+<div class="btest-content">
+
+<!-- NOTE: XHTML Does not allow wrapping the contents of a script in
+an XML comment.  -->
+<!-- NOTE: Unfortunately, browsers generally do not support
+<![CDATA[ ... ]]> wrappings when parsing in HTML 4.01 mode as opposed
+to XHTML mode.  -->
+<script type="text/javascript"><!--
+function checkboxClick(event, targetName) {
+  var targetElmt = document.getElementById(targetName);
+  if (event.currentTarget.checked)
+    targetElmt.value = 'Checked';
+  else
+    targetElmt.value = 'Unchecked';
+  targetElmt.setAttribute('class', 'passed');
+}
+
+function selectChanged(event, targetName) {
+  var targetElmt = document.getElementById(targetName);
+  var elmt = event.currentTarget;
+  // 'value' can also be used instead of 'text'.
+  targetElmt.value = elmt.options[elmt.selectedIndex].text;
+  targetElmt.setAttribute('class', 'passed');
+}
+
+function valueChanged(event, targetName) {
+  var targetElmt = document.getElementById(targetName);
+  targetElmt.value = event.currentTarget.value;
+  targetElmt.setAttribute('class', 'passed');
+}
+
+// Strictly speaking, this keyboard handler may not be necessary.
+function keybdActivate(event, targetName) {
+  if (event.code == 'Enter')
+    return valueChanged(event, targetName);
+}
+// --></script>
+
+<form action="">
+  <fieldset style="display: inline">
+    <legend>Date</legend>
+      <input id="dateReset" type="button" value="Reset"
+	     onclick="buttonClick('dateRstTgt')" />
+      <input id="dateBack" type="button" value="&lt; Backward"
+	     onclick="buttonClick('dateBackTgt')" />
+      <input id="dateFwd" type="button" value="Forward &gt;"
+	     onclick="buttonClick('dateFwdTgt')" />
+  </fieldset>
+  <fieldset>
+    <legend>Full-Size Text Box</legend>
+    <!-- Note: width="auto" does not result in the text input taking
+    up all of the available space, so "width: 100%" was used instead.
+    The compatibility of this with CSS 1 should be verified.  -->
+    <input id="fullText" type="text" style="width: 100%"
+	   onchange="valueChanged(event, 'fullTextTgt')"
+	   value="Delete this and type your own text." />
+  </fieldset>
+  <fieldset style="display: inline-block; vertical-align: top">
+      <input id="cycShow" type="checkbox"
+	     onclick="checkboxClick(event, 'cycTgt')" />
+      <label for="cycShow">Cyclonic Eddies</label><br />
+      <input id="anticycShow" type="checkbox"
+	     onclick="checkboxClick(event, 'antiCycTgt')" />
+      <label for="anticycShow">Anticyclonic Eddies</label><br />
+      <input id="cheltonShow" type="checkbox"
+	     onclick="checkboxClick(event, 'cheltonTgt')" />
+      <label for="cycShow">Chelton Tracks</label>
+  </fieldset>
+  <fieldset style="display: inline-block; vertical-align: top">
+    <legend>Projection Mode</legend>
+      <select id="projectionSel" onchange="selectChanged(event, 'projSelTgt')">
+	<option selected="selected">Equirectangular</option>
+	<option>Mercator</option>
+	<option>Orthographic</option>
+	<option>Perspective</option>
+      </select><br />
+      <!-- Note: It's important that the scripts to handle the textbox
+      events have logic to prevent double pickups when the user hits
+      enter and focuses out afterward. -->
+      <!-- Some of these events may have compatibility issues.
+      onchange requires DOM L2 (from the year 2000, so should be
+      safe). -->
+      <!-- To handle "activate" event, listen on keydown (keypress?)
+      for Enter and then dispatch as necessary. -->
+      <!-- onkeypress requires DOM L3 -->
+      <label for="zoomFactor">Zoom Factor:</label>
+      <input id="zoomFactor" type="text" value="1"
+	     onchange="valueChanged(event, 'zoomFacTgt')" />
+      <p>Some extra info</p>
+      <p>For some extra height</p>
+      <p>Does not make a poem</p>
+      <p>That sounds right</p>
+  </fieldset>
+</form>
+
+</div> <!-- END Content Zone -->
+
+<form class="btest-status" action="">
+  <fieldset style="display: inline-block; text-align: right">
+    <legend><strong>Status</strong></legend>
+    <label for="dateRstTgt">Date Reset:</label>
+    <input id="dateRstTgt" class="untested"
+	   type="text" value="Untested" /><br />
+    <label for="dateBackTgt">Date Back:</label>
+    <input id="dateBackTgt" class="untested"
+	   type="text" value="Untested" /><br />
+    <label for="dateFwdTgt">Date Forward:</label>
+    <input id="dateFwdTgt" class="untested"
+	   type="text" value="Untested" /><br />
+    <label for="fullTextTgt">Full-Size Text Box:</label>
+    <input id="fullTextTgt" class="untested"
+	   type="text" value="Untested" /><br />
+    <label for="cycTgt">Cyclonic Eddies:</label>
+    <input id="cycTgt" class="untested"
+	   type="text" value="Untested" /><br />
+    <label for="antiCycTgt">Anticyclonic Eddies:</label>
+    <input id="antiCycTgt" class="untested"
+	   type="text" value="Untested" /><br />
+    <label for="cheltonTgt">Chelton Tracks:</label>
+    <input id="cheltonTgt" class="untested"
+	   type="text" value="Untested" /><br />
+    <label for="projSelTgt">Projection Mode:</label>
+    <input id="projSelTgt" class="untested"
+	   type="text" value="Untested" /><br />
+    <label for="zoomFacTgt">Zoom Factor:</label>
+    <input id="zoomFacTgt" class="untested"
+	   type="text" value="Untested" /><br />
+  </fieldset>
+</form>
 
 </body>
 </html>

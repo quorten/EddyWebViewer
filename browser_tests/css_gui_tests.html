@@ -35,6 +35,8 @@
     .cssbtn { display: inline-block;
               border-style: solid; border-color: black;
               width: 5em; height: 1.2em; margin: 0.5em; }
+    .cssbtnin { display: block; width: 5em; color: white;
+                text-align: center; }
     .green { background-color: green; }
     .red { background-color: red; }
     .blue { background-color: blue; }
@@ -252,15 +254,15 @@ function cssButtonInit() {
 <div style="display: inline-block; background-color: orange">
   <div class="cssbtn green"
        onclick="buttonClick('prevBtnTgt')">
-    <div style="display: block; width: 5em; color: white; text-align: center">Previous</div>
+    <div class="cssbtnin">Previous</div>
   </div>
   <div class="cssbtn red"
        onclick="buttonClick('upBtnTgt')">
-    <div style="display: block; width: 5em; color: white; text-align: center">Up</div>
+    <div class="cssbtnin">Up</div>
   </div>
   <div class="cssbtn blue"
        onclick="buttonClick('nextBtnTgt')">
-    <div style="display: block; width: 5em; color: white; text-align: center">Next</div>
+    <div class="cssbtnin">Next</div>
   </div>
 </div>
 

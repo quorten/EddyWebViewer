@@ -1,0 +1,233 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"
+      lang="en" xml:lang="en">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <title>CSS GUI Tests</title>
+  <link rel="stylesheet" type="text/css" href="btest.css" />
+  <style type="text/css">
+    .topbar { margin: 4px; padding: 4px;  border-style: solid; }
+    .cdiv { margin: 4px; padding: 4px;
+            width: auto; min-width: 4in; height: 5in; min-height: 100%;
+            overflow: hidden;
+            border-style: solid; border-color: black; }
+    .sidebar { float: right; margin: 0px 4px 4px 4px; padding: 4px;
+               width: 3in; height: 5in;
+               border-style: solid; }
+    .cssbtn { display: inline-block;
+              border-style: solid; border-color: black;
+              width: 5em; height: 1.2em; margin: 0.5em; }
+    .green { background-color: green; }
+    .red { background-color: red; }
+    .blue { background-color: blue; }
+
+    /* Warning: The following styles used for CSS buttons may have
+       browser compatibility issues.  */
+    .cssbtn * { -webkit-touch-callout: none;
+                -webkit-user-select: none;
+                -khtml-user-select: none;
+                -moz-user-select: none;
+                -ms-user-select: none;
+                user-select: none;
+                cursor: default; }
+  </style>
+  <script type="text/javascript">
+
+function cssButtonPress(event) {
+  event.currentTarget.setAttribute('style',
+    'background-color: black; border-color: white');
+}
+
+function cssButtonRelease(event) {
+  event.currentTarget.setAttribute('style', '');
+}
+
+function cssButtonClick(targetName) {
+  var targetName = document.getElementById(targetName);
+  targetName.setAttribute('class', 'passed');
+  targetName.value = 'Clicked';
+}
+
+  </script>
+</head>
+<body>
+
+<h1>CSS GUI Tests</h1>
+
+<h2>Test Listing</h2>
+
+<ul>
+  <li><a href="#overall_layout_test">CSS Screen Layout Test</a></li>
+  <li><a href="#css_buttons">
+      CSS-Only Decorated Buttons with JavaScript Event Handlers Test</a></li>
+  <li><a href="#form_ctls">
+      FORM Controls with JavaScript Event Handlers Test</a></li>
+</ul>
+
+<hr />
+<!-- ________________________________________ -->
+
+<h2 class="btest-header"><a name="overall_layout_test" id="overall_layout_test">
+    CSS Screen Layout Test</a></h2>
+
+<p class="btest-description"><strong>Description:</strong> Currently,
+top-level &lt;div&gt; elements used to define the box containments of
+the panels and drawing pad in the real GUI are very similar to this
+test.</p>
+
+<p class="btest-output"><strong>Expected Output:</strong></p>
+
+<ul>
+  <li>There should be a top panel that spans the entire screen,
+  followed vertically by two side boxes, one on the left, one on the
+  right.</li>
+  <li>The margin space on screen between each box should be the
+  same.</li>
+  <li>If there is not enough room for the minimum widths of the
+  "drawing pad" and "side panel" to fit on screen, then one should
+  stack on top of the other, in this current implementation.</li>
+</ul>
+
+<p class="failed">If these requirements are not met, then the test
+fails.</p>
+
+<p><strong>Content Zone:</strong></p>
+
+<div class="btest-content">
+  <div class="topbar">
+    <p>This is the UI top panel for the detailed control panel
+    controlling aspects such as map projection, rendering parameters,
+    etc.</p>
+  </div>
+  <div class="sidebar">
+    <p>This is the UI side panel for displaying eddy information and
+    frequently accessed UI controls.</p>
+  </div>
+  <div class="cdiv" id="drawingContainer">
+    <p>The drawing pad and unified touchscreen will be in this space.
+    More advanced CSS and JavaScript should make it possible to hide
+    and show the surrounding panels to increase the screen space of
+    the drawing pad on small screen devices.</p>
+  </div>
+</div>
+
+<p class="btest-status"><strong>Status:</strong>
+
+You have to verify this test manually to determine if
+it <span class="passed">passed</span>
+or <span class="failed">failed</span>.</p>
+
+<hr />
+<!-- ________________________________________ -->
+
+<h2 class="btest-header"><a name="css_buttons" id="css_buttons">
+    CSS-Only Decorated Buttons with JavaScript Event Handlers Test</a></h2>
+
+<p class="btest-description"><strong>Description:</strong>
+This is a demonstration of using only CSS to provide styled push buttons.</p>
+
+<p class="btest-output"><strong>Expected Output:</strong></p>
+
+<ul>
+  <li>All of these buttons should have the same width with their text
+  centered in the available button space.</li>
+  <li>The text on the button should not be selectable.</li>
+  <li>The cursor shape (if applicable on your device) should just be a
+  default arrow when the cursor is over the button text.</li>
+  <li>Push down and release in a button should activate the event
+  handler.</li>
+  <li>Push down in a button, drag out of the button, then release
+  should not fire a pressed signal.</li>
+  <li>Push down and release in a button should result in its color
+  changing to black and white, followed by reverting to normal
+  colors.</li>
+  <li>Push down in a button, drag out of a button, then release should
+  result in its colors changing to black and white while the pointer
+  is in the button, but when the pointer leaves, the colors should
+  revert.</li>
+  <li>Push down outside of a button, drag in, and release should not
+  change the buttons colors when the pointer enters the button.</li>
+  <li>Push down outside of a button, drag in, and release should not
+  activate the event handler.</li>
+</ul>
+
+<p class="failed">If these requirements are not met, then the test
+fails.</p>
+
+<p><strong>Content Zone:</strong></p>
+
+<div class="btest-content">
+
+<div style="display: inline-block; background-color: orange">
+  <div class="cssbtn green"
+       onmousedown="cssButtonPress(event)"
+       onmouseup="cssButtonRelease(event)"
+       onmouseenter="if (event.buttons == 1) cssButtonPress(event)"
+       onmouseleave="cssButtonRelease(event)"
+       onclick="cssButtonClick('pb_target')">
+    <div style="display: block; width: 5em; color: white; text-align: center">Previous</div>
+  </div>
+  <div class="cssbtn red"
+       onmousedown="cssButtonPress(event)"
+       onmouseup="cssButtonRelease(event)"
+       onmouseenter="if (event.buttons == 1) cssButtonPress(event)"
+       onmouseleave="cssButtonRelease(event)"
+       onclick="cssButtonClick('up_target')">
+    <div style="display: block; width: 5em; color: white; text-align: center">Up</div>
+  </div>
+  <div class="cssbtn blue"
+       onmousedown="cssButtonPress(event)"
+       onmouseup="cssButtonRelease(event)"
+       onmouseenter="if (event.buttons == 1) cssButtonPress(event)"
+       onmouseleave="cssButtonRelease(event)"
+       onclick="cssButtonClick('nx_target')">
+    <div style="display: block; width: 5em; color: white; text-align: center">Next</div>
+  </div>
+</div>
+
+</div>
+
+<form action="">
+  <fieldset style="display: inline-block; text-align: right">
+    <legend><strong>Status</strong></legend>
+    <label for="pb_target">"Previous" button:</label>
+    <input id="pb_target" class="untested"
+	   type="text" value="Untested" /><br />
+    <label for="up_target">"Up" button:</label>
+    <input id="up_target" class="untested"
+	   type="text" value="Untested" /><br />
+    <label for="nx_target">"Next" button:</label>
+    <input id="nx_target" class="untested"
+	   type="text" value="Untested" /><br />
+  </fieldset>
+</form>
+
+<hr />
+<!-- ________________________________________ -->
+
+<h2 class="btest-header"><a name="form_ctls" id="form_ctls">
+    FORM Controls with JavaScript Event Handlers Test</a></h2>
+
+<p class="btest-description"><strong>Description:</strong>
+Test 1 overall description.</p>
+
+<p class="btest-output"><strong>Expected Output:</strong>
+Test 1 expected output description, could include a linked and
+thumbnailed image or just text describing what should happen.  This
+description must include the detailed criteria for determining whether
+a test passed or failed.</p>
+
+<div class="btest-content">Test 1 content zone</div>
+
+<p class="btest-status"><strong>Status:</strong>
+Test 1 status indicators.  These could be used to help give hints to
+the user as to whether the test passed or failed.  The actually "pass"
+or "fail" assessment must be clearly indicated in the expected output
+description above.<br />
+Event result 1: <span class="untested">Untested</span><br />
+Event result 2: <span class="passed">Passed</span><br />
+Event result 3: <span class="failed">Failed</span></p>
+
+</body>
+</html>

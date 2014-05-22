@@ -1,0 +1,10 @@
+div.btest-content { 
+    border-style: solid; border-color: gray;
+    border-width: 2pt;
+    padding: 1em;
+    margin: 1em;
+}
+
+.untested { color: olive; }
+.passed { color: green; }
+.failed { color: red; }

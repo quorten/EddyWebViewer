@@ -4,16 +4,38 @@
       lang="en" xml:lang="en">
 <head>
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-  <title>Browser Test Template HTML Page</title>
+  <title>Browser Test Suite</title>
 </head>
 <body>
 
-<h1>Browser Test Template HTML Page</h1>
+<h1>Browser Test Suite</h1>
 
-<p>This is a template that specifies the form that browser HTML test
-pages should have.  A browser HTML test page should be structured so
-that it is easy for a human to manually verify that features required
-by the web application are working on the target browser.</p>
+<p>This test suite is designed as a developer tool for determining why
+the web viewer may fail to work on some browers.  Within this test
+suite are all CSS constructs and JavaScript events that are required
+by the web viewer, each conveniently separated out into an individual
+test module.  Thus, when the web viewer is found not to work on one
+browser, this test suite can be consulted to determine the exact
+problem feature that caused the web viewer to fail.</p>
+
+<p>Note that JavaScript core language features and JavaScript
+libraries written for this project are not to be tested by this test
+suite.  The normal test suite takes care of testing those features.
+As a rule of thumb, anything that pertains to the GUI in which the
+user is a human and not a computer should be encapsulated in this test
+suite, and everything else related to coding internals should go in
+the normal test suite.</p>
+
+<p>Large and significant third-party JavaScript libraries <em>may</em>
+be candidates for inclusion in this test suite.  Of course, this only
+for simply pass/fail assessment of third party libraries: third party
+libraries should have detailed test information indicating what
+browsers they work on and why they don't work on other browsers.</p>
+
+<ul>
+  <li><a href="btest_template.html">Test Suite Template</a></li>
+  <li><a href="css_gui_tests.html">CSS GUI Tests</a></li>
+</ul>
 
 </body>
 </html>

@@ -5,10 +5,11 @@
   <title>HTML 5 Canvas Test</title>
 </head>
 <body style="margin: 0; padding: 0; height: 100%"
-      onkeydown="keyEvent(event)" onmousedown="if (!rotating) rotating = window.setTimeout(periodic_render, 10); else rotating = 0;">
+      onkeydown="keyEvent(event)">
 
 <div id="drawing_container"
-     style="margin: 0px auto; width: 6in; height: 5in; min-height: 100%; border-style: solid; border-color: black; overflow: hidden">
+     style="margin: 0px auto; width: 6in; height: 5in; min-height: 100%; border-style: solid; border-color: black; overflow: hidden"
+     onmousedown="if (!rotating) rotating = window.setTimeout(periodic_render, 10); else rotating = 0;">
   <canvas id="drawing_pad" width="1" height="1" />
 </div>
 

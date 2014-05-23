@@ -654,7 +654,21 @@ panels: a top panel (topbar) and a side panel (sidebar).</p>
 <h4>Top panel</h4>
 
 <ul>
-  <li>Zoom Factor: [text edit]</li>
+  <li>Land Mass Background [combo box]
+    <ul>
+      <li>None</li>
+      <li>Silhouettes</li>
+      <li>Textured</li>
+    </ul>
+  </li>
+  <li>Sea Surface Height Palette: [combo box]
+    <ul>
+      <li>None</li>
+      <li>MATLAB</li>
+      <li>Waters</li>
+      <li>Hatches</li>
+    </ul>
+  </li>
   <li>Earth Projection: [combo box]
     <ul>
       <li>Equirectangular</li>
@@ -663,6 +677,19 @@ panels: a top panel (topbar) and a side panel (sidebar).</p>
       <li>Perspective</li>
     </ul>
   </li>
+  <li>Grid Line Density: Latitude, Longitude: [text edit]
+  degrees/line</li>
+  <li>Eddy Track Length/Width Ratio [text edit]</li>
+  <li>[checkbox] Wireframe Render When Scrolling</li>
+  <li>[checkbox] Land Mass Outlines When Scrolling</li>
+  <li>Oversampling Factor: [text edit]</li>
+  <li>Max. Contiguous Loop Iterations: [text edit]</li>
+</ul>
+
+<h4>Side panel</h4>
+
+<ul>
+  <li>Pan and zoom GUI controls</li>
   <li>Projection Properties [CSS box]
     <ul>
       <li>Perspective
@@ -671,54 +698,31 @@ panels: a top panel (topbar) and a side panel (sidebar).</p>
 	  <li>Field of View: [text edit] degrees</li>
 	</ul>
       </li>
+      <li>Other projections: Zoom Factor: [text edit]</li>
     </ul>
   </li>
-  <li>Grid Line Density (degrees/line)
+  <li>Latitude, Longitude (degrees): [text edit]</li>
+  <li>Date selection box [CSS box]
     <ul>
-      <li>Latitude: [text edit]</li>
-      <li>Longitude: [text edit]</li>
+      <li>Date: [text edit] [combo box]</li>
+      <li>Begin/Prev/Next/End buttons</li>
     </ul>
-  </li>
-  <li>Eddy Track Styling
-    <ul>
-      <li>Track Length/Width Ratio [text edit]</li>
-    </ul>
-  </li>
-  <li>Background [combo box]
-    <ul>
-      <li>None</li>
-      <li>Land masses only</li>
-      <li>Sea surface height</li>
-    </ul>
-  </li>
   <li>Eddy Filters [CSS box]
     <ul>
       <li>[checkbox] Cyclonic Eddies</li>
       <li>[checkbox] Anticyclonic Eddies</li>
       <li>[checkbox] Chelton Tracks</li>
-      <li>Length [CSS box]
-	<ul>
-	  <li>[checkbox] Minimum [text edit]</li>
-	  <li>[checkbox] Maximum [text edit]</li>
-	</ul>
-      </li>
+      <li>Length Range (min, max): [text edit]</li>
     </ul>
   </li>
-</ul>
-
-<h4>Side panel</h4>
-
-<ul>
-  <li>Date slection box: Drop-down combo box to select date.
-  Backward/Forward date selectors.</li>
   <li>Eddy Information
     <ul>
-      <li>Eddy numeric ID</li>
+      <li>Eddy ID</li>
       <li>Latitude</li>
       <li>Longitude</li>
-      <li>Aplitude</li>
+      <li>Amplitude</li>
       <li>Area</li>
-      <li>Geodesic speed</li>
+      <li>Geodesic Speed</li>
     </ul>
   </li>
 </ul>

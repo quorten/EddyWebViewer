@@ -15,19 +15,25 @@
     /* ************************************************************ */
     /* CSS Screen Layout Test Style Definitions */
 
-    /* Note: Arbitrary values for "height" in drawingContainer and
-       sidebar are needed to keep the heights of each element
-       consistent.  */
+    #topwrapper, #vcentwrapper
+      { margin: 0px; padding: 0px; position: absolute; width: 100%; }
+    #topwrapper { height: 1in; top: 0px; background-color: #a0b0ff; }
+    #vcentwrapper { top: 1in; bottom: 0px; background-color: #3240a0; }
+    #hcentwrapper { margin: 0px 6px 0px 6px; padding: 0px;
+                    width: auto; height: 100%; position: relative;
+                    background-color: #229944;
+                    overflow: hidden; }
+    #sidewrapper { float: right; margin: 0px 6px 0px 6px; padding: 0px;
+                   width: 30%; max-width: 3in; height: 100%; position: relative;
+                   background-color: #77ff77; }
 
-    #topbar { margin: 4px; padding: 4px;  border-style: solid; }
-    #drawingContainer { margin: 4px; padding: 4px;
-            width: auto; height: 3in;
-            overflow: hidden;
-            border-style: solid; border-color: black; }
-    #sidebar { float: right; margin: 0px 4px 4px 4px; padding: 4px;
-               width: 25%; max-width: 3in; height: 3in;
-               overflow: auto;
-               border-style: solid; }
+    #topbar { margin: 6px; }
+    #sidebar, #drawingContainer { margin-bottom: 6px; }
+    #topbar, #sidebar, #drawingContainer
+      { padding: 6px;
+        position: absolute; top: 0px; bottom: 0px; left: 0px; right: 0px;
+        color: white; background-color: #333348; border: solid black; }
+    #drawingContainer { overflow: hidden; }
 
     /* ************************************************************ */
     /* CSS-Only Decorated Buttons with JavaScript Event Handlers Test 
@@ -36,11 +42,12 @@
     .cssbtn { display: inline-block;
               border-style: solid; border-color: black;
               width: 5em; height: 1.2em; margin: 0.5em; }
-    .cssbtnin { display: block; width: 5em; color: white;
+    .cssbtnin { display: block; width: 5em;
                 text-align: center; }
     .green { background-color: green; }
     .red { background-color: red; }
     .blue { background-color: blue; }
+    .stybk { color: #000077; background-color: #cad0ff; }
 
     /* Warning: The following styles used for CSS buttons may have
        browser compatibility issues.  */
@@ -118,8 +125,9 @@ test.</p>
   <li>The margin space on screen between each box should be the
   same.</li>
   <li>If there is not enough room for the minimum widths of the
-  "drawing pad" and "side panel" to fit on screen, then one should
-  stack on top of the other, in this current implementation.</li>
+  "drawing pad" and "side panel" to fit on screen, then the side panel
+  should stack on top of the drawing pad, in this current
+  implementation.</li>
 </ul>
 
 <p class="failed">If these requirements are not met, then the test
@@ -127,31 +135,37 @@ fails.</p>
 
 <p><strong>Content Zone:</strong></p>
 
-<div class="btest-content">
+<div class="btest-content"
+     style="margin: 0; padding: 0; height: 4in; position: relative">
+
+<div id="topwrapper">
   <div id="topbar">
-    <p>This is the UI top panel for the detailed control panel
-    controlling aspects such as map projection, rendering parameters,
-    etc.</p>
+    <p>This is the UI top bar for main controls.</p>
   </div>
-  <div id="sidebar">
-    <p>This is the UI side panel for displaying eddy information and
-    frequently accessed UI controls.  <!-- This is the UI side panel for
-    displaying eddy information and frequently accessed UI controls.
-    This is the UI side panel for displaying eddy information and
-    frequently accessed UI controls.  This is the UI side panel for
-    displaying eddy information and frequently accessed UI controls.
-    This is the UI side panel for displaying eddy information and
-    frequently accessed UI controls.  This is the UI side panel for
-    displaying eddy information and frequently accessed UI controls.
-    This is the UI side panel for displaying eddy information and
-    frequently accessed UI controls. --></p>
+</div>
+
+<div id="vcentwrapper">
+  <div id="sidewrapper">
+    <div id="sidebar">
+      <p>This is the UI side bar for displaying eddy information.</p>
+    </div>
   </div>
-  <div id="drawingContainer">
-    <p>The drawing pad and unified touchscreen will be in this space.
-    More advanced CSS and JavaScript should make it possible to hide
-    and show the surrounding panels to increase the screen space of
-    the drawing pad on small screen devices.</p>
+  <div id="hcentwrapper">
+    <div id="drawingContainer">
+      <p>The drawing pad will be in this space, but in future versions
+      of this UI, the surrounding sidebars will be able to be hidden
+      when not in use.</p>
+      <p style="text-align: center">
+	<object type="image/svg+xml" data="../css_gui/loading_composite.svg">
+	  <img src="../css_gui/loading_composite.png"
+	       alt="Decorative Loading Icon" />
+      </object><br />
+	<strong>Loading</strong>
+      </p>
+    </div>
   </div>
+</div>
+
 </div> <!-- END Content Zone -->
 
 <p class="btest-status"><strong>Status:</strong>
@@ -221,12 +235,12 @@ function cssButtonOut(event) {
 }
 
 function cssButtonPress(event) {
-  // Important: event.button, not event.buttons, must be used here to
-  // ensure compatibility with slightly older browsers.
-  if (event.button != 0) return;
+  /* Important: event.button must be used here to ensure compatibility
+     with slightly older browsers.  */
+  // if ((event.buttons && event.buttons != 1) || event.button != 0) return;
   // if (!event.currentTarget.hoverFlag) return;
   event.currentTarget.setAttribute('style',
-    'background-color: black; border-color: white');
+    'background-color: black; color: white; border-color: white');
 }
 
 function cssButtonRelease(event) {
@@ -236,12 +250,12 @@ function cssButtonRelease(event) {
 function cssButtonInit() {
   var cssBtns = document.getElementsByClassName('cssbtn');
   for (var i = 0; i < cssBtns.length; i++) {
-    cssBtns[i].onmouseover = cssButtonHover;
-    cssBtns[i].onmouseout = cssButtonOut;
+    /* cssBtns[i].onmouseover = cssButtonHover;
+    cssBtns[i].onmouseout = cssButtonOut; */
     cssBtns[i].onmousedown = cssButtonPress;
     cssBtns[i].onmouseup = cssButtonRelease;
-    cssBtns[i].onmouseenter = cssButtonPress;
-    cssBtns[i].onmouseleave = cssButtonRelease;
+    /* cssBtns[i].onmouseenter = cssButtonPress;
+    cssBtns[i].onmouseleave = cssButtonRelease; */
     if (cssBtns[i].captureEvents) {
       cssBtns[i].captureEvents(Event.MOUSEOVER);
       cssBtns[i].captureEvents(Event.MOUSEOUT);
@@ -254,16 +268,16 @@ function cssButtonInit() {
 }
 // --></script>
 
-<div style="display: inline-block; background-color: orange">
-  <div class="cssbtn green"
+<div style="display: inline-block; background-color: #333348">
+  <div class="cssbtn stybk"
        onclick="buttonClick('prevBtnTgt')">
     <div class="cssbtnin">Previous</div>
   </div>
-  <div class="cssbtn red"
+  <div class="cssbtn stybk"
        onclick="buttonClick('upBtnTgt')">
     <div class="cssbtnin">Up</div>
   </div>
-  <div class="cssbtn blue"
+  <div class="cssbtn stybk"
        onclick="buttonClick('nextBtnTgt')">
     <div class="cssbtnin">Next</div>
   </div>

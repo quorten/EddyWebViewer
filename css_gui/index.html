@@ -16,16 +16,23 @@
                     background-color: #229944;
                     overflow: hidden; }
     #sidewrapper { float: right; margin: 0px 6px 0px 6px; padding: 0px;
-                   width: 25%; max-width: 3in; height: 100%; position: relative;
+                   width: 30%; max-width: 3in; height: 100%; position: relative;
                    background-color: #77ff77; }
 
-    #topbar { margin: 6px; }
+    #topbar { margin: 6px; /* overflow: scroll; */ }
     #sidebar, #drawingContainer { margin-bottom: 6px; }
     #topbar, #sidebar, #drawingContainer
       { padding: 6px;
         position: absolute; top: 0px; bottom: 0px; left: 0px; right: 0px;
-        color: white; background-color: #333348; border: solid black; }
+        color: white; background-color: #333348; border: solid black;
+        text-align: center; }
     #drawingContainer { overflow: hidden; }
+
+    .coldiv { display: inline-block; vertical-align: top; padding: 8px;
+             /* border-style: solid; border-color: black; */
+             text-align: right; }
+    .solocoldiv { text-align: right; }
+    .numinput { width: 4em; }
   </style>
   <!-- <script type="text/javascript" src="" /> -->
 </head>
@@ -33,22 +40,131 @@
 
 <div id="topwrapper">
   <div id="topbar">
-    <p>This is the UI top bar for main controls.</p>
+    <form action="">
+      <div class="coldiv">
+	<label for="gui.landMass">Land Mass Background:</label>
+	<select id="gui.landMass">
+	  <option>None</option>
+	  <option>Silhouettes</option>
+	  <option selected="selected">Textured</option>
+	</select><br />
+	<label for="gui.sshPal">Sea Surface Height Palette:</label>
+	<select id="gui.sshPal">
+	  <option>None</option>
+	  <option selected="selected">MATLAB</option>
+	  <option>Waters</option>
+	  <option>Hatches</option>
+	</select><br />
+	<label for="gui.projMethod">Earth Projection:</label>
+	<select id="gui.projMethod">
+	  <option>Equirectangular</option>
+	  <option>Mercator</option>
+	  <option selected="selected">Orthographic</option>
+	  <option>Perspective</option>
+	</select><br />
+	<fieldset>
+	  <legend style="text-align: left">Grid Line Density</legend>
+	  <label for="gui.gridDensity">Latitude, Longitude:</label>
+	  <input id="gui.gridDensity" type="text" value="10, 10"
+		 class="numinput" />
+	  <label for="gui.gridDensity">degrees/line</label><br />
+	</fieldset>
+      </div>
+      <div class="coldiv">
+	<label for="gui.trackLWRatio">Eddy Track Length/Width Ratio</label>
+	<input id="gui.trackLWRatio" type="text" value="75"
+	       class="numinput" /><br />
+	<input id="gui.wireScroll" type="checkbox" checked="checked" />
+	<label for="gui.wireScroll">Wireframe Render When Scrolling
+	</label><br />
+	<input id="gui.landScroll" type="checkbox" />
+	<label for="gui.landScroll">Land Mass Outlines When Scrolling
+	</label><br />
+	<label for="gui.osaFactor">Oversampling Factor:</label>
+	<input id="gui.osaFactor" type="text" value="1.0"
+	       class="numinput" /><br />
+	<label for="gui.maxIter">Max. Contiguous Loop Iterations:</label>
+	<input id="gui.maxIter" type="text" value="1024" class="numinput" />
+      </div>
+    </form>
   </div>
 </div>
 
 <div id="vcentwrapper">
   <div id="sidewrapper">
     <div id="sidebar">
-      <p>This is the UI side bar for displaying eddy information.</p>
+      <form action="">
+	<div class="solocoldiv">
+	  <fieldset>
+	    <legend style="text-align: left">Projection Properties</legend>
+	    <label for="gui.zoomFac">Zoom Factor:</label>
+	    <input id="gui.zoomFac" type="text" value="1.0"
+		   class="numinput" /><br />
+	    <label for="gui.perspAltitude">Altitude:</label>
+	    <input id="gui.perspAltitude" type="text" value="35786"
+		   class="numinput" />
+	    <label for="gui.perspAltitude">kilometers</label><br />
+	    <label for="gui.perspFOV">Field of View:</label>
+	    <input id="gui.perspFOV" type="text" value="45"
+		   class="numinput" />
+	    <label for="gui.perspFOV">degrees</label><br />
+	  </fieldset><br />
+
+	  <label for="gui.latLon">Latitude, Longitude (degrees):</label>
+	  <input id="gui.latLon" type="text" value="0 N, 0 E" /><br />
+	  <br />
+
+	  <label for="gui.curDate">Date:</label>
+	  <input id="gui.curDate" type="text" value="1999-03-22"
+		 style="width: 6em" />
+	  <select id="gui.dateSel">
+	    <option selected="selected">1999-03-22</option>
+	    <option>2003-01-01</option>
+	  </select><br />
+	  <input id="gui.dateBegin" type="button" value="&lt;&lt; Begin" />
+	  <input id="gui.datePrev" type="button" value="&lt; Prev" />
+	  <input id="gui.dateNext" type="button" value="Next &gt;" />
+	  <input id="gui.dateEnd" type="button" value="End &gt;&gt;" /><br />
+	  <br />
+
+	  <fieldset>
+	    <legend style="text-align: left">Eddy Filters</legend>
+	    <input id="gui.showCyc" type="checkbox" />
+	    <label for="gui.showCyc">Cyclonic Eddies</label><br />
+	    <input id="gui.showAntiCyc" type="checkbox" />
+	    <label for="gui.showAntiCyc">Anticyclonic Eddies</label><br />
+	    <input id="gui.showChelton" type="checkbox" />
+	    <label for="gui.showChelton">Chelton Tracks</label><br />
+	    <label for="gui.lenRange">Length Range (min, max)</label>
+	    <input id="gui.lenRange" type="text" value="any, any"
+		   class="numinput" />
+	  </fieldset><br />
+
+	  <fieldset>
+	    <legend style="text-align: left">Eddy Information</legend>
+	    <label for="gui.dispEID">Eddy ID:</label>
+	    <input id="gui.dispEID" type="text" readonly="readonly"
+		   class="numinput" /><br />
+	    <label for="gui.dispLatLon">Latitude, Longitude:</label>
+	    <input id="gui.dispLatLon" type="text" readonly="readonly"
+		   style="width: 6em" /><br />
+	    <label for="gui.dispAmplitude">Amplitude:</label>
+	    <input id="gui.dispAmplitude" type="text" readonly="readonly"
+		   class="numinput" /><br />
+	    <label for="gui.dispArea">Area:</label>
+	    <input id="gui.dispArea" type="text" readonly="readonly"
+		   class="numinput" /><br />
+	    <label for="gui.dispGSpeed">Geodesic Speed:</label>
+	    <input id="gui.dispGSpeed" type="text" readonly="readonly"
+		   class="numinput" />
+	  </fieldset>
+	</div>
+      </form>
     </div>
   </div>
   <div id="hcentwrapper">
     <div id="drawingContainer">
-      <p>The drawing pad will be in this space, but in future versions
-      of this UI, this will also be able to function as a unified
-      touchpad without the surrounding sidebars.</p>
-      <p style="text-align: center">
+      <p>
 	<object type="image/svg+xml" data="loading_composite.svg">
 	  <img src="loading_composite.png" alt="Decorative Loading Icon" />
       </object><br />

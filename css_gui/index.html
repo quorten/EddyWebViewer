@@ -7,146 +7,55 @@
   <title>Ocean Eddies Web Viewer</title>
   <style type="text/css">
     html, body { margin: 0; padding: 0; height: 100%; }
-    #wrapper { position: relative; }
-    .topbar, .wrapper2 { position: absolute; }
-    .topbar { margin: 4px; padding: 4px;  border-style: solid;
-              width: 98%; height: 500px; position: absolute; top: 0px; }
-    .wrapper2 { position: absolute; width: 98%; top: 500px; bottom: 0px; border-style: solid; }
-    .cdiv { margin: 4px; padding: 4px;
-            width: auto; min-width: 4in; position: relative; min-height: 95%;
-            overflow: hidden;
-            border-style: solid; border-color: black; }
-    .sidebar { float: right; margin: 4px 4px 4px 4px; padding: 4px;
-               width: 3in; min-height: 95%;
-               border-style: solid; }
+    #topwrapper, #vcentwrapper
+      { margin: 0px; padding: 0px; position: absolute; width: 100%; }
+    #topwrapper { height: 2in; top: 0px; background-color: #a0b0ff; }
+    #vcentwrapper { top: 2in; bottom: 0px; background-color: #3240a0; }
+    #hcentwrapper { margin: 0px 6px 0px 6px; padding: 0px;
+                    width: auto; height: 100%; position: relative;
+                    background-color: #229944;
+                    overflow: hidden; }
+    #sidewrapper { float: right; margin: 0px 6px 0px 6px; padding: 0px;
+                   width: 25%; max-width: 3in; height: 100%; position: relative;
+                   background-color: #77ff77; }
 
-    .cssbtn { display: inline-block;
-              border-style: solid; border-color: black;
-              width: 4em; height: 1.2em; margin: 0.5em; }
-    .green { background-color: green; }
-    .red { background-color: red; }
-    .blue { background-color: blue; }
-
-    /* Warning: The following styles used for CSS buttons may have
-       browser compatibility issues.  */
-    .cssbtn * { -webkit-touch-callout: none;
-                -webkit-user-select: none;
-                -khtml-user-select: none;
-                -moz-user-select: none;
-                -ms-user-select: none;
-                user-select: none;
-                cursor: default; }
+    #topbar { margin: 6px; }
+    #sidebar, #drawingContainer { margin-bottom: 6px; }
+    #topbar, #sidebar, #drawingContainer
+      { padding: 6px;
+        position: absolute; top: 0px; bottom: 0px; left: 0px; right: 0px;
+        color: white; background-color: #333348; border: solid black; }
+    #drawingContainer { overflow: hidden; }
   </style>
   <!-- <script type="text/javascript" src="" /> -->
 </head>
 <body>
 
-<div class="topbar">
-  <p>This is the UI top bar for main controls.</p>
-
-  <p>Here is an example of CSS-only decorated buttons:</p>
-
-<!-- TODO: These CSS buttons need slightly more sophisticated
-JavaScript to prevent them from being highlighted when the cursor
-enters the button already clicked. -->
-
-<!-- Note: MouseEvent.buttons requires DOM level 3. -->
-
-<div style="display: inline-block; background-color: orange">
-  <div class="cssbtn green"
-       onmousedown="event.currentTarget.setAttribute('style', 'background-color: black; border-color: white');"
-       onmouseup="event.currentTarget.setAttribute('style', '');"
-       onmouseenter="if (event.buttons == 1) event.currentTarget.setAttribute('style', 'background-color: black; border-color: white');"
-       onmouseleave="event.currentTarget.setAttribute('style', '');"
-       onclick="alert('Changing to previous node.');">
-    <div style="display: block; width: 4em; color: white; text-align: center">Previous</div>
-  </div>
-  <div class="cssbtn red"
-       onmousedown="event.currentTarget.setAttribute('style', 'background-color: black; border-color: white');"
-       onmouseup="event.currentTarget.setAttribute('style', '');"
-       onmouseenter="if (event.buttons == 1) event.currentTarget.setAttribute('style', 'background-color: black; border-color: white');"
-       onmouseleave="event.currentTarget.setAttribute('style', '');"
-       onclick="alert('Changing to upper node.');">
-    <div style="display: block; width: 4em; color: white; text-align: center">Up</div>
-  </div>
-  <div class="cssbtn blue"
-       onmousedown="event.currentTarget.setAttribute('style', 'background-color: black; border-color: white');"
-       onmouseup="event.currentTarget.setAttribute('style', '');"
-       onmouseenter="if (event.buttons == 1) event.currentTarget.setAttribute('style', 'background-color: black; border-color: white');"
-       onmouseleave="event.currentTarget.setAttribute('style', '');"
-       onclick="alert('Changing to next node.');">
-    <div style="display: block; width: 4em; color: white; text-align: center">Next</div>
+<div id="topwrapper">
+  <div id="topbar">
+    <p>This is the UI top bar for main controls.</p>
   </div>
 </div>
 
-  <p>Here is an example of FORM-style buttons:</p>
-
-  <form action="">
-    <fieldset style="display: inline">
-      <input id="changeClicker" type="button" value="Click Me"
-	     onclick="alert('The screen will be updated.');" />
-      <input id="backDate" type="button" value="&lt; Backward"
-	     onclick="alert('Moving to earlier time.');" />
-      <input id="fwdDate" type="button" value="Forward &gt;"
-	     onclick="alert('Moving to later time.');" />
-    </fieldset>
-    <fieldset>
-      <!-- Note: width="auto" does not result in the text input taking
-      up all of the available space, so I used "width: 100%" instead.
-      I will have to check the compatibility of this with CSS 1.  -->
-      <input id="textField" type="text" style="width: 100%"
-      value="Delete this and type your own text." />
-    </fieldset>
-    <fieldset style="display: inline">
-      <input id="cycShow" type="checkbox"
-	     onclick="alert('Updating the display.');" />
-      <label for="cycShow">Cyclonic Eddies</label><br />
-      <input id="anticycShow" type="checkbox" />
-      <label for="anticycShow">Anticyclonic Eddies</label><br />
-      <input id="cheltonShow" type="checkbox" />
-      <label for="cycShow">Chelton Tracks</label>
-    </fieldset>
-    <fieldset style="display: inline; vertical-align: top">
-      <legend>Projection Mode</legend>
-      <select id="projectionSel" onchange="alert('Changing projection.');">
-	<option selected="selected">Equirectangular</option>
-	<option>Mercator</option>
-	<option>Orthographic</option>
-	<option>Perspective</option>
-      </select><br />
-      <!-- Note: It's important that the scripts to handle the
-      combobox events have logic to prevent double pickups when the
-      user hits enter and focuses out afterward. -->
-      <!-- And if you want the user to be able to type in text like a
-      combobox on control in most desktop GUIs, then you have to
-      manually add an additional text input below.  -->
-      <!-- Some of these events may have compatibility issues.
-      onchange requires DOM L2 (from the year 2000, so should be
-      safe). -->
-      <!-- To handle "activate" event, listen on keydown (keypress?)
-      for Enter and then dispatch as necessary. -->
-      <!-- onkeypress requires DOM L3 -->
-      <input id="prjSelComboText" type="text"
-      onchange="alert('Updating display.')" onkeydown="if (event.keyCode == 13) alert('Updating display.');" />
-      <!-- I was told that I need to "return false", but my code still
-      seems to work even without that in onkeydown. -->
-    </fieldset>
-  </form>
-
-</div>
-
-<div class="wrapper2">
-
-<div class="sidebar">
-  <p>This is the UI side bar for displaying eddy information.</p>
-</div>
-<div class="cdiv" id="drawingContainer">
-  <p>The drawing pad will be in this space, but in future versions of
-  this UI, this will also be able to function as a unified touchpad
-  without the surrounding sidebars.</p>
-  <!-- <canvas id="drawingPad" width="1" height="1" /> -->
-</div>
-
+<div id="vcentwrapper">
+  <div id="sidewrapper">
+    <div id="sidebar">
+      <p>This is the UI side bar for displaying eddy information.</p>
+    </div>
+  </div>
+  <div id="hcentwrapper">
+    <div id="drawingContainer">
+      <p>The drawing pad will be in this space, but in future versions
+      of this UI, this will also be able to function as a unified
+      touchpad without the surrounding sidebars.</p>
+      <p style="text-align: center">
+	<object type="image/svg+xml" data="loading_composite.svg">
+	  <img src="loading_composite.png" alt="Decorative Loading Icon" />
+      </object><br />
+	<strong>Loading</strong>
+      </p>
+    </div>
+  </div>
 </div>
 
 </body>

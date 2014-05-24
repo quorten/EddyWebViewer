@@ -19,7 +19,7 @@
                    width: 30%; max-width: 3in; height: 100%; position: relative;
                    background-color: #77ff77; }
 
-    #topbar { margin: 6px; /* overflow: scroll; */ }
+    #topbar { margin: 6px; overflow: auto; }
     #sidebar, #drawingContainer { margin-bottom: 6px; }
     #topbar, #sidebar, #drawingContainer
       { padding: 6px;
@@ -27,11 +27,13 @@
         color: white; background-color: #333348; border: solid black;
         text-align: center; }
     #drawingContainer { overflow: hidden; }
+    #sidebar { overflow: auto; }
 
     .coldiv { display: inline-block; vertical-align: top; padding: 8px;
              /* border-style: solid; border-color: black; */
              text-align: right; }
     .solocoldiv { text-align: right; }
+    /* input, select { color: white; background-color: gray; } */
     .numinput { width: 4em; }
   </style>
   <!-- <script type="text/javascript" src="" /> -->
@@ -167,7 +169,7 @@
       <p>
 	<object type="image/svg+xml" data="loading_composite.svg">
 	  <img src="loading_composite.png" alt="Decorative Loading Icon" />
-      </object><br />
+	</object><br />
 	<strong>Loading</strong>
       </p>
     </div>

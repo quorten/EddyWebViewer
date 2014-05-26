@@ -7,7 +7,8 @@
   <title>Ocean Eddies Web Viewer Notes</title>
   <style type="text/css">
     p.image-flow { page-break-inside: avoid; }
-    p.image-flow object { vertical-align: top; }
+    p.image-flow object, p.image-flow img { vertical-align: top; }
+    /* TODO: Put margins in images, not HTML page.  */
   </style>
 </head>
 <body>
@@ -41,6 +42,8 @@
       Projections</a></li>
   <li><a href="#imp_center">
       Implementation Center</a></li>
+  <li><a href="#comp_center">
+      Compatibility Center</a></li>
   <li><a href="#scratch_notes">
       Scratch Style Notes</a></li>
 </ul>
@@ -58,7 +61,7 @@ following hold true:</p>
 
 <ol>
   <li>The data can be accessed from a large variety of browsers, all
-  the way down to Firefox 3.x, Internet Explorer 6, and versions of
+  the way down to Firefox 3.6, Internet Explorer 6, and versions of
   Safari from 2004.</li>
   <li>The viewer is easy to use.</li>
   <li>The viewer has an attractive look, feel, and feature set.  Think
@@ -187,11 +190,13 @@ tests each component feature in the browser.</p>
     Minimum Browser Requirements</a></h3>
 
 <ul>
-  <li>JavaScript interpreter</li>
-  <li>HTML 4.01 &amp; XHTML 1.0</li>
-  <li>CSS 2 (possibly support CSS 1 if the differences are manageable)</li>
+  <li>JavaScript (1.2) interpreter</li>
+  <li>HTML 4.01</li>
+  <li>Web developers: XHTML 1.0</li>
+  <li>CSS 1</li>
   <li>Raster image display</li>
-  <li>Vector graphics rendering, either SVG, VML, or HTML Canvas</li>
+  <li>Dynamic vector graphics rendering, either SVG, VML, or HTML
+  Canvas</li>
 </ul>
 
 <h3><a name="intro_ftr_missing" id="intro_ftr_missing">
@@ -216,7 +221,7 @@ no additional advantages when using the Eddy Web Viewer.</p>
 <ul>
   <li>High performance JavaScript interpreter</li>
   <li>HTML 5</li>
-  <li>CSS 2</li>
+  <li>CSS 2.1</li>
   <li>Raster image display</li>
   <li>Vector graphics rendering, preferably SVG</li>
   <li>Full support for HTML 5 Canvas.  Support for getImageData() and
@@ -302,28 +307,24 @@ implementation of the Eddy Web Viewer.</p>
 
 <p class="image-flow">
 <object type="image/svg+xml" data="pentagon.svg"
-	style="margin-left: 1.5em; margin-right: 1.5em"
 	width="202" height="202">
   <img src="pentagon.png" alt="Pentagon construction"
        width="202" height="202" />
 </object>
 
 <object type="image/svg+xml" data="elevation.svg"
-	style="margin-left: 1.5em; margin-right: 1.5em"
 	width="202" height="202">
   <img src="elevation.png" alt="&quot;Top hat&quot; construction diagram"
        width="202" height="202" />
 </object>
 
 <object type="image/svg+xml" data="topview.svg"
-	style="margin-left: 1.5em; margin-right: 1.5em"
 	width="202" height="202">
   <img src="topview.png" alt="Flattened top view"
        width="202" height="202" />
 </object>
 
 <object type="image/svg+xml" data="sideview.svg"
-	style="margin-left: 1.5em; margin-right: 1.5em"
 	width="202" height="202">
   <img src="sideview.png" alt="Side view construction"
        width="202" height="202" />
@@ -438,17 +439,20 @@ would think at first.  The process of backtracing from screen pixels
 to a a map pixel is a multistep process.</p>
 
 <p class="image-flow">
-<object type="image/svg+xml" data="orthographic.svg">
+<object type="image/svg+xml" data="orthographic.svg"
+	width="202" height="142">
   <img src="orthographic.png" alt="Orthographic projection diagram"
        width="202" height="142" />
 </object>
 
-<object type="image/svg+xml" data="earth_rotate.svg">
+<object type="image/svg+xml" data="earth_rotate.svg"
+	width="202" height="142">
   <img src="earth_rotate.png" alt="Point rotation diagram"
        width="202" height="142" />
 </object>
 
-<object type="image/svg+xml" data="angle_measure.svg">
+<object type="image/svg+xml" data="angle_measure.svg"
+	width="202" height="142">
   <img src="angle_measure.png" alt="Angle measurement diagram"
        width="202" height="142" />
 </object>
@@ -493,7 +497,8 @@ or not.</p>
 <h4 style="clear: left">Orthographic Projection</h4>
 
 <p class="image-flow" style="float: left">
-<object type="image/svg+xml" data="orthographic.svg">
+<object type="image/svg+xml" data="orthographic.svg"
+	width="202" height="142">
   <img src="orthographic.png" alt="Orthographic projection diagram"
        width="202" height="142" />
 </object>
@@ -511,13 +516,12 @@ offset along the direction of projection can be obtained via
 
 <p class="image-flow">
 <object type="image/svg+xml" data="perspective.svg"
-	style="margin-left: 0.5em; margin-right: 0.5em">
+	width="244" height="142">
   <img src="perspective.png" alt="Perspective projection diagram"
        width="244" height="142" />
 </object>
 
 <object type="image/svg+xml" data="persp_graph2d.svg"
-	style="margin-left: 0.5em; margin-right: 0.5em"
 	width="202" height="202">
   <img src="persp_graph2d.png" alt="2D perspective graph"
        width="202" height="202" />
@@ -550,13 +554,11 @@ actual height of an embedded HTML object, so we must code in a
 reasonable height manually.  Maybe there is some browser setting that
 I don't know about that limits the maximum intrinsic height of
 embedded objects. -->
-<p>
-<object width="100%" height="650"
-	type="application/xhtml+xml" data="perspective_math.xhtml">
-<div style="text-align: center">
-<img src="perspective_math.png" alt="[mathematics rendering available]"
-     width="604" height="650" />
-</div>
+<p style="text-align: center">
+<object type="application/xhtml+xml" data="perspective_math.xhtml"
+	width="100%" height="678">
+<img src="perspective_math.png" alt="raster mathematics rendering"
+     width="604" height="678" />
 </object>
 </p>
 
@@ -707,6 +709,7 @@ panels: a top panel (topbar) and a side panel (sidebar).</p>
       <li>Date: [text edit] [combo box]</li>
       <li>Begin/Prev/Next/End buttons</li>
     </ul>
+  </li>
   <li>Eddy Filters [CSS box]
     <ul>
       <li>[checkbox] Cyclonic Eddies</li>
@@ -747,6 +750,178 @@ bandwidth optimized data downloading.  This would only be necessary if
 (1) the dataset needs to be parsed serially as opposed to random
 access and (2) low-level (HTTP) protocol control cannot be achieved by
 the web viewer.</p>
+<hr />
+<!-- ________________________________________ -->
+
+<h2><a name="comp_center" id="comp_center">
+    Compatibility Center</a></h2>
+
+<p><a href="http://www.quirksmode.org/">
+    http://www.quirksmode.org/</a> is a great website for extensive
+    compatibility tables for both CSS and JavaScript.</p>
+
+<h3>Web Development</h3>
+
+<p>Many modern browsers disable or severely impair scripts from HTML
+read from regular files on the filesystem.  As far as the web browser
+knows, the DocumentRoot of the "website" is just the root of the
+filesystem, which is considered very insecure.  Although it is
+sometimes possible to configure the web browser to have different
+security settings, this cannot be done efficiently with different
+versions of the same browser.  Thus, serverless web development won't
+get you anywhere for working on this web application and you'll need
+to have a web server setup for testing the web application.</p>
+
+<p>Take a look at these links for more information:</p>
+
+<ul>
+  <li><a href="http://stackoverflow.com/questions/358538/getimagedata-in-firefox-3-causing-ns-error-dom-security-err">
+      http://stackoverflow.com/questions/358538/getimagedata-in-firefox-3-causing-ns-error-dom-security-err</a></li>
+  <li><a href="http://www-archive.mozilla.org/projects/security/components/jssec.html">
+      http://www-archive.mozilla.org/projects/security/components/jssec.html</a></li>
+  <li><a href="http://stackoverflow.com/questions/17035106/context-getimagedata-operation-is-insecure">
+      http://stackoverflow.com/questions/17035106/context-getimagedata-operation-is-insecure</a></li>
+  <li><a href="http://stackoverflow.com/questions/4069400/canvas-getimagedata-doesnt-work-when-running-locally-on-windows-security-exce">
+      http://stackoverflow.com/questions/4069400/canvas-getimagedata-doesnt-work-when-running-locally-on-windows-security-exce</a></li>
+</ul>
+
+<h3>Mathematics on the Web</h3>
+
+<p>NOTE: Mathematics display is not necessary for the viewer, but it
+is helpful for this documentation.</p>
+
+<p>Although there was one point in the past where MathML was well
+supported by majority browsers, modern browsers are neglecting good
+functions for mathematics display.  MathML support was dropped from
+Google Chrome, and Internet Explorer on Windows 8 does not support
+plugins like MathPlayer.</p>
+
+<blockquote>
+  <p>You shouldn't annoy researchers. They'll all gang up on you and
+  it wont be pretty</p>
+</blockquote>
+
+<p><a href="http://www.cnet.com/news/google-subtracts-mathml-from-chrome-and-anger-multiplies/">
+    http://www.cnet.com/news/google-subtracts-mathml-from-chrome-and-anger-multiplies/</a></p>
+
+<p>Although MathJax has been reported to result in a slower
+mathematics browsing experience than MathML, there are ways around
+this.  Rather than using LaTeX equations in your HTML documents with
+MathJax, you should first convert them to MathML and insert the MathML
+in your documents.  Then load the MML_HTMLorMML config for MathJax on
+your webpage.  This will result in MathJax using the browser's native
+MathML display when it is of sufficient quality and falling back to
+HTML output otherwise.  MathML-to-HTML translation is considerably
+faster than LaTeX-to-intermediate-to-HTML translation.</p>
+
+<h3>SVG Compatibility</h3>
+
+<p>For best backwards compatibility support, avoid text and clones in
+SVG images.</p>
+
+<h3>HTML Compatibility</h3>
+
+<p>Make sure your browser is sending the right charset in the HTTP
+Content-Type headers; otherwise, you are not going to be able to read
+extended characters correctly.</p>
+
+<h3>XHTML Compatibility</h3>
+
+<p>HTML presents many breaking changes from HTML 4.01.  Here is a list
+of the changes and links to additional resources:</p>
+
+<ul>
+  <li>You need to make sure your web server is setup to serve XHTML
+  documents with "application/xhtml+xml".<br />
+  Setup Apache to server XHTML: <br />
+  <a href="http://protempore.net/~calvins/howto/xhtml-apache/">
+    http://protempore.net/~calvins/howto/xhtml-apache/</a></li>
+  <li><a href="http://www.456bereastreet.com/archive/200501/the_perils_of_using_xhtml_properly/">
+      http://www.456bereastreet.com/archive/200501/the_perils_of_using_xhtml_properly/</a></li>
+</ul>
+
+<h3>CSS Compatibility</h3>
+
+<p>Dealing with vertical space is very difficult in CSS.  The
+solutions also tend to cause a lot of problems with cross-browser
+compatibility.  The most reliable way to perform vertical space
+operations such as vertically centering a box or expanding a box to
+fill up all of its available space is to write a script to perform the
+task.  One such script is included in the browser test suite.</p>
+
+<p>Internet Explorer 6 also has an almost entirely different box model
+than is described by the CSS Specification.  The details are described
+in the next section.</p>
+
+<h3>Internet Explorer Compatibility</h3>
+
+<p>Microsoft Internet Explorer versions 5-8 are long known to cause
+many more problems for web developers than equivalent older versions
+of other browsers.  This is made worse by the fact that Internet
+Explorer is also a very popular browser.  Most people are likely using
+the latest version of Internet Explorer; however, a key older
+version, version 6, is still in use by many people for a variety of
+reasons.</p>
+
+<ul>
+  <li>IE6 does not understand XHTML served with the
+  "application/xhtml+xml" MIME type or files with a ".xhtml"
+  extension:<br />
+  <a href="http://bytes.com/topic/html-css/answers/161030-application-xhtml-xml-ie">
+    http://bytes.com/topic/html-css/answers/161030-application-xhtml-xml-ie</a></li>
+  <li>Detect IE versions for both CSS and JavaScript most flexibly:<br />
+  <a href="http://stackoverflow.com/questions/10964966/detect-ie-version-in-javascript">
+    http://stackoverflow.com/questions/10964966/detect-ie-version-in-javascript</a></li>
+  <li>IE5 interprets "width" and "height" to mean the content
+  width/height, plus the padding, plus the border widths.  IE6 doesn't
+  do this when standards-conformant mode is triggered via a DOCTYPE
+  declaration.</li>
+  <li>You probably cannot go further back in time to support DHTML and
+  JavaScript on a browser earlier than Internet Explorer 5.5.</li>
+  <li>The display style "inline-block" is incomplete and buggy in IE6.
+  Often times, you can get the intended effect if you use "inline"
+  instead, but only if you use it in a stylesheet definition, not an
+  inline definition.</li>
+  <li>Horizontal and vertical centering that is cross-browser to IE6
+  requires the techniques described in the following link:<br />
+  <a href="http://stackoverflow.com/questions/396145/whats-the-best-way-of-centering-a-div-vertically-with-css">
+    http://stackoverflow.com/questions/396145/whats-the-best-way-of-centering-a-div-vertically-with-css</a><br />
+  Note that this will not work in IE5.5.
+  </li>
+  <li>You cannot use both the "top" and "bottom" positioning
+  properties at the same time.  Same goes with "left" and "right".  If
+  you want to vertically expand a box to fill up its available space,
+  then you must write a JavaScript to do that.  Keep in mind the
+  differences of box layout between IE5 and IE6 when doing this.</li>
+  <li>All versions of IE that support scripting generally support it
+  well.  Expect JavaScript 1.2 to be well supported.  However, you
+  must take care not to use certain web API scripting idioms that
+  won't be supported by IE, such as<br />
+    element.setAttribute('style', 'styleText');<br />
+  as opposed to<br />
+    element.style.cssText = 'styleText';</li>
+  <li>Avoid inline styling: Using inline style information can sometimes
+  trigger bugs in Internet Explorer that are not present when using
+  stylesheets.</li>
+  <li>IE6 cannot properly render transparent PNG images.  Use GIF
+  images instead.</li>
+  <li>IE6 does not
+  support <code>document.getElementByClassName()</code>.  Use
+    <a href="http://robertnyman.com/2008/05/27/the-ultimate-getelementsbyclassname-anno-2008/">
+      Robert Nyman's <code>getElementByClassName()</code></a>
+    cross-browser implementation instead.</li>
+</ul>
+
+<p>Additional resources:</p>
+
+<ul>
+  <li><a href="http://stackoverflow.com/questions/4359848/in-ie6-what-are-the-alternatives-to-display-inline-block-table-table-row-ta">
+      http://stackoverflow.com/questions/4359848/in-ie6-what-are-the-alternatives-to-display-inline-block-table-table-row-ta</a></li>
+  <li><a href="http://www.positioniseverything.net/explorer/expandingboxbug.html">
+      http://www.positioniseverything.net/explorer/expandingboxbug.html</a></li>
+  <li><a href="http://www.webcredible.com/blog-reports/css/internet-explorer.shtml">
+      http://www.webcredible.com/blog-reports/css/internet-explorer.shtml</a></li>
+</ul>
 
 <hr />
 <!-- ________________________________________ -->
@@ -787,34 +962,43 @@ available or not.</p>
 
 <p>The Ocean Eddies Web Viewer needs to have a favicon.</p>
 
-<p><a href="http://html5center.sourceforge.net/">
+<p>My globe rendering test can sometimes crash Firefox 3.6.</p>
+
+<p>Useful source for HTML 5 information: <br />
+  <a href="http://html5center.sourceforge.net/">
     http://html5center.sourceforge.net/</a></p>
 
 <p><a href="http://www.html5canvastutorials.com/">
     http://www.html5canvastutorials.com/</a></p>
 
+<h3>Mozilla Developer Network</h3>
+
 <p><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Canvas">
     https://developer.mozilla.org/en-US/docs/Web/HTML/Canvas</a></p>
-
-<p><a href="http://www.lukew.com/ff/entry.asp?1514">
-    http://www.lukew.com/ff/entry.asp?1514</a></p>
 
 <p><a href="https://developer.mozilla.org/en-US/docs/Web/API">
     https://developer.mozilla.org/en-US/docs/Web/API</a></p>
 
+<p><a href="https://developer.mozilla.org/en-US/docs/Web/API/Event">
+    https://developer.mozilla.org/en-US/docs/Web/API/Event</a></p>
+
+<p><a href="https://developer.mozilla.org/en-US/docs/Web/Reference/Events">
+    https://developer.mozilla.org/en-US/docs/Web/Reference/Events</a></p>
+
 <p><a href="https://developer.mozilla.org/en-US/docs/Web/API/CSS_Object_Model/Determining_the_dimensions_of_elements">
     https://developer.mozilla.org/en-US/docs/Web/API/CSS_Object_Model/Determining_the_dimensions_of_elements</a></p>
 
-<p><a href="http://stackoverflow.com/questions/1664785/resize-html5-canvas-to-fit-window">
+<p><a href="https://developer.mozilla.org/en-US/docs/Web/API/window.requestAnimationFrame">
+    https://developer.mozilla.org/en-US/docs/Web/API/window.requestAnimationFrame</a></p>
+
+<h3>JavaScript</h3>
+
+<p>You have to manually resize an HTML canvas to fit the window:<br />
+  <a href="http://stackoverflow.com/questions/1664785/resize-html5-canvas-to-fit-window">
     http://stackoverflow.com/questions/1664785/resize-html5-canvas-to-fit-window</a></p>
 
-<p><a href="http://excanvas.sourceforge.net/">
-    http://excanvas.sourceforge.net/</a></p>
-
-<p><a href="http://www.w3.org/TR/2011/REC-CSS2-20110607/">
-    http://www.w3.org/TR/2011/REC-CSS2-20110607/</a></p>
-
-<p><a href="http://joshondesign.com/p/books/canvasdeepdive/title.html">
+<p>More info on HTML Canvas:<br />
+  <a href="http://joshondesign.com/p/books/canvasdeepdive/title.html">
     http://joshondesign.com/p/books/canvasdeepdive/title.html</a></p>
 
 <p><a href="http://en.wikipedia.org/wiki/Equirectangular_projection">
@@ -827,36 +1011,19 @@ https://developer.mozilla.org/en-US/docs/Web/JavaScript/Memory_Management</a></p
 <p><a href="http://stackoverflow.com/questions/10652513/html5-dynamically-create-canvas">
 http://stackoverflow.com/questions/10652513/html5-dynamically-create-canvas</a></p>
 
-<p><a href="http://stackoverflow.com/questions/358538/getimagedata-in-firefox-3-causing-ns-error-dom-security-err">
-http://stackoverflow.com/questions/358538/getimagedata-in-firefox-3-causing-ns-error-dom-security-err</a></p>
-
-<p><a href="http://www-archive.mozilla.org/projects/security/components/jssec.html">
-http://www-archive.mozilla.org/projects/security/components/jssec.html</a></p>
-
-<p><a href="https://developer.mozilla.org/en-US/docs/Web/API/Event">
-    https://developer.mozilla.org/en-US/docs/Web/API/Event</a></p>
-
-<p><a href="https://developer.mozilla.org/en-US/docs/Web/Reference/Events">
-    https://developer.mozilla.org/en-US/docs/Web/Reference/Events</a></p>
-
 <p>Possible solution to my MathML embedding problems:
   <a href="http://webdesignerwall.com/tutorials/css-elastic-videos">
     http://webdesignerwall.com/tutorials/css-elastic-videos</a></p>
 
-<p><a href="http://stackoverflow.com/questions/8865458/how-to-align-text-vertically-center-in-div-with-css">
-    http://stackoverflow.com/questions/8865458/how-to-align-text-vertically-center-in-div-with-css</a></p>
-
 <p><a href="https://developers.google.com/maps/documentation/javascript/v2/overlays?csw=1#Google_Maps_Coordinates">
     https://developers.google.com/maps/documentation/javascript/v2/overlays?csw=1#Google_Maps_Coordinates</a></p>
 
-<p><a href="http://bost.ocks.org/mike/map/">
+<p>D3.js map tutorial: <a href="http://bost.ocks.org/mike/map/">
     http://bost.ocks.org/mike/map/</a></p>
 
-<p><a href="https://www.inkling.com/read/dummies-html-xhtml-css-all-one-andy-harris-2nd/chapter-4-5/managing-text-input-and-output">
+<p>Basic demonstration of using JavaScript to manipulate a form:<br />
+  <a href="https://www.inkling.com/read/dummies-html-xhtml-css-all-one-andy-harris-2nd/chapter-4-5/managing-text-input-and-output">
     https://www.inkling.com/read/dummies-html-xhtml-css-all-one-andy-harris-2nd/chapter-4-5/managing-text-input-and-output</a></p>
-
-<p><a href="http://stackoverflow.com/questions/826782/css-rule-to-disable-text-selection-highlighting">
-http://stackoverflow.com/questions/826782/css-rule-to-disable-text-selection-highlighting</a></p>
 
 <p><a href="http://stackoverflow.com/questions/14614702/html-combo-box-with-option-to-type-an-entry">
     http://stackoverflow.com/questions/14614702/html-combo-box-with-option-to-type-an-entry</a></p>
@@ -864,23 +1031,18 @@ http://stackoverflow.com/questions/826782/css-rule-to-disable-text-selection-hig
 <p><a href="http://stackoverflow.com/questions/13987300/how-to-trigger-enter-key-press-of-textbox">
     http://stackoverflow.com/questions/13987300/how-to-trigger-enter-key-press-of-textbox</a></p>
 
-<p><a href="https://developer.mozilla.org/en-US/docs/Web/API/window.requestAnimationFrame">
-    https://developer.mozilla.org/en-US/docs/Web/API/window.requestAnimationFrame</a></p>
-
 <p><a href="http://www.scriptingmaster.com/html/versions-of-HTML.asp">
     http://www.scriptingmaster.com/html/versions-of-HTML.asp</a></p>
 
 <p><a href="http://www.quirksmode.org/">
     http://www.quirksmode.org/</a></p>
 
-<p><a href="http://evolt.org/node/23335/">
+<p>Mission Impossible Mouse Coordinates:<br />
+  <a href="http://evolt.org/node/23335/">
     http://evolt.org/node/23335/</a></p>
 
 <p><a href="http://stackoverflow.com/questions/4002234/do-we-need-semicolon-at-the-end">
     http://stackoverflow.com/questions/4002234/do-we-need-semicolon-at-the-end</a></p>
-
-<p><a href="http://stackoverflow.com/questions/12449156/stick-footer-to-bottom-of-page-without-unnecessary-scroll-bars">
-    http://stackoverflow.com/questions/12449156/stick-footer-to-bottom-of-page-without-unnecessary-scroll-bars</a></p>
 
 <p><a href="http://stackoverflow.com/questions/12058381/changing-checked-attribute-of-a-checkbox-using-javascript">
     http://stackoverflow.com/questions/12058381/changing-checked-attribute-of-a-checkbox-using-javascript</a></p>
@@ -891,25 +1053,33 @@ http://stackoverflow.com/questions/826782/css-rule-to-disable-text-selection-hig
 <p><a href="http://en.wikipedia.org/wiki/List_of_unit_testing_frameworks#JavaScript">
     http://en.wikipedia.org/wiki/List_of_unit_testing_frameworks#JavaScript</a></p>
 
+<h3>CSS</h3>
+
+<p>CSS 2 Specification:<br />
+  <a href="http://www.w3.org/TR/2011/REC-CSS2-20110607/">
+    http://www.w3.org/TR/2011/REC-CSS2-20110607/</a></p>
+
+<p>Flexible layouts for responsive design:<br />
+  <a href="http://www.lukew.com/ff/entry.asp?1514">
+    http://www.lukew.com/ff/entry.asp?1514</a></p>
+
+<p><a href="http://stackoverflow.com/questions/8865458/how-to-align-text-vertically-center-in-div-with-css">
+    http://stackoverflow.com/questions/8865458/how-to-align-text-vertically-center-in-div-with-css</a></p>
+
+<p><a href="http://stackoverflow.com/questions/826782/css-rule-to-disable-text-selection-highlighting">
+http://stackoverflow.com/questions/826782/css-rule-to-disable-text-selection-highlighting</a></p>
+
+<p><a href="http://stackoverflow.com/questions/12449156/stick-footer-to-bottom-of-page-without-unnecessary-scroll-bars">
+    http://stackoverflow.com/questions/12449156/stick-footer-to-bottom-of-page-without-unnecessary-scroll-bars</a></p>
+
 <p><a href="http://css-tricks.com/snippets/css/clear-fix/">
     http://css-tricks.com/snippets/css/clear-fix/</a></p>
 
 <p><a href="http://stackoverflow.com/questions/5776367/css-making-a-div-consume-all-available-space">
     http://stackoverflow.com/questions/5776367/css-making-a-div-consume-all-available-space</a></p>
 
-<!-- Some JavaScript to resize an element inside a <div> container to
-take up all of the available space.  Depending on what this is used
-for, it may or may not be useful. -->
-
-<!--
-<div style="display: inline; border-style: solid;"
-     onclick="var gooder = document.getElementById('gooder');
-document.getElementById('badder').
-setAttribute('style', 'width: 100%; height: ' + gooder.scrollHeight + 'px');
-alert(gooder.scrollHeight); alert(gooder.children.length); alert(gooder.outerHTML); alert(document.getElementById('badder').outerHTML); alert(gooder.tagName);">
-  Expand!
-</div>
--->
+<p><a href="http://www.creativebloq.com/css3/seven-things-still-missing-css-1126553">
+    http://www.creativebloq.com/css3/seven-things-still-missing-css-1126553</a></p>
 
 </body>
 </html>

@@ -16,21 +16,13 @@
    inkscape:version="0.47 r22583"
    sodipodi:docname="perspective.svg">
   <defs
-     id="defs4">
-    <inkscape:perspective
-       sodipodi:type="inkscape:persp3d"
-       inkscape:vp_x="0 : 71 : 1"
-       inkscape:vp_y="0 : 1000 : 0"
-       inkscape:vp_z="244 : 71 : 1"
-       inkscape:persp3d-origin="122 : 47.333333 : 1"
-       id="perspective17" />
-  </defs>
+     id="defs4" />
   <sodipodi:namedview
      id="base"
      pagecolor="#ffffff"
      bordercolor="#666666"
      borderopacity="1.0"
-     inkscape:pageopacity="0.0"
+     inkscape:pageopacity="1"
      inkscape:pageshadow="2"
      inkscape:zoom="2"
      inkscape:cx="115.58151"
@@ -150,7 +142,7 @@
          sodipodi:cy="87.75"
          sodipodi:rx="24.254311"
          sodipodi:ry="24.254311"
-         d="m 136.00431,87.75 a 24.254311,24.254311 0 1 1 -48.508621,0 24.254311,24.254311 0 1 1 48.508621,0 z"
+         d="m 136.00431,87.75 c 0,13.39529 -10.85902,24.25431 -24.25431,24.25431 -13.395286,0 -24.254311,-10.85902 -24.254311,-24.25431 0,-13.395286 10.859025,-24.254311 24.254311,-24.254311 13.39529,0 24.25431,10.859025 24.25431,24.254311 z"
          transform="matrix(0.66360031,0,0,1.0037713,-30.510797,839.03127)" />
     </g>
   </g>

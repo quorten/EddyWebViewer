@@ -6,6 +6,9 @@ div.btest-content {
     overflow: auto;
 }
 
+.btest-status fieldset { display: inline-block; text-align: right; }
+.ie6 .btest-status fieldset { display: inline; }
+.btest-status legend { text-align: left; font-weight: bold; }
 .untested { color: olive; }
 .passed { color: green; }
 .failed { color: red; }

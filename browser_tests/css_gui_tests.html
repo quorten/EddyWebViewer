@@ -1,17 +1,20 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+
+<!--[if lt IE 7]>
+<html xmlns="http://www.w3.org/1999/xhtml"
+      lang="en" xml:lang="en" class="ie6">
+<![endif]-->
+<!--[if !IE]><!-->
 <html xmlns="http://www.w3.org/1999/xhtml"
       lang="en" xml:lang="en">
-
-<!-- <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN"
-  "http://www.w3.org/TR/html4/strict.dtd">
-<html lang="en"> -->
+<!--<![endif]-->
 
 <head>
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
   <title>CSS GUI Tests</title>
   <link rel="stylesheet" type="text/css" href="btest.css" />
-  <style type="text/css">
+  <style id="inlineSheet" type="text/css">
     /* ************************************************************ */
     /* CSS Screen Layout Test Style Definitions */
 
@@ -19,6 +22,8 @@
       { margin: 0px; padding: 0px; position: absolute; width: 100%; }
     #topwrapper { height: 1in; top: 0px; background-color: #a0b0ff; }
     #vcentwrapper { top: 1in; bottom: 0px; background-color: #3240a0; }
+    .ie6 #vcentwrapper { display: table; height: 100%; min-height: 100%;
+                         bottom: auto; position: relative; }
     #hcentwrapper { margin: 0px 6px 0px 6px; padding: 0px;
                     width: auto; height: 100%; position: relative;
                     background-color: #229944;
@@ -26,6 +31,7 @@
     #sidewrapper { float: right; margin: 0px 6px 0px 6px; padding: 0px;
                    width: 30%; max-width: 3in; height: 100%; position: relative;
                    background-color: #77ff77; }
+    .ie6 #sidewrapper { display: inline; }
 
     #topbar { margin: 6px; overflow: auto; }
     #sidebar, #drawingContainer { margin-bottom: 6px; }
@@ -35,6 +41,7 @@
         color: white; background-color: #333348; border: solid black; }
     #drawingContainer { overflow: hidden; }
     #sidebar { overflow: auto; }
+    .ie6 #topbar, .ie6 #sidebar, .ie6 #drawingContainer { position: static; }
 
     /* ************************************************************ */
     /* CSS-Only Decorated Buttons with JavaScript Event Handlers Test 
@@ -43,8 +50,10 @@
     .cssbtn { display: inline-block;
               border-style: solid; border-color: black;
               width: 5em; height: 1.2em; margin: 0.5em; }
+    .ie6 .cssbtn { display: inline; }
     .cssbtnin { display: block; width: 5em;
                 text-align: center; }
+    .ie6 .cssbtn { display: inline; }
     .green { background-color: green; }
     .red { background-color: red; }
     .blue { background-color: blue; }
@@ -59,8 +68,17 @@
                 -ms-user-select: none;
                 /* user-select: none; */ /* Doesn't validate */
                 cursor: default; }
+
+    .cb-inline-block { display: inline-block; }
+    .ie6 .cb-inline-block { display: inline; }
   </style>
+  <script type="text/javascript"
+	  src="getElementsByClassName-1.0.1.js"></script>
+  <!--[if IE]>
+  <script type="text/javascript" src="../excanvas_r3/excanvas.js"></script>
+  <![endif]-->
   <script type="text/javascript">
+<!--//--><![CDATA[//><!--
 // General UI Definitions
 
 function buttonClick(targetName) {
@@ -68,9 +86,22 @@ function buttonClick(targetName) {
   if (targetElmt.value == 'Clicked') {
     targetElmt.value = 'Clicked again';
   } else {
-    targetElmt.setAttribute('class', 'passed');
+    targetElmt.className = 'passed';
     targetElmt.value = 'Clicked';
   }
+}
+
+/* Return Microsoft Internet Explorer (major) version number, or 0 for
+   others.  This function works by finding the "MSIE " string and
+   extracting the version number following the space, up to the
+   semicolon.  */
+function msieVersion() {
+  var ua = window.navigator.userAgent;
+  var msie = ua.indexOf("MSIE ");
+
+  if (msie > 0)
+    return parseFloat (ua.substring(msie + 5, ua.indexOf(";", msie)));
+  return 0; // is a different browser
 }
 
 function init() {
@@ -85,11 +116,81 @@ function init() {
   document.getElementById('dateFwdTgt').value = 'Untested';
   document.getElementById('fullTextTgt').value = 'Untested';
   document.getElementById('cycTgt').value = 'Untested';
-  document.getElementById('antiCycTgt').value = 'Untested';
+  document.getElementById('anticycTgt').value = 'Untested';
   document.getElementById('cheltonTgt').value = 'Untested';
   document.getElementById('projSelTgt').value = 'Untested';
   document.getElementById('zoomFacTgt').value = 'Untested';
+
+  // Connect CSS-Only Decorated Buttons Test event handlers.
+  document.getElementById('prevBtn').onclick =
+    function(event) { buttonClick('prevBtnTgt'); };
+  document.getElementById('upBtn').onclick =
+    function(event) { buttonClick('upBtnTgt'); };
+  document.getElementById('nextBtn').onclick =
+    function(event) { buttonClick('nextBtnTgt'); };
+
+  // Connect FORM Controls Test event handlers.  
+  document.getElementById('dateReset').onclick =
+    function(event) { buttonClick('dateRstTgt'); };
+  document.getElementById('dateBack').onclick =
+    function(event) { buttonClick('dateBackTgt'); };
+  document.getElementById('dateFwd').onclick =
+    function(event) { buttonClick('dateFwdTgt'); };
+  document.getElementById('fullText').onchange =
+    function(event) { valueChanged(this, 'fullTextTgt'); };
+  document.getElementById('cycShow').onclick =
+    function(event) { checkboxClick(this, 'cycTgt'); };
+  document.getElementById('anticycShow').onclick =
+    function(event) { checkboxClick(this, 'anticycTgt'); };
+  document.getElementById('cheltonShow').onclick =
+    function(event) { checkboxClick(this, 'cheltonTgt'); };
+  document.getElementById('projectionSel').onchange =
+    function(event) { selectChanged(this, 'projSelTgt'); };
+  document.getElementById('zoomFactor').onchange =
+    function(event) { valueChanged(this, 'zoomFacTgt'); };
+
+  // These functions fix the height of certain boxes on IE5 and IE6.
+  if (document.documentElement.className == 'ie6') {
+    /* BAD: The CSS margin, border, and padding values are manually
+       repeated here.  */
+    var marginWidth = 6;
+    var borderWidth = 4;
+    var paddingWidth = 6;
+
+    var topbar = document.getElementById('topbar');
+    var sidebar = document.getElementById('sidebar');
+    var drawingContainer = document.getElementById('drawingContainer');
+    var topwrapper = document.getElementById('topwrapper');
+    var vcentwrapper = document.getElementById('vcentwrapper');
+    var style = document.getElementById('inlineSheet');
+    var msie = msieVersion();
+    var calcHeight;
+
+    calcHeight = topwrapper.scrollHeight;
+    if (msie >= 6) {
+      calcHeight -= marginWidth + borderWidth + borderWidth +
+        paddingWidth + paddingWidth;
+    }
+    topbar.style.height = calcHeight + 'px';
+    calcHeight = vcentwrapper.scrollHeight - topwrapper.scrollHeight;
+    if (msie >= 6) {
+      calcHeight -= marginWidth + borderWidth + borderWidth +
+        paddingWidth + paddingWidth;
+    }
+    sidebar.style.height = calcHeight + 'px';
+    drawingContainer.style.height = sidebar.style.height;
+
+    var ieRepImgs = getElementsByClassName('ieImgFix');
+    for (i = 0; i < ieRepImgs.length; i++) {
+      ieRepImgs[i].src = ieRepImgs[i].src.replace(/\.png$/, '.gif');
+    }
+  }
+
+  // JavaScript Pointer and HTML Canvas Test
+  // We can't run pointerTestInit() until "onload" from <body> is called.
+  pointerTestInit();
 }
+//--><!]]>
   </script>
 </head>
 <body onload="init()">
@@ -104,6 +205,8 @@ function init() {
       CSS-Only Decorated Buttons with JavaScript Event Handlers Test</a></li>
   <li><a href="#form_ctls">
       FORM Controls with JavaScript Event Handlers Test</a></li>
+  <li><a href="#js_pointer_canvas">
+      JavaScript Pointer and HTML Canvas Test</a></li>
 </ul>
 
 <hr />
@@ -139,6 +242,19 @@ fails.</p>
 <div class="btest-content"
      style="margin: 0; padding: 0; height: 4in; position: relative">
 
+<noscript>
+<h2>Sorry</h2>
+<p>You need a web browser with JavaScript enabled and functional to
+use the the interactive web viewer.</p>
+</noscript>
+
+<div id="scriptWrapper" style="display: none">
+<script type="text/javascript">
+<!--//--><![CDATA[//><!--
+document.getElementById('scriptWrapper').style.cssText = '';
+//--><!]]>
+</script>
+
 <div id="topwrapper">
   <div id="topbar">
     <p>This is the UI top bar for main controls.</p>
@@ -158,19 +274,20 @@ fails.</p>
       when not in use.</p>
       <p style="text-align: center">
 	<object type="image/svg+xml" data="../css_gui/loading_composite.svg">
-	  <img src="../css_gui/loading_composite.png"
+	  <img class="ieImgFix" src="../css_gui/loading_composite.png"
 	       alt="Decorative Loading Icon" />
-      </object><br />
+	</object><br />
 	<strong>Loading</strong>
       </p>
     </div>
   </div>
 </div>
 
+</div> <!-- END scriptWrapper -->
+
 </div> <!-- END Content Zone -->
 
 <p class="btest-status"><strong>Status:</strong>
-
 You have to verify this test manually to determine if
 it <span class="passed">passed</span>
 or <span class="failed">failed</span>.</p>
@@ -216,23 +333,19 @@ fails.</p>
 
 <div class="btest-content">
 
-<!-- NOTE: XHTML Does not allow wrapping the contents of a script in
-an XML comment.  -->
-<!-- NOTE: Unfortunately, browsers generally do not support
-<![CDATA[ ... ]]> wrappings when parsing in HTML 4.01 mode as opposed
-to XHTML mode.  -->
-<script type="text/javascript"><!--
+<script type="text/javascript">
+<!--//--><![CDATA[//><!--
 /* Note: This behavior that detects whether a cursor has entered the
 button space before the button is clicked may be undesirable on touch
 screens.  */
 function cssButtonHover(event) {
   // Note: arbitrary properties may be assigned to objects in JavaScript.
   if (event.buttons == 0)
-    event.currentTarget.hoverFlag = 1;
+    this.hoverFlag = 1;
 }
 
 function cssButtonOut(event) {
-  event.currentTarget.hoverFlag = 0;
+  this.hoverFlag = 0;
 }
 
 function cssButtonPress(event) {
@@ -240,23 +353,24 @@ function cssButtonPress(event) {
      with slightly older browsers.  */
   // if ((event.buttons && event.buttons != 1) || event.button != 0) return;
   // if (!event.currentTarget.hoverFlag) return;
-  event.currentTarget.setAttribute('style',
-    'background-color: black; color: white; border-color: white');
+  this.style.backgroundColor = 'black';
+  this.style.color = 'white';
+  this.style.borderColor = 'white';
 }
 
 function cssButtonRelease(event) {
-  event.currentTarget.setAttribute('style', '');
+  this.style.cssText = '';
 }
 
 function cssButtonInit() {
-  var cssBtns = document.getElementsByClassName('cssbtn');
+  var cssBtns = getElementsByClassName('cssbtn');
   for (var i = 0; i < cssBtns.length; i++) {
-    /* cssBtns[i].onmouseover = cssButtonHover;
-    cssBtns[i].onmouseout = cssButtonOut; */
+    // cssBtns[i].onmouseover = cssButtonHover;
+    // cssBtns[i].onmouseout = cssButtonOut;
     cssBtns[i].onmousedown = cssButtonPress;
     cssBtns[i].onmouseup = cssButtonRelease;
-    /* cssBtns[i].onmouseenter = cssButtonPress;
-    cssBtns[i].onmouseleave = cssButtonRelease; */
+    // cssBtns[i].onmouseenter = cssButtonPress;
+    // cssBtns[i].onmouseleave = cssButtonRelease;
     if (cssBtns[i].captureEvents) {
       cssBtns[i].captureEvents(Event.MOUSEOVER);
       cssBtns[i].captureEvents(Event.MOUSEOUT);
@@ -267,34 +381,32 @@ function cssButtonInit() {
     }
   }
 }
-// --></script>
+//--><!]]>
+</script>
 
-<div style="display: inline-block; background-color: #333348">
-  <div class="cssbtn stybk"
-       onclick="buttonClick('prevBtnTgt')">
+<div class="cb-inline-block" style="background-color: #333348">
+  <div id="prevBtn" class="cssbtn stybk">
     <div class="cssbtnin">Previous</div>
   </div>
-  <div class="cssbtn stybk"
-       onclick="buttonClick('upBtnTgt')">
+  <div id="upBtn" class="cssbtn stybk">
     <div class="cssbtnin">Up</div>
   </div>
-  <div class="cssbtn stybk"
-       onclick="buttonClick('nextBtnTgt')">
+  <div id="nextBtn" class="cssbtn stybk">
     <div class="cssbtnin">Next</div>
   </div>
 </div>
 
-<!-- NOTE: XHTML Does not allow wrapping the contents of a script in
-an XML comment.  -->
-<script type="text/javascript"><!--
+<script type="text/javascript">
+<!--//--><![CDATA[//><!--
   cssButtonInit();
-// --></script>
+//--><!]]>
+</script>
 
 </div> <!-- END Content Zone -->
 
 <form class="btest-status" action="">
-  <fieldset style="display: inline-block; text-align: right">
-    <legend style="text-align: left"><strong>Status</strong></legend>
+  <fieldset>
+    <legend>Status</legend>
     <label for="prevBtnTgt">"Previous" button:</label>
     <input id="prevBtnTgt" class="untested"
 	   type="text" value="Untested" /><br />
@@ -341,75 +453,66 @@ fails.</p>
 
 <div class="btest-content">
 
-<!-- NOTE: XHTML Does not allow wrapping the contents of a script in
-an XML comment.  -->
-<!-- NOTE: Unfortunately, browsers generally do not support
-<![CDATA[ ... ]]> wrappings when parsing in HTML 4.01 mode as opposed
-to XHTML mode.  -->
-<script type="text/javascript"><!--
-function checkboxClick(event, targetName) {
+<script type="text/javascript">
+<!--//--><![CDATA[//><!--
+function checkboxClick(src, targetName) {
   var targetElmt = document.getElementById(targetName);
-  if (event.currentTarget.checked)
+  if (src.checked)
     targetElmt.value = 'Checked';
   else
     targetElmt.value = 'Unchecked';
-  targetElmt.setAttribute('class', 'passed');
+  targetElmt.className = 'passed';
 }
 
-function selectChanged(event, targetName) {
+function selectChanged(elmt, targetName) {
   var targetElmt = document.getElementById(targetName);
-  var elmt = event.currentTarget;
   // 'value' can also be used instead of 'text'.
   targetElmt.value = elmt.options[elmt.selectedIndex].text;
-  targetElmt.setAttribute('class', 'passed');
+  targetElmt.className = 'passed';
 }
 
-function valueChanged(event, targetName) {
+function valueChanged(src, targetName) {
   var targetElmt = document.getElementById(targetName);
-  targetElmt.value = event.currentTarget.value;
-  targetElmt.setAttribute('class', 'passed');
+  targetElmt.value = src.value;
+  targetElmt.className = 'passed';
 }
 
 // Strictly speaking, this keyboard handler may not be necessary.
-function keybdActivate(event, targetName) {
+function keybdActivate(src, event, targetName) {
   if (event.code == 'Enter')
-    return valueChanged(event, targetName);
+    return valueChanged(src, targetName);
 }
-// --></script>
+//--><!]]>
+</script>
 
 <form action="">
   <fieldset style="display: inline">
     <legend>Date</legend>
-      <input id="dateReset" type="button" value="Reset"
-	     onclick="buttonClick('dateRstTgt')" />
-      <input id="dateBack" type="button" value="&lt; Backward"
-	     onclick="buttonClick('dateBackTgt')" />
-      <input id="dateFwd" type="button" value="Forward &gt;"
-	     onclick="buttonClick('dateFwdTgt')" />
+      <input id="dateReset" type="button" value="Reset" />
+      <input id="dateBack" type="button" value="&lt; Backward" />
+      <input id="dateFwd" type="button" value="Forward &gt;" />
   </fieldset>
   <fieldset>
     <legend>Full-Size Text Box</legend>
     <!-- Note: width="auto" does not result in the text input taking
     up all of the available space, so "width: 100%" was used instead.
     The compatibility of this with CSS 1 should be verified.  -->
+    <div> <!-- IE6 fix -->
     <input id="fullText" type="text" style="width: 100%"
-	   onchange="valueChanged(event, 'fullTextTgt')"
 	   value="Delete this and type your own text." />
+    </div>
   </fieldset>
-  <fieldset style="display: inline-block; vertical-align: top">
-      <input id="cycShow" type="checkbox"
-	     onclick="checkboxClick(event, 'cycTgt')" />
+  <fieldset class="cb-inline-block" style="vertical-align: top">
+      <input id="cycShow" type="checkbox" />
       <label for="cycShow">Cyclonic Eddies</label><br />
-      <input id="anticycShow" type="checkbox"
-	     onclick="checkboxClick(event, 'antiCycTgt')" />
+      <input id="anticycShow" type="checkbox" />
       <label for="anticycShow">Anticyclonic Eddies</label><br />
-      <input id="cheltonShow" type="checkbox"
-	     onclick="checkboxClick(event, 'cheltonTgt')" />
+      <input id="cheltonShow" type="checkbox" />
       <label for="cheltonShow">Chelton Tracks</label>
   </fieldset>
-  <fieldset style="display: inline-block; vertical-align: top">
+  <fieldset class="cb-inline-block" style="vertical-align: top">
     <legend>Projection Mode</legend>
-      <select id="projectionSel" onchange="selectChanged(event, 'projSelTgt')">
+      <select id="projectionSel">
 	<option selected="selected">Equirectangular</option>
 	<option>Mercator</option>
 	<option>Orthographic</option>
@@ -425,8 +528,7 @@ function keybdActivate(event, targetName) {
       for Enter and then dispatch as necessary. -->
       <!-- onkeypress requires DOM L3 -->
       <label for="zoomFactor">Zoom Factor:</label>
-      <input id="zoomFactor" type="text" value="1"
-	     onchange="valueChanged(event, 'zoomFacTgt')" />
+      <input id="zoomFactor" type="text" value="1" />
       <p>Some extra info</p>
       <p>For some extra height</p>
       <p>Does not make a poem</p>
@@ -437,8 +539,8 @@ function keybdActivate(event, targetName) {
 </div> <!-- END Content Zone -->
 
 <form class="btest-status" action="">
-  <fieldset style="display: inline-block; text-align: right">
-    <legend style="text-align: left"><strong>Status</strong></legend>
+  <fieldset>
+    <legend>Status</legend>
     <label for="dateRstTgt">Date Reset:</label>
     <input id="dateRstTgt" class="untested"
 	   type="text" value="Untested" /><br />
@@ -454,8 +556,8 @@ function keybdActivate(event, targetName) {
     <label for="cycTgt">Cyclonic Eddies:</label>
     <input id="cycTgt" class="untested"
 	   type="text" value="Untested" /><br />
-    <label for="antiCycTgt">Anticyclonic Eddies:</label>
-    <input id="antiCycTgt" class="untested"
+    <label for="anticycTgt">Anticyclonic Eddies:</label>
+    <input id="anticycTgt" class="untested"
 	   type="text" value="Untested" /><br />
     <label for="cheltonTgt">Chelton Tracks:</label>
     <input id="cheltonTgt" class="untested"
@@ -468,6 +570,102 @@ function keybdActivate(event, targetName) {
 	   type="text" value="Untested" /><br />
   </fieldset>
 </form>
+
+<hr />
+<!-- ________________________________________ -->
+
+<h2 class="btest-header"><a name="js_pointer_canvas" id="overall_layout_test">
+    JavaScript Pointer and HTML Canvas Test</a></h2>
+
+<p class="btest-description"><strong>Description:</strong> This test
+verifies that the pointer position is being read from the browser
+correctly.  It does so by plotting a line drawing on an HTML Canvas
+indicating the path of the pointer.</p>
+
+<p class="btest-output"><strong>Expected Output:</strong> First click
+exactly on top of on the small black center point to calibrate the
+pointer translation delta.  This is used to mitigate differences in
+event handling in different browsers.  After that, click and drag
+around on the canvas.  You should see the traced line on the HTML
+Canvas follow the pointer's path exactly.</p>
+
+<p class="failed">If this requirement is not met, then the test
+fails.</p>
+
+<p><strong>Content Zone:</strong></p>
+
+<div class="btest-content">
+<canvas id="pointerTestZone" width="200" height="200"
+	style="border-style: solid; border-color: gray"></canvas>
+<script type="text/javascript">
+<!--//--><![CDATA[//><!--
+var pointerTestZone;
+var mouseDown = false;
+var buttonDown = 0;
+var lastPoint = {};
+var topLeft = {};
+var ptMSIE = msieVersion();
+lastPoint.x = 0; lastPoint.y = 0;
+
+function setMouseDown(event) {
+  if (ptMSIE <= 6 && ptMSIE > 0)
+    event = window.event;
+  mouseDown = true;
+  buttonDown = event.button;
+  lastPoint.x = event.clientX; lastPoint.y = event.clientY;
+  if (!topLeft.x) {
+    topLeft.x = lastPoint.x - 100; topLeft.y = lastPoint.y - 100;
+  }
+  return drawLineOnMove(event);
+}
+
+function drawLineOnMove(event) {
+  if (!mouseDown)
+    return;
+  if (ptMSIE <= 6 && ptMSIE > 0)
+    event = window.event;
+
+  var ctx = pointerTestZone.getContext('2d');
+  // buttonDown == 1 == IE6 compatibility
+  if (buttonDown == 0 || buttonDown == 1) {
+    ctx.strokeStyle = '#ff0000';
+  } else {
+    ctx.strokeStyle = '#ffff00';
+  }
+  ctx.beginPath();
+  ctx.moveTo(lastPoint.x - topLeft.x, lastPoint.y - topLeft.y);
+  lastPoint.x = event.clientX; lastPoint.y = event.clientY;
+  ctx.lineTo(lastPoint.x - topLeft.x, lastPoint.y - topLeft.y);
+  ctx.stroke();
+  if (ptMSIE <= 6 && ptMSIE > 0)
+    event.cancelBubble = true;
+  return false; // Cancel the default, or at least attempt to do so.
+}
+
+function setMouseUp(event) {
+  mouseDown = false;
+  return false;
+}
+
+function pointerTestInit() {
+  pointerTestZone = document.getElementById('pointerTestZone');
+  pointerTestZone.onmousedown = setMouseDown;
+  pointerTestZone.onmousemove = drawLineOnMove;
+  pointerTestZone.onmouseup = setMouseUp;
+
+  var ctx = pointerTestZone.getContext('2d');
+  ctx.fillRect(100, 100, 1, 1);
+}
+// pointerTestInit(); // Actual function call in init() above.
+//--><!]]>
+</script>
+
+</div> <!-- END Content Zone -->
+
+<p class="btest-status"><strong>Status:</strong>
+You have to verify this test manually to determine if
+it <span class="passed">passed</span>
+or <span class="failed">failed</span>.</p>
 
 </body>
 </html>

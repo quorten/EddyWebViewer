@@ -18,7 +18,8 @@ topic and a link to the topic from the table of contents."
   (interactive "MTitle: \nMAnchor: ")
   (save-excursion
     (goto-char (point-min))
-    (search-forward "<h2>Contents</h2>")
+    (search-forward
+     "<h2><a name=\"contents\" id=\"contents\">Contents</a></h2>")
     (search-forward "<!-- ________________________________________ -->")
     (search-backward "</ul>")
     (insert "  <li><a href=\"#" anchor "\">\n"

@@ -615,6 +615,9 @@ function setMouseDown(event) {
   lastPoint.x = event.clientX; lastPoint.y = event.clientY;
   if (!topLeft.x) {
     topLeft.x = lastPoint.x - 100; topLeft.y = lastPoint.y - 100;
+    var ctx = pointerTestZone.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, pointerTestZone.width, pointerTestZone.height);
   }
   return drawLineOnMove(event);
 }
@@ -654,7 +657,10 @@ function pointerTestInit() {
   pointerTestZone.onmouseup = setMouseUp;
 
   var ctx = pointerTestZone.getContext('2d');
-  ctx.fillRect(100, 100, 1, 1);
+  ctx.font = '12pt Sans';
+  ctx.fillText('Calibrate, please!', 10, ~~(pointerTestZone.height / 4));
+  ctx.fillRect(~~(pointerTestZone.width / 2),
+    ~~(pointerTestZone.height / 2), 1, 1);
 }
 // pointerTestInit(); // Actual function call in init() above.
 //--><!]]>

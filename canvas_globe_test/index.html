@@ -20,8 +20,10 @@
   var src_data;
     /* longitude rotation */
     var lon_rot = 85;
-    /* latitude rotation */
-    var lat_rot = 0;
+    /* globe tilt */
+    var tilt = 45;
+    /* globe scale */
+    var scale = 1.0;
     var rotating = 0;
   var container = document.getElementById('drawing_container');
   // Resize canvas to fit CSS allocated space.
@@ -44,18 +46,13 @@
       ec = earth_buffer.getContext('2d');
       ec.drawImage(earth_tex, 0, 0);
 
-  try {
-    try {
-      src_data = ec.getImageData(0, 0, earth_buffer.width, earth_buffer.height);
-    } catch (e) {
-// BAD QUIRK FOR LOCAL TESTING
-      alert('Your browser seems to require elevated privileges in order to read pixel data from the HTML Canvas.  You will be asked if you want to enable these elevated privileges for this script.');
-netscape.security.PrivilegeManager.enablePrivilege("UniversalBrowserRead");
-      src_data = ec.getImageData(0, 0, earth_buffer.width, earth_buffer.height);
-    }
-  } catch (e) {
-    throw new Error("unable to access image data: " + e);
-  }
+      try {
+        src_data = ec.getImageData(0, 0, earth_buffer.width,
+          earth_buffer.height);
+      } catch (e) {
+        alert('Error: Cannot read pixels from image buffer.');
+        throw new Error("unable to access image data: " + e);
+      }
 
       render_globe();
     }
@@ -73,43 +70,60 @@ function render_globe() {
     var y_center = dest_data.height / 2;
     var x_center = dest_data.width / 2;
     /* display radius */
-    var disp_rad = Math.min(dest_data.height, dest_data.width) / 2.0;
+    var disp_rad = Math.min(dest_data.height, dest_data.width) * scale / 2.0;
     for (var y = 0; y < dest_data.height; y++) {
       for (var x = 0; x < dest_data.width; x++) {
-        var lat_pre = Math.asin((y - y_center) / disp_rad / Math.cos(lat_rot * Math.PI / 180));
-        var latitude = lat_pre * 180 / Math.PI + 90;
-        var lat_scaler = (x - x_center) / disp_rad / Math.cos(lat_pre);
-        var longitude = Math.asin(lat_scaler) * 180 / Math.PI + lon_rot;
-        /* if (longitude >= 0)
-          longitude -= latitude - lat_rot;
-        else
-          longitude += latitude - lat_rot; */
+        /* 1. Get the 3D rectangular coordinate of the ray intersection
+              with the sphere.  The camera is looking down the negative
+              z axis.  */
+        var r3src_x; var r3src_y; var r3src_z;
+        r3src_y = (y - y_center) / disp_rad;
+        r3src_x = (x - x_center) / disp_rad;
+        r3src_z = Math.sin(Math.acos(Math.sqrt(Math.pow(r3src_x, 2) +
+                                      Math.pow(r3src_y, 2))));
+
+        /* 2. Inverse rotate this coordinate around the x axis by the
+              current globe tilt.  */
+        var i_tilt = -tilt * Math.PI / 180;
+        var cos_tilt = Math.cos(i_tilt); var sin_tilt = Math.sin(i_tilt);
+        var r3dest_x; var r3dest_y; var r3dest_z;
+        r3dest_x = r3src_x;
+        r3dest_z = r3src_z * cos_tilt - r3src_y * sin_tilt;
+        r3dest_y = r3src_z * sin_tilt + r3src_y * cos_tilt;
+
+        /* 3. Measure the latitude and longitude of this coordinate.  */
+        var latitude = Math.asin(r3dest_y);
+        var longitude = Math.atan2(r3dest_x, r3dest_z);
+
+        /* 4. Convert from radians to degrees.  */
+        latitude = latitude * 180 / Math.PI;
+        longitude = longitude * 180 / Math.PI;
+
+        /* 5. Inverse shift by the longitudinal rotation around the pole.  */
         longitude += lon_rot;
-        while (longitude < 0)
+
+        /* 6. Verify that the coordinates are in bounds.  */
+        latitude += 90;
+        if (latitude < 0) latitude = 0;
+        if (latitude > 180) latitude = 180;
+        while (longitude < 0) {
           longitude += 360;
-        while (longitude >= 360)
-          longitude -= 360;
-        if (latitude < 0) {
-          latitude = -latitude;
-          longitude += 180;
         }
-        while (latitude >= 360)
-          latitude -= 360;
-        if (latitude >= 180) {
-          latitude = 180 - (latitude - 180);
-          longitude += 180;
-        }
-        while (longitude >= 360)
+        while (longitude >= 360) {
           longitude -= 360;
-        // var in_circle = Math.sqrt(Math.pow(x - x_center, 2) + Math.pow(y - y_center, 2)) < disp_rad;
+        }
+
         if (!isNaN(latitude) && !isNaN(longitude)) {
-          var src_index = (src_data.width *
-                      ~~(latitude * src_data.height / 180) +
-                      ~~(longitude * src_data.width / 360)) * 4;
+          var src_y = ~~(latitude * src_data.height / 180);
+          var src_x = ~~(longitude * src_data.width / 360);
+          if (src_y == src_data.height)
+            src_y -= 1;
+          var src_index = (src_data.width * src_y + src_x) * 4;
           dest_data.data[dest_index++] = src_data.data[src_index++];
           dest_data.data[dest_index++] = src_data.data[src_index++];
           dest_data.data[dest_index++] = src_data.data[src_index++];
           dest_data.data[dest_index++] = 255;
+          continue;
         } else {
           dest_data.data[dest_index++] = 255;
           dest_data.data[dest_index++] = 0;

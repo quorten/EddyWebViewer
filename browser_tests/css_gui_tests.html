@@ -614,7 +614,8 @@ function setMouseDown(event) {
   buttonDown = event.button;
   lastPoint.x = event.clientX; lastPoint.y = event.clientY;
   if (!topLeft.x) {
-    topLeft.x = lastPoint.x - 100; topLeft.y = lastPoint.y - 100;
+    topLeft.x = lastPoint.x - pointerTestZone.width / 2;
+    topLeft.y = lastPoint.y - pointerTestZone.height / 2;
     var ctx = pointerTestZone.getContext('2d');
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, pointerTestZone.width, pointerTestZone.height);

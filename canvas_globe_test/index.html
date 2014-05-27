@@ -4,18 +4,16 @@
   <meta charset="utf-8" />
   <title>HTML 5 Canvas Test</title>
 </head>
-<body style="margin: 0; padding: 0; height: 100%"
-      onkeydown="keyEvent(event)">
+<body style="margin: 0; padding: 0; height: 100%">
 
 <div id="drawing_container"
-     style="margin: 0px auto; width: 6in; height: 5in; min-height: 100%; border-style: solid; border-color: black; overflow: hidden"
-     onmousedown="if (!rotating) rotating = window.setTimeout(periodic_render, 10); else rotating = 0;">
+     style="margin: 0px auto; width: 6in; height: 5in; min-height: 100%; border-style: solid; border-color: black; overflow: hidden">
   <canvas id="drawing_pad" width="1" height="1" />
 </div>
 
 <script>
   var canvas = document.getElementById('drawing_pad');
-  var c = canvas.getContext('2d');
+  var ctx = canvas.getContext('2d');
   var ec;
   var src_data;
     /* longitude rotation */
@@ -54,86 +52,232 @@
         throw new Error("unable to access image data: " + e);
       }
 
-      render_globe();
+      // render_globe();
     }
-    // earth_tex.src = "Equirectangular_projection_SW.png";
-    earth_tex.src = "test_grs2rgb.png";
+    earth_tex.src = "Equirectangular_projection_SW.png";
+    // earth_tex.src = "test_grs2rgb.png";
   }
+
+  /* {
+    var drawing_container = document.getElementById('drawing_container');
+    drawing_container.onkeydown = keyEvent;
+    drawing_container.onmousedown = function() {
+      if (!rotating) rotating = window.setTimeout(periodic_render, 10);
+      else rotating = 0;
+    };
+  } */
+
+// ----------------------------------------
+
+/* Return Microsoft Internet Explorer (major) version number, or 0 for
+   others.  This function works by finding the "MSIE " string and
+   extracting the version number following the space, up to the
+   semicolon.  */
+function msieVersion() {
+  var ua = window.navigator.userAgent;
+  var msie = ua.indexOf("MSIE ");
+
+  if (msie > 0)
+    return parseFloat (ua.substring(msie + 5, ua.indexOf(";", msie)));
+  return 0; // is a different browser
+}
+
+var mouseDown = false;
+var buttonDown = 0;
+var firstPoint = {};
+var topLeft = {};
+var ptMSIE = msieVersion();
+firstPoint.x = 0; firstPoint.y = 0;
+
+var old_lon_rot;
+var old_tilt;
+
+function setMouseDown(event) {
+  if (ptMSIE <= 6 && ptMSIE > 0)
+    event = window.event;
+  mouseDown = true;
+  buttonDown = event.button;
+  firstPoint.x = event.clientX; firstPoint.y = event.clientY;
+  if (!topLeft.x) {
+    topLeft.x = firstPoint.x - canvas.width / 2;
+    topLeft.y = firstPoint.y - canvas.height / 2;
+    var ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }
+  old_lon_rot = lon_rot;
+  old_tilt = tilt;
+}
+
+function panGlobe(event) {
+  if (!mouseDown)
+    return;
+  if (ptMSIE <= 6 && ptMSIE > 0)
+    event = window.event;
+
+  var ctx = canvas.getContext('2d');
+
+  /* var disp_rad = Math.min(canvas.height, canvas.width) * scale / 2.0;
+  var first_ang_x = Math.asin((firstPoint.x - canvas.width / 2) / disp_rad);
+  var first_ang_y = Math.asin((firstPoint.y - canvas.width / 2) / disp_rad);
+  var cur_ang_x = Math.asin((event.clientX - canvas.width / 2) / disp_rad);
+  var cur_ang_y = Math.asin((event.clientY - canvas.width / 2) / disp_rad);
+
+  if (isNaN(first_ang_x) || isNaN(first_ang_y) ||
+      isNaN(cur_ang_x) || isNaN(cur_ang_y))
+    return;
+
+  lon_rot = old_lon_rot + first_ang_y - cur_ang_y;
+  tilt = old_tilt - (first_ang_x - cur_ang_x); */
+
+  lon_rot = old_lon_rot + (firstPoint.x - event.clientX) /
+    canvas.width / scale * 180;
+  tilt = old_tilt - (firstPoint.y - event.clientY) /
+    canvas.height / scale * 180;
+
+  if (tilt > 90) tilt = 90;
+  if (tilt < -90) tilt = -90;
+  while (lon_rot < 0) lon_rot += 360;
+  while (lon_rot >= 360) lon_rot -= 360;
+
+  // TODO: This should use a queue_render_job() function so that
+  // multiple events don't get bottled up and make the UI slow.
+  render_globe();
+
+  if (ptMSIE <= 6 && ptMSIE > 0)
+    event.cancelBubble = true;
+  return false; // Cancel the default, or at least attempt to do so.
+}
+
+function setMouseUp(event) {
+  mouseDown = false;
+  render_globe();
+  return false;
+}
+
+function zoomGlobe(event) {
+  if (event.deltaMode == 0x01) { // DOM_DELTA_LINE
+    if (event.deltaY < 0)
+      scale *= (event.deltaY / 3) * -1.1;
+    else
+      scale /= (event.deltaY / 3) * 1.1;
+  }
+  render_globe();
+  return false;
+}
+
+function pointerTestInit() {
+  canvas = document.getElementById('drawing_pad');
+  canvas.onmousedown = setMouseDown;
+  canvas.onmousemove = panGlobe;
+  canvas.onmouseup = setMouseUp;
+  canvas.onwheel = zoomGlobe;
+
+  ctx.font = '12pt Sans';
+  ctx.fillText('Calibrate, please!', 10, ~~(canvas.height / 4));
+  ctx.fillRect(~~(canvas.width / 2),
+    ~~(canvas.height / 2), 1, 1);
+}
+
+pointerTestInit();
+
+// ----------------------------------------
 
 // TODO: This function should be a tile-based rendering engine that
 // gets called from a callback to complete the render.  In general,
 // JavaScript cannot support threads.
 function render_globe() {
-  { // Project and render the image.
-    var dest_data = c.createImageData(canvas.width, canvas.height);
-    var dest_index = 0;
-    var y_center = dest_data.height / 2;
-    var x_center = dest_data.width / 2;
-    /* display radius */
-    var disp_rad = Math.min(dest_data.height, dest_data.width) * scale / 2.0;
-    for (var y = 0; y < dest_data.height; y++) {
-      for (var x = 0; x < dest_data.width; x++) {
-        /* 1. Get the 3D rectangular coordinate of the ray intersection
-              with the sphere.  The camera is looking down the negative
-              z axis.  */
-        var r3src_x; var r3src_y; var r3src_z;
-        r3src_y = (y - y_center) / disp_rad;
-        r3src_x = (x - x_center) / disp_rad;
-        r3src_z = Math.sin(Math.acos(Math.sqrt(Math.pow(r3src_x, 2) +
-                                      Math.pow(r3src_y, 2))));
+  // Project and render the image.
+  var dest_data = ctx.createImageData(canvas.width, canvas.height);
+  var dest_index = 0;
+  var y_center = dest_data.height / 2;
+  var x_center = dest_data.width / 2;
+  /* display radius */
+  var disp_rad = Math.min(dest_data.height, dest_data.width) * scale / 2.0;
+  for (var y = 0; y < dest_data.height; y++) {
+    for (var x = 0; x < dest_data.width; x++) {
+      /* 1. Get the 3D rectangular coordinate of the ray intersection
+            with the sphere.  The camera is looking down the negative
+            z axis.  */
+      var r3src_x, r3src_y, r3src_z;
+      // Orthographic projection
+      /* r3src_y = (y - y_center) / disp_rad;
+      r3src_x = (x - x_center) / disp_rad;
+      r3src_z = Math.sin(Math.acos(Math.sqrt(Math.pow(r3src_x, 2) +
+                                      Math.pow(r3src_y, 2)))); */
 
-        /* 2. Inverse rotate this coordinate around the x axis by the
-              current globe tilt.  */
-        var i_tilt = -tilt * Math.PI / 180;
-        var cos_tilt = Math.cos(i_tilt); var sin_tilt = Math.sin(i_tilt);
-        var r3dest_x; var r3dest_y; var r3dest_z;
-        r3dest_x = r3src_x;
-        r3dest_z = r3src_z * cos_tilt - r3src_y * sin_tilt;
-        r3dest_y = r3src_z * sin_tilt + r3src_y * cos_tilt;
+      { // Perspective projection
+        // r must be one in the current algorithm
+        var r = 1; // 6371; // radius of the earth in kilometers
+        var d = 5.617; // 35786; // altitude in kilometers
+        // focal length in units of the screen dimensions
+        var f = 1 / Math.tan(19 * Math.PI / 180 / 2);
+        var x_pix = (x - x_center) / disp_rad;
+        var y_pix = (y - y_center) / disp_rad;
 
-        /* 3. Measure the latitude and longitude of this coordinate.  */
-        var latitude = Math.asin(r3dest_y);
-        var longitude = Math.atan2(r3dest_x, r3dest_z);
+        var w = (Math.pow(x_pix, 2) + Math.pow(y_pix, 2)) / Math.pow(f, 2);
 
-        /* 4. Convert from radians to degrees.  */
-        latitude = latitude * 180 / Math.PI;
-        longitude = longitude * 180 / Math.PI;
+        var a = 1 + w;
+        var b = -2 * w * (r + d);
+        var c = w * Math.pow(r + d, 2) - Math.pow(r, 2);
 
-        /* 5. Inverse shift by the longitudinal rotation around the pole.  */
-        longitude += lon_rot;
+        r3src_z = (-b + Math.sqrt(Math.pow(b, 2) - 4 * a * c)) / (2 * a);
+        r3src_x = -x_pix / f * (r3src_z - (r + d));
+        r3src_y = -y_pix / f * (r3src_z - (r + d));
+      }
 
-        /* 6. Verify that the coordinates are in bounds.  */
-        latitude += 90;
-        if (latitude < 0) latitude = 0;
-        if (latitude > 180) latitude = 180;
-        while (longitude < 0) {
-          longitude += 360;
-        }
-        while (longitude >= 360) {
-          longitude -= 360;
-        }
+      /* 2. Inverse rotate this coordinate around the x axis by the
+            current globe tilt.  */
+      var i_tilt = -tilt * Math.PI / 180;
+      var cos_tilt = Math.cos(i_tilt); var sin_tilt = Math.sin(i_tilt);
+      var r3dest_x, r3dest_y, r3dest_z;
+      r3dest_x = r3src_x;
+      r3dest_z = r3src_z * cos_tilt - r3src_y * sin_tilt;
+      r3dest_y = r3src_z * sin_tilt + r3src_y * cos_tilt;
 
-        if (!isNaN(latitude) && !isNaN(longitude)) {
-          var src_y = ~~(latitude * src_data.height / 180);
-          var src_x = ~~(longitude * src_data.width / 360);
-          if (src_y == src_data.height)
-            src_y -= 1;
-          var src_index = (src_data.width * src_y + src_x) * 4;
-          dest_data.data[dest_index++] = src_data.data[src_index++];
-          dest_data.data[dest_index++] = src_data.data[src_index++];
-          dest_data.data[dest_index++] = src_data.data[src_index++];
-          dest_data.data[dest_index++] = 255;
-          continue;
-        } else {
-          dest_data.data[dest_index++] = 255;
-          dest_data.data[dest_index++] = 0;
-          dest_data.data[dest_index++] = 0;
-          dest_data.data[dest_index++] = 255;
-        }
+      /* 3. Measure the latitude and longitude of this coordinate.  */
+      var latitude = Math.asin(r3dest_y);
+      var longitude = Math.atan2(r3dest_x, r3dest_z);
+
+      /* 4. Convert from radians to degrees.  */
+      latitude = latitude * 180 / Math.PI;
+      longitude = longitude * 180 / Math.PI;
+
+      /* 5. Inverse shift by the longitudinal rotation around the pole.  */
+      longitude += lon_rot;
+
+      /* 6. Verify that the coordinates are in bounds.  */
+      latitude += 90;
+      if (latitude < 0) latitude = 0;
+      if (latitude > 180) latitude = 180;
+      while (longitude < 0) {
+        longitude += 360;
+      }
+      while (longitude >= 360) {
+        longitude -= 360;
+      }
+
+      if (!isNaN(latitude) && !isNaN(longitude)) {
+        var src_y = ~~(latitude * src_data.height / 180);
+        var src_x = ~~(longitude * src_data.width / 360);
+        if (src_y == src_data.height)
+          src_y -= 1;
+        var src_index = (src_data.width * src_y + src_x) * 4;
+        dest_data.data[dest_index++] = src_data.data[src_index++];
+        dest_data.data[dest_index++] = src_data.data[src_index++];
+        dest_data.data[dest_index++] = src_data.data[src_index++];
+        dest_data.data[dest_index++] = 255;
+        continue;
+      } else {
+        dest_data.data[dest_index++] = 255;
+        dest_data.data[dest_index++] = 0;
+        dest_data.data[dest_index++] = 0;
+        dest_data.data[dest_index++] = 255;
       }
     }
-    c.putImageData(dest_data, 0, 0);
   }
+
+  ctx.putImageData(dest_data, 0, 0);
 }
 
 function periodic_render() {
@@ -169,45 +313,6 @@ function keyEvent (event) {
 
   render_globe();
 }
-
-/* //create a new 300 x 300 pixel buffer
-var data = c.createImageData(300,200);
-
-//loop over every pixel
-for(var x=0; x < data.width; x++) {
-    for(var y=0; y < data.height; y++) {
-        
-        var val = 0;
-        var horz = (Math.floor(x/4) % 2 == 0); //loop every 4 pixels
-        var vert = (Math.floor(y/4) % 2 == 0); // loop every 4 pixels
-        if( (horz && !vert) || (!horz && vert)) {
-            val = 255;
-        } else {
-            val = 0;
-        }
-        
-        var index = (y*data.width+x)*4;  //calculate index
-        data.data[index] = val;   // red
-        data.data[index+1] = val; // green
-        data.data[index+2] = val; // blue
-        data.data[index+3] = 255; // force alpha to 100%
-    }
-}
-//set the data back
-c.putImageData(data,0,0); */
-
-
-  /* c.beginPath();
-  c.fillStyle = "#aaffaa";
-  c.strokeStyle = "#ff0000";
-  c.lineCap = "round";
-  c.lineJoin = "round";
-  c.lineWidth = 15;
-  c.fillRect(0, 0, canvas.width, canvas.height);
-  c.moveTo(32, 32);
-  c.lineTo(canvas.width - 32, canvas.height - 32);
-  c.lineTo(canvas.width / 2, 32);
-  c.stroke(); */
 </script>
 
 </body>

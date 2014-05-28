@@ -141,6 +141,7 @@ function refreshOverlay() {
   // Render the eddy tracks.
   ec.lineWidth = 5;
   ec.strokeStyle = '#ff8000';
+  ec.lineJoin = 'round';
   for (var i = 0; i < eddyTracks.length; i++) {
     ec.beginPath();
     var lon = eddyTracks[i].coordinates[0].lon;
@@ -333,6 +334,8 @@ function pointerTestInit() {
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   ctx.fillStyle = '#000000';
   ctx.fillText('Calibrate, please!', 10, ~~(canvas.height / 4));
+  ctx.fillText('Click on the dot in the center.',
+	       10, ~~(canvas.height * 3 / 4));
   ctx.fillRect(~~(canvas.width / 2),
     ~~(canvas.height / 2), 1, 1);
 }

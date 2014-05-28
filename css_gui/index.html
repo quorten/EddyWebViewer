@@ -42,10 +42,17 @@
 
 function initGUIHooks() {
   document.getElementById('gui.projMethod').onchange = function(event) {
-    if (this.options[this.selectedIndex].text == 'Perspective')
+    var choice = this.options[this.selectedIndex].text;
+    if (choice == 'Perspective') {
       persp_project = true;
-    else
+      equirect_project = false;
+    } else if (choice == 'Equirectangular') {
       persp_project = false;
+      equirect_project = true;
+    } else {
+      persp_project = false;
+      equirect_project = false;
+    }
     render_globe();
   };
 

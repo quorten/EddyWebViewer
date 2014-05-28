@@ -17,6 +17,8 @@ var lon_rot = 180;
 var tilt = 0;
 // perspective or orthographic projection?
 var persp_project = false;
+// Equirectangular projection?
+var equirect_project = false;
 // orthographic globe scale
 var scale = 1.0;
 // perspective altitude
@@ -219,14 +221,20 @@ function panGlobe(event) {
   tilt = old_tilt - (first_ang_x - cur_ang_x); */
 
   var pan_scale;
+  var equirect_scale_x = 1;
+  var equirect_scale_y = 1;
   if (!persp_project)
     pan_scale = scale;
   else
     pan_scale = 1; // TODO: Do more complicated calculation
+  if (equirect_project) {
+    equirect_scale_x = 2;
+    equirect_scale_y = 2 * canvas.height / canvas.width;
+  }
   lon_rot = old_lon_rot + (firstPoint.x - event.clientX) /
-    canvas.width / pan_scale * 180;
+    canvas.width / pan_scale * equirect_scale_x * 180;
   tilt = old_tilt - (firstPoint.y - event.clientY) /
-    canvas.height / pan_scale * 180;
+    canvas.height / pan_scale * equirect_scale_y * 180;
 
   if (tilt > 90) tilt = 90;
   if (tilt < -90) tilt = -90;
@@ -314,6 +322,8 @@ function pointerTestInit() {
 // gets called from a callback to complete the render.  In general,
 // JavaScript cannot support threads.
 function render_globe() {
+  if (equirect_project)
+    return render_map();
   if (render_in_prog)
     return;
   render_in_prog = true;
@@ -413,6 +423,26 @@ function render_globe() {
   }
 
   ctx.putImageData(dest_data, 0, 0);
+  render_in_prog = false;
+}
+
+/* This function just copies the backbuffer to the frontbuffer, with
+   the correct shifting and scaling factors.  */
+function render_map() {
+  if (render_in_prog)
+    return;
+  render_in_prog = true;
+
+  var screen_scalfac = canvas.width * scale;
+  var x_shift = (180 - lon_rot) / 360 * screen_scalfac - screen_scalfac / 2;
+  var y_shift = tilt / 360 * screen_scalfac - screen_scalfac / 4;
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(earth_buffer, 0, 0, earth_buffer.width, earth_buffer.height,
+		x_shift + canvas.width / 2,
+                y_shift + canvas.height / 2,
+                screen_scalfac, screen_scalfac / 2);
+
   render_in_prog = false;
 }
 

@@ -276,20 +276,21 @@ implementation of the Eddy Web Viewer.</p>
 <p>Future goals:</p>
 
 <ul>
-  <li>Data parsing and loading</li>
   <li>Server side data generation</li>
-  <li>Browser feature test suite</li>
   <li>Icosahedron isosphere mesh equal angle subdivision (used only
   for native non-web viewer running on older graphics hardware with a
   fixed function pipeline)</li>
+  <li>Read and visualize large scale data in the web viewer.</li>
 </ul>
 
 <p>Work in progress:</p>
 
 <ul>
   <li>This info document</li>
-  <li>Transforming between lat/lon and map projections</li>
-  <li>Building the CSS user interface</li>
+  <li>Browser feature test suite</li>
+  <li>Transforming lat/lon for additional map projections.</li>
+  <li>Connect the CSS UI to the current code base.</li>
+  <li>Improve the organization the current code base.</li>
 </ul>
 
 <p>Completed goals:</p>
@@ -298,6 +299,8 @@ implementation of the Eddy Web Viewer.</p>
   <li>Overview of the project and overarching organizing
   notes/documentation.</li>
   <li>Initial working implementation of the eddy web viewer.</li>
+  <li>Transforming lat/lon for essential map projections.</li>
+  <li>Built the CSS user interface.</li>
 </ul>
 
 <hr />
@@ -737,6 +740,28 @@ panels: a top panel (topbar) and a side panel (sidebar).</p>
 coordinates.  These modules are also used by the UI scripts to
 determine the latitude and logitude from a pixel selected on
 screen.</p>
+
+<p>The renderer needs to provide fast wireframe rendering of the
+grid and land masses for scrolling the maps.</p>
+
+<p>The renderer needs to provide special rendering modes for rendering
+"2D" projections.  2D projections are the projections that do not need
+to compute the inverse tilt transformation in three dimensions.  These
+projections are special because it is possible to support a wider
+range of browser compatibility with these projections than is the case
+for the 3D projections.</p>
+
+<p>For the 3D projections, there is a 2D backbuffer where SSH, land
+masses, and track rendering is performed on.  At higher zoom levels,
+this backbuffer will need to be rendered at a higher resolution.  At
+the same time, only a smaller portion of the map will be visible.
+Thus, for a responsive UI, only the visible portion of the map should
+be rendered.  Also, it is not practical to store very high resolution
+maps prerendered, so the backbuffer will act as a local cache in this
+case, only storing prerenders for closely surrounding areas at the
+same zoom level.  In order for this to work well, a quadtree or
+kd-tree is also needed to quickly lookup only the eddies that are
+within the visible map area.</p>
 
 <h3>Data I/O</h3>
 

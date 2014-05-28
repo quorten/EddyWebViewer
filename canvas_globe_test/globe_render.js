@@ -1,9 +1,14 @@
 // Global variables for this module only
 var canvas;
 var ctx;
-var ec;
-var src_data;
+
 var earth_buffer;
+var ec;
+var earth_tex;
+var ssh_tex;
+var eddyTracks;
+var src_data;
+
 var httpRequest;
 
 var rotating = 0;
@@ -25,6 +30,10 @@ var scale = 1.0;
 var persp_altitude = 35786;
 // perspective field of view
 var persp_fov = 19.0;
+// Render the sea surface height data
+var render_ssh = true;
+// Render textured land masses
+var render_land_tex = true;
 
 function initCTModule() {
   var drawingContainer = document.getElementById('drawingContainer');
@@ -58,48 +67,10 @@ function finishStartup() {
       if (ajaxDebug)
         ajaxDebug.innerHTML = httpRequest.responseText;
 
-      var eddyTracks = JSON.parse(httpRequest.responseText);
+      eddyTracks = JSON.parse(httpRequest.responseText);
       // alert(eddyTracks[0].coordinates[0].lon);
 
-      // Render the eddy tracks.
-      ec.lineWidth = 5;
-      ec.strokeStyle = '#ff8000';
-      for (var i = 0; i < eddyTracks.length; i++) {
-        ec.beginPath();
-        var lon = eddyTracks[i].coordinates[0].lon;
-        var lat = eddyTracks[i].coordinates[0].lat;
-        var map_x = (lon + 180) / 360 * earth_buffer.width;
-        var map_y = (90 - lat) / 180 * earth_buffer.height;
-        ec.moveTo(map_x, map_y);
-        for (var j = 1; j < eddyTracks[i].coordinates.length; j++) {
-          lon = eddyTracks[i].coordinates[j].lon;
-          lat = eddyTracks[i].coordinates[j].lat;
-          map_x = (lon + 180) / 360 * earth_buffer.width;
-          map_y = (90 - lat) / 180 * earth_buffer.height;
-          ec.lineTo(map_x, map_y);
-        }
-        ec.stroke();
-      }
-
-      /* Draw a V that looks like a heart when projected onto a globe
-         to finish off.  */
-      ec.lineWidth = 20;
-      ec.strokeStyle = '#800000';
-      ec.beginPath();
-      ec.moveTo(0, 0);
-      ec.lineTo(earth_buffer.width / 2, earth_buffer.height / 2);
-      ec.lineTo(earth_buffer.width, 0);
-      ec.stroke();
-      ec.strokeStyle = '#00ff00';
-
-      try {
-        src_data = ec.getImageData(0, 0, earth_buffer.width,
-          earth_buffer.height);
-      } catch (e) {
-        alert('Error: Cannot read pixels from image buffer.');
-        throw new Error("unable to access image data: " + e);
-      }
-
+      refreshOverlay();
       pointerTestInit();
     } else {
       // alert('There was a problem with the request.');
@@ -110,16 +81,16 @@ function finishStartup() {
 // NOTE: Verify if HTML 5 style image loading works with IE6.
 function initOverlay() {
   // WARNING: Large image loading is slow.
-  var earth_tex = new Image();
+  earth_tex = new Image();
   earth_tex.onload = function () {
     earth_buffer.width = earth_tex.width;
     earth_buffer.height = earth_tex.height;
     ec = earth_buffer.getContext('2d');
-    ec.drawImage(earth_tex, 0, 0, earth_buffer.width, earth_buffer.height);
+    // ec.drawImage(earth_tex, 0, 0, earth_buffer.width, earth_buffer.height);
 
-    var ssh_tex = new Image();
+    ssh_tex = new Image();
     ssh_tex.onload = function() {
-      ec.drawImage(ssh_tex, 0, 0, earth_buffer.width, earth_buffer.height);
+      // ec.drawImage(ssh_tex, 0, 0, earth_buffer.width, earth_buffer.height);
 
       { // Load the eddy tracks.
         // var httpRequest;
@@ -156,6 +127,56 @@ function initOverlay() {
       else rotating = 0;
     };
   } */
+
+// Refresh the backbuffer with any possible UI changes taking effect.
+function refreshOverlay() {
+  ec.clearRect(0, 0, earth_buffer.width, earth_buffer.height);
+
+  if (render_land_tex)
+    ec.drawImage(earth_tex, 0, 0, earth_buffer.width, earth_buffer.height);
+
+  if (render_ssh)
+    ec.drawImage(ssh_tex, 0, 0, earth_buffer.width, earth_buffer.height);
+
+  // Render the eddy tracks.
+  ec.lineWidth = 5;
+  ec.strokeStyle = '#ff8000';
+  for (var i = 0; i < eddyTracks.length; i++) {
+    ec.beginPath();
+    var lon = eddyTracks[i].coordinates[0].lon;
+    var lat = eddyTracks[i].coordinates[0].lat;
+    var map_x = (lon + 180) / 360 * earth_buffer.width;
+    var map_y = (90 - lat) / 180 * earth_buffer.height;
+    ec.moveTo(map_x, map_y);
+    for (var j = 1; j < eddyTracks[i].coordinates.length; j++) {
+      lon = eddyTracks[i].coordinates[j].lon;
+      lat = eddyTracks[i].coordinates[j].lat;
+      map_x = (lon + 180) / 360 * earth_buffer.width;
+      map_y = (90 - lat) / 180 * earth_buffer.height;
+      ec.lineTo(map_x, map_y);
+    }
+    ec.stroke();
+  }
+
+  /* Draw a V that looks like a heart when projected onto a globe
+     to finish off.  */
+  ec.lineWidth = 20;
+  ec.strokeStyle = '#800000';
+  ec.beginPath();
+  ec.moveTo(0, 0);
+  ec.lineTo(earth_buffer.width / 2, earth_buffer.height / 2);
+  ec.lineTo(earth_buffer.width, 0);
+  ec.stroke();
+  ec.strokeStyle = '#00ff00';
+
+  try {
+    src_data = ec.getImageData(0, 0, earth_buffer.width,
+			       earth_buffer.height);
+  } catch (e) {
+    alert('Error: Cannot read pixels from image buffer.');
+    throw new Error("unable to access image data: " + e);
+  }
+}
 
 // ----------------------------------------
 
@@ -411,7 +432,7 @@ function render_globe() {
         dest_data.data[dest_index++] = src_data.data[src_index++];
         dest_data.data[dest_index++] = src_data.data[src_index++];
         dest_data.data[dest_index++] = src_data.data[src_index++];
-        dest_data.data[dest_index++] = 255;
+        dest_data.data[dest_index++] = src_data.data[src_index++];
         continue;
       } else {
         dest_data.data[dest_index++] = 255;

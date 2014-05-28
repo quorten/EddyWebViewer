@@ -76,7 +76,27 @@ function initGUIHooks() {
     tilt = +parts[0];
     lon_rot = (+parts[2]) + 180;
     render_globe();
-  }
+  };
+
+  document.getElementById('gui.landMass').onchange = function(event) {
+    var choice = this.options[this.selectedIndex].text;
+    if (choice == 'Textured')
+      render_land_tex = true;
+    else
+      render_land_tex = false;
+    refreshOverlay();
+    render_globe();
+  };
+
+  document.getElementById('gui.sshPal').onchange = function(event) {
+    var choice = this.options[this.selectedIndex].text;
+    if (choice == 'MATLAB')
+      render_ssh = true;
+    else if (choice == 'None')
+      render_ssh = false;
+    refreshOverlay();
+    render_globe();
+  };
 }
 
   --></script>

@@ -160,14 +160,14 @@ function refreshOverlay() {
 
   /* Draw a V that looks like a heart when projected onto a globe
      to finish off.  */
-  ec.lineWidth = 20;
+  /* ec.lineWidth = 20;
   ec.strokeStyle = '#800000';
   ec.beginPath();
   ec.moveTo(0, 0);
   ec.lineTo(earth_buffer.width / 2, earth_buffer.height / 2);
   ec.lineTo(earth_buffer.width, 0);
   ec.stroke();
-  ec.strokeStyle = '#00ff00';
+  ec.strokeStyle = '#00ff00'; */
 
   try {
     src_data = ec.getImageData(0, 0, earth_buffer.width,

@@ -11,7 +11,10 @@
   <canvas id="drawing_pad" width="1" height="1" />
 </div>
 
-<script>
+<div id="ajaxDebug">
+</div>
+
+<script><!--
   var canvas = document.getElementById('drawing_pad');
   var ctx = canvas.getContext('2d');
   var ec;
@@ -20,8 +23,10 @@
     var lon_rot = 85;
     /* globe tilt */
     var tilt = 45;
-    /* globe scale */
+    /* orthographic globe scale */
     var scale = 1.0;
+    /* perspective or orthographic projection? */
+    var persp_project = false;
     var rotating = 0;
   var container = document.getElementById('drawing_container');
   // Resize canvas to fit CSS allocated space.
@@ -33,16 +38,49 @@
   // Create a backbuffer canvas to pull pixels from.
   var earth_buffer = document.createElement('canvas');
   earth_buffer.id = 'earth_buffer';
+  var httpRequest;
 
-  // NOTE: Verify if HTML 5 style image loading works with IE6.
+function finishStartup() {
 
-  { // WARNING: Large image loading is slow.
-    var earth_tex = new Image();
-    earth_tex.onload = function () {
-      earth_buffer.width = earth_tex.width;
-      earth_buffer.height = earth_tex.height;
-      ec = earth_buffer.getContext('2d');
-      ec.drawImage(earth_tex, 0, 0);
+  if (httpRequest.readyState === 4) {
+    if (httpRequest.status === 200) {
+
+      var ajaxDebug = document.getElementById('ajaxDebug');
+      ajaxDebug.innerHTML = httpRequest.responseText;
+
+      var eddyTracks = JSON.parse(httpRequest.responseText);
+      // alert(eddyTracks[0].coordinates[0].lon);
+
+      // Render the eddy tracks.
+      ec.lineWidth = 5;
+      ec.strokeStyle = '#ff8000';
+      for (var i = 0; i < eddyTracks.length; i++) {
+        ec.beginPath();
+        var lon = eddyTracks[i].coordinates[0].lon;
+        var lat = eddyTracks[i].coordinates[0].lat;
+        var map_x = (lon + 180) / 360 * earth_buffer.width;
+        var map_y = (90 - lat) / 180 * earth_buffer.height;
+        ec.moveTo(map_x, map_y);
+        for (var j = 1; j < eddyTracks[i].coordinates.length; j++) {
+          lon = eddyTracks[i].coordinates[j].lon;
+          lat = eddyTracks[i].coordinates[j].lat;
+          map_x = (lon + 180) / 360 * earth_buffer.width;
+          map_y = (90 - lat) / 180 * earth_buffer.height;
+          ec.lineTo(map_x, map_y);
+        }
+        ec.stroke();
+      }
+
+      /* Draw a V that looks like a heart when projected onto a globe
+         to finish off.  */
+      ec.lineWidth = 20;
+      ec.strokeStyle = '#800000';
+      ec.beginPath();
+      ec.moveTo(0, 0);
+      ec.lineTo(earth_buffer.width / 2, earth_buffer.height / 2);
+      ec.lineTo(earth_buffer.width, 0);
+      ec.stroke();
+      ec.strokeStyle = '#00ff00';
 
       try {
         src_data = ec.getImageData(0, 0, earth_buffer.width,
@@ -53,9 +91,51 @@
       }
 
       // render_globe();
+    } else {
+      // alert('There was a problem with the request.');
     }
+  }
+}
+
+  // NOTE: Verify if HTML 5 style image loading works with IE6.
+
+  { // WARNING: Large image loading is slow.
+    var earth_tex = new Image();
+    earth_tex.onload = function () {
+      earth_buffer.width = earth_tex.width;
+      earth_buffer.height = earth_tex.height;
+      ec = earth_buffer.getContext('2d');
+      ec.drawImage(earth_tex, 0, 0, earth_buffer.width, earth_buffer.height);
+
+      var ssh_tex = new Image();
+      ssh_tex.onload = function() {
+        ec.drawImage(ssh_tex, 0, 0, earth_buffer.width, earth_buffer.height);
+
+        { // Load the eddy tracks.
+          // var httpRequest;
+          if (window.XMLHttpRequest) // Mozilla, Safari, ...
+            httpRequest = new XMLHttpRequest();
+          else if (window.ActiveXObject) // IE 8 and older
+            httpRequest = new ActiveXObject("Microsoft.XMLHTTP");
+            // Plus we would need lots of error handling...
+          if (!httpRequest) {
+            alert('Could not create an XMLHttpRequest.');
+            // return;
+          }
+          httpRequest.onreadystatechange = finishStartup;
+          httpRequest.open('GET', '../web_eddy_viewer_test/eddy_tracks.json', true);
+          httpRequest.send();
+        }
+      }
+      ssh_tex.src = "test_grs2rgb.png";
+    }
+    /* NOTE: The equirectangular map projection of the Earth land
+       masses was from Wikipedia:
+       http://en.wikipedia.org/wiki/File:Equirectangular_projection_SW.jpg
+
+       The PNG version had the black surrounding border trimmed off.
+    */
     earth_tex.src = "Equirectangular_projection_SW.png";
-    // earth_tex.src = "test_grs2rgb.png";
   }
 
   /* {
@@ -161,6 +241,11 @@ function zoomGlobe(event) {
       scale *= (event.deltaY / 3) * -1.1;
     else
       scale /= (event.deltaY / 3) * 1.1;
+  } else if (event.deltaMode == 0x00) { // DOM_DELTA_PIXEL
+    if (event.deltaY < 0)
+      scale *= (event.deltaY / 53) * -1.1;
+    else
+      scale /= (event.deltaY / 53) * 1.1;
   }
   render_globe();
   return false;
@@ -200,13 +285,15 @@ function render_globe() {
             with the sphere.  The camera is looking down the negative
             z axis.  */
       var r3src_x, r3src_y, r3src_z;
-      // Orthographic projection
-      /* r3src_y = (y - y_center) / disp_rad;
-      r3src_x = (x - x_center) / disp_rad;
-      r3src_z = Math.sin(Math.acos(Math.sqrt(Math.pow(r3src_x, 2) +
-                                      Math.pow(r3src_y, 2)))); */
 
-      { // Perspective projection
+      if (!persp_project) {
+        // Orthographic projection
+        r3src_y = (y - y_center) / disp_rad;
+        r3src_x = (x - x_center) / disp_rad;
+        r3src_z = Math.sin(Math.acos(Math.sqrt(Math.pow(r3src_x, 2) +
+                                               Math.pow(r3src_y, 2))));
+      } else {
+        // Perspective projection
         // r must be one in the current algorithm
         var r = 1; // 6371; // radius of the earth in kilometers
         var d = 5.617; // 35786; // altitude in kilometers
@@ -313,7 +400,7 @@ function keyEvent (event) {
 
   render_globe();
 }
-</script>
+--></script>
 
 </body>
 </html>

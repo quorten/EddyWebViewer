@@ -7,28 +7,39 @@ var earth_buffer;
 var httpRequest;
 
 var rotating = 0;
+var render_in_prog = false;
 
 // GUI parameters
 
 // longitude rotation
-var lon_rot = 85;
+var lon_rot = 180;
 // globe tilt
-var tilt = 45;
-// orthographic globe scale
-var scale = 1.0;
+var tilt = 0;
 // perspective or orthographic projection?
 var persp_project = false;
+// orthographic globe scale
+var scale = 1.0;
+// perspective altitude
+var persp_altitude = 35786;
+// perspective field of view
+var persp_fov = 19.0;
 
 function initCTModule() {
+  var drawingContainer = document.getElementById('drawingContainer');
   canvas = document.getElementById('drawingPad');
+  if (!canvas) {
+    canvas = document.createElement('canvas');
+    canvas.id = 'drawingPad';
+    canvas.style.cssText = 'display: none';
+    drawingContainer.appendChild(canvas);
+  }
   ctx = canvas.getContext('2d');
 
   // Resize canvas to fit CSS allocated space.
   // Warning: clientWidth and clientHeight marked as unstable in MDN.
-  var drawingContainer = document.getElementById('drawingContainer');
   canvas.width = drawingContainer.clientWidth;
   canvas.height = drawingContainer.clientHeight;
-// window.innerWidth, window.innerHeight
+  // window.innerWidth, window.innerHeight
 
   // Create a backbuffer canvas to pull pixels from.
   earth_buffer = document.createElement('canvas');
@@ -87,7 +98,7 @@ function finishStartup() {
         throw new Error("unable to access image data: " + e);
       }
 
-      // render_globe();
+      pointerTestInit();
     } else {
       // alert('There was a problem with the request.');
     }
@@ -132,7 +143,7 @@ function initOverlay() {
 
      The PNG version had the black surrounding border trimmed off.
   */
-  earth_tex.src = "Equirectangular_projection_SW.png";
+  earth_tex.src = "../canvas_globe_test/Equirectangular_projection_SW.png";
 }
 
   /* {
@@ -207,15 +218,26 @@ function panGlobe(event) {
   lon_rot = old_lon_rot + first_ang_y - cur_ang_y;
   tilt = old_tilt - (first_ang_x - cur_ang_x); */
 
+  var pan_scale;
+  if (!persp_project)
+    pan_scale = scale;
+  else
+    pan_scale = 1; // TODO: Do more complicated calculation
   lon_rot = old_lon_rot + (firstPoint.x - event.clientX) /
-    canvas.width / scale * 180;
+    canvas.width / pan_scale * 180;
   tilt = old_tilt - (firstPoint.y - event.clientY) /
-    canvas.height / scale * 180;
+    canvas.height / pan_scale * 180;
 
   if (tilt > 90) tilt = 90;
   if (tilt < -90) tilt = -90;
   while (lon_rot < 0) lon_rot += 360;
   while (lon_rot >= 360) lon_rot -= 360;
+
+  var gui_latLon = document.getElementById('gui.latLon');
+  if (gui_latLon) {
+    gui_latLon.value = tilt.toFixed(3) + ' N ' +
+      (lon_rot - 180).toFixed(3) + ' E';
+  }
 
   // TODO: This should use a queue_render_job() function so that
   // multiple events don't get bottled up and make the UI slow.
@@ -233,35 +255,58 @@ function setMouseUp(event) {
 }
 
 function zoomGlobe(event) {
-  if (event.deltaMode == 0x01) { // DOM_DELTA_LINE
-    if (event.deltaY < 0)
-      scale *= (event.deltaY / 3) * -1.1;
-    else
-      scale /= (event.deltaY / 3) * 1.1;
-  } else if (event.deltaMode == 0x00) { // DOM_DELTA_PIXEL
-    if (event.deltaY < 0)
-      scale *= (event.deltaY / 53) * -1.1;
-    else
-      scale /= (event.deltaY / 53) * 1.1;
+  if (!persp_project) {
+    if (event.deltaMode == 0x01) { // DOM_DELTA_LINE
+      if (event.deltaY < 0)
+        scale *= (event.deltaY / 3) * -1.1;
+      else
+        scale /= (event.deltaY / 3) * 1.1;
+    } else if (event.deltaMode == 0x00) { // DOM_DELTA_PIXEL
+      if (event.deltaY < 0)
+        scale *= (event.deltaY / 53) * -1.1;
+      else
+        scale /= (event.deltaY / 53) * 1.1;
+    }
+    var gui_zoomFac = document.getElementById('gui.zoomFac');
+    if (gui_zoomFac) gui_zoomFac.value = scale;
+  } else {
+    if (event.deltaMode == 0x01) { // DOM_DELTA_LINE
+      if (event.deltaY < 0)
+        persp_fov /= -(event.deltaY / 3) * 1.1;
+      else
+        persp_fov *= (event.deltaY / 3) * 1.1;
+    } else if (event.deltaMode == 0x00) { // DOM_DELTA_PIXEL
+      if (event.deltaY < 0)
+        persp_fov /= -(event.deltaY / 53) * 1.1;
+      else
+        persp_fov *= (event.deltaY / 53) * 1.1;
+    }
+    var gui_perspFOV = document.getElementById('gui.perspFOV');
+    if (gui_perspFOV) gui_perspFOV.value = persp_fov;
   }
+
   render_globe();
   return false;
 }
 
 function pointerTestInit() {
-  canvas = document.getElementById('drawingPad');
+  var loadingScreen = document.getElementById('loadingScreen');
+  if (loadingScreen)
+    loadingScreen.style.cssText = 'display: none';
+  canvas.style.cssText = '';
   canvas.onmousedown = setMouseDown;
   canvas.onmousemove = panGlobe;
   canvas.onmouseup = setMouseUp;
   canvas.onwheel = zoomGlobe;
 
   ctx.font = '12pt Sans';
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = '#000000';
   ctx.fillText('Calibrate, please!', 10, ~~(canvas.height / 4));
   ctx.fillRect(~~(canvas.width / 2),
     ~~(canvas.height / 2), 1, 1);
 }
-
-pointerTestInit();
 
 // ----------------------------------------
 
@@ -269,13 +314,19 @@ pointerTestInit();
 // gets called from a callback to complete the render.  In general,
 // JavaScript cannot support threads.
 function render_globe() {
+  if (render_in_prog)
+    return;
+  render_in_prog = true;
   // Project and render the image.
   var dest_data = ctx.createImageData(canvas.width, canvas.height);
   var dest_index = 0;
   var y_center = dest_data.height / 2;
   var x_center = dest_data.width / 2;
+  var disp_scale = 1;
+  if (!persp_project)
+    disp_scale = scale;
   /* display radius */
-  var disp_rad = Math.min(dest_data.height, dest_data.width) * scale / 2.0;
+  var disp_rad = Math.min(dest_data.height, dest_data.width) * disp_scale / 2.0;
   for (var y = 0; y < dest_data.height; y++) {
     for (var x = 0; x < dest_data.width; x++) {
       /* 1. Get the 3D rectangular coordinate of the ray intersection
@@ -293,9 +344,9 @@ function render_globe() {
         // Perspective projection
         // r must be one in the current algorithm
         var r = 1; // 6371; // radius of the earth in kilometers
-        var d = 5.617; // 35786; // altitude in kilometers
+        var d = persp_altitude / 6371; // 35786; // altitude in kilometers
         // focal length in units of the screen dimensions
-        var f = 1 / Math.tan(19 * Math.PI / 180 / 2);
+        var f = 1 / Math.tan(persp_fov * Math.PI / 180 / 2);
         var x_pix = (x - x_center) / disp_rad;
         var y_pix = (y - y_center) / disp_rad;
 
@@ -356,12 +407,13 @@ function render_globe() {
         dest_data.data[dest_index++] = 255;
         dest_data.data[dest_index++] = 0;
         dest_data.data[dest_index++] = 0;
-        dest_data.data[dest_index++] = 255;
+        dest_data.data[dest_index++] = 0;
       }
     }
   }
 
   ctx.putImageData(dest_data, 0, 0);
+  render_in_prog = false;
 }
 
 function periodic_render() {

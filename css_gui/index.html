@@ -26,7 +26,7 @@
         position: absolute; top: 0px; bottom: 0px; left: 0px; right: 0px;
         color: white; background-color: #333348; border: solid black;
         text-align: center; }
-    #drawingContainer { overflow: hidden; }
+    #drawingContainer { padding: 0px; overflow: hidden; }
     #sidebar { overflow: auto; }
 
     .coldiv { display: inline-block; vertical-align: top; padding: 8px;
@@ -36,9 +36,58 @@
     /* input, select { color: white; background-color: gray; } */
     .numinput { width: 4em; }
   </style>
-  <!-- <script type="text/javascript" src="" /> -->
+  <script type="text/javascript"
+	  src="../canvas_globe_test/globe_render.js"></script>
+  <script type="text/javascript"><!--
+
+function initGUIHooks() {
+  document.getElementById('gui.projMethod').onchange = function(event) {
+    if (this.options[this.selectedIndex].text == 'Perspective')
+      persp_project = true;
+    else
+      persp_project = false;
+    render_globe();
+  };
+
+  document.getElementById('gui.zoomFac').onchange = function(event) {
+    scale = +this.value; // Convert string to float
+    render_globe();
+  };
+
+  document.getElementById('gui.perspAltitude').onchange = function(event) {
+    persp_altitude = +this.value;
+    render_globe();
+  };
+
+  document.getElementById('gui.perspFOV').onchange = function(event) {
+    persp_fov = +this.value;
+    render_globe();
+  };
+
+  document.getElementById('gui.latLon').onchange = function(event) {
+    var parts = this.value.split(' ');
+    tilt = +parts[0];
+    lon_rot = (+parts[2]) + 180;
+    render_globe();
+  }
+}
+
+  --></script>
 </head>
-<body>
+<body onload="initCTModule(); initGUIHooks()">
+
+<noscript>
+<h2>Sorry</h2>
+<p>You need a web browser with JavaScript enabled and functional to
+use the the interactive web viewer.</p>
+</noscript>
+
+<div id="scriptWrapper" style="display: none">
+<script type="text/javascript">
+<!--//--><![CDATA[//><!--
+document.getElementById('scriptWrapper').style.cssText = '';
+//--><!]]>
+</script>
 
 <div id="topwrapper">
   <div id="topbar">
@@ -107,13 +156,13 @@
 		   class="numinput" />
 	    <label for="gui.perspAltitude">kilometers</label><br />
 	    <label for="gui.perspFOV">Field of View:</label>
-	    <input id="gui.perspFOV" type="text" value="45"
+	    <input id="gui.perspFOV" type="text" value="19"
 		   class="numinput" />
 	    <label for="gui.perspFOV">degrees</label><br />
 	  </fieldset><br />
 
 	  <label for="gui.latLon">Latitude, Longitude (degrees):</label>
-	  <input id="gui.latLon" type="text" value="0 N, 0 E" /><br />
+	  <input id="gui.latLon" type="text" value="0 N 0 E" /><br />
 	  <br />
 
 	  <label for="gui.curDate">Date:</label>
@@ -167,7 +216,7 @@
   <div id="hcentwrapper">
     <div id="drawingContainer">
 
-      <p style="text-align: center">
+      <p id="loadingScreen" style="text-align: center">
 	<object type="image/svg+xml" data="loading_composite.svg">
 	  <img src="loading_composite.png" alt="Decorative Loading Icon" />
 	</object><br />
@@ -177,6 +226,8 @@
     </div>
   </div>
 </div>
+
+</div> <!-- END scriptWrapper -->
 
 </body>
 </html>

@@ -467,6 +467,28 @@ function render_map() {
                 y_shift + canvas.height / 2,
                 screen_scalfac, screen_scalfac / 2);
 
+  // Draw a second image for a continuous wrapped display.
+  if (lon_rot == 180) {
+    render_in_prog = false;
+    return;
+  }
+  if (lon_rot < 180) x_shift -= screen_scalfac;
+  if (lon_rot > 180) x_shift += screen_scalfac;
+
+  /* NOTE: Since JavaScript has a performance disadvantage compared to
+     compiled C code, it might actually be faster to just skip all
+     these visibility tests.  */
+  var real_x_shift = x_shift + canvas.width / 2;
+  /* if (real_x_shift + screen_scalfac < 0 || real_x_shift > canvas.width) {
+    render_in_prog = false;
+    return;
+  } */
+
+  ctx.drawImage(earth_buffer, 0, 0, earth_buffer.width, earth_buffer.height,
+		real_x_shift,
+                y_shift + canvas.height / 2,
+                screen_scalfac, screen_scalfac / 2);
+
   render_in_prog = false;
 }
 

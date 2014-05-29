@@ -319,6 +319,75 @@ function zoomGlobe(event) {
   return false;
 }
 
+/* creates an "addWheelListener" method
+   example: oev.addWheelListener(elem, function(e) {
+     console.log(e.deltaY); e.preventDefault(); } ); */
+(function(window, document) {
+
+  var prefix = "", _addEventListener, onwheel, support;
+
+  // Detect the event model.
+  if (window.addEventListener) {
+    _addEventListener = "addEventListener";
+  } else {
+    _addEventListener = "attachEvent";
+    prefix = "on";
+  }
+
+  // Detect an available wheel event.
+  support = "onwheel" in
+    document.getElementById("scriptWrapper") ? "wheel" : // Standardized
+    document.onmousewheel !== undefined ? "mousewheel" : // Webkit and IE
+    "DOMMouseScroll"; // Assume that remaining browsers are older Firefox
+
+  /* oev. */ addWheelListener = function(elem, callback, useCapture) {
+    _addWheelListener(elem, support, callback, useCapture);
+
+    // Handle MozMousePixelScroll in older Firefox.
+    if( support == "DOMMouseScroll" ) {
+      _addWheelListener(elem, "MozMousePixelScroll", callback, useCapture);
+    }
+  };
+
+  function _addWheelListener(elem, eventName, callback, useCapture) {
+    elem[_addEventListener](prefix + eventName, support == "wheel" ?
+      callback : function(originalEvent) {
+	!originalEvent && (originalEvent = window.event);
+
+	// Create a normalized event object.
+	var event = {
+	  // Keep a reference to the original event object.
+	originalEvent: originalEvent,
+	target: originalEvent.target || originalEvent.srcElement,
+	type: "wheel",
+	deltaMode: originalEvent.type == "MozMousePixelScroll" ? 0 : 1,
+	deltaX: 0,
+	delatZ: 0,
+	preventDefault: function() {
+	    originalEvent.preventDefault ?
+	    originalEvent.preventDefault() :
+	    originalEvent.returnValue = false;
+	  }
+	};
+
+	// Calculate deltaY (and deltaX) according to the event.
+	if (support == "mousewheel") {
+	  event.deltaY = - 1/40 * originalEvent.wheelDelta;
+	  // Webkit also support wheelDeltaX
+	  originalEvent.wheelDeltaX && (event.deltaX = - 1/40 *
+					originalEvent.wheelDeltaX);
+	} else {
+	  event.deltaY = originalEvent.detail;
+	}
+
+	// It's time to fire the callback.
+	return callback(event);
+
+      }, useCapture || false);
+  }
+
+ })(window, document);
+
 function pointerTestInit() {
   var loadingScreen = document.getElementById('loadingScreen');
   if (loadingScreen)
@@ -327,7 +396,8 @@ function pointerTestInit() {
   canvas.onmousedown = setMouseDown;
   canvas.onmousemove = panGlobe;
   canvas.onmouseup = setMouseUp;
-  canvas.onwheel = zoomGlobe;
+  // canvas.onwheel = zoomGlobe;
+  addWheelListener(canvas, zoomGlobe);
 
   ctx.font = '12pt Sans';
   ctx.fillStyle = '#ffffff';

@@ -38,6 +38,7 @@ oev.MapProjector.project = function(polCoord) {
 oev.MapProjector.unproject = function(scrCoord) {
 };
 
+/* Equirectangular map projection */
 oev.EquirectMapProjector = {};
 
 oev.EquirectMapProjector.project = function(polCoord) {
@@ -54,6 +55,7 @@ oev.EquirectMapProjector.unproject = function(mapCoord) {
   return polCoord;
 };
 
+/* Mercator map projection */
 oev.MercatorMapProjector = {};
 
 oev.MercatorMapProjector.project = function(polCoord) {
@@ -73,29 +75,31 @@ oev.MercatorMapProjector.unproject = function(mapCoord) {
   return polCoord;
 };
 
+/* Robinson map projection */
 oev.RobinsonMapProjector = {};
-oev.RobinsonMapProjector.table = {
+
+oev.RobinsonMapProjector.table = [
 //  PLEN    PDFE         LAT
-  { 1.0000, 0.0000 }, // 00
-  { 0.9986, 0.0620 }, // 05
-  { 0.9954, 0.1240 }, // 10
-  { 0.9900, 0.1860 }, // 15
-  { 0.9822, 0.2480 }, // 20
-  { 0.9730, 0.3100 }, // 25
-  { 0.9600, 0.3720 }, // 30
-  { 0.9427, 0.4340 }, // 35
-  { 0.9216, 0.4958 }, // 40
-  { 0.8962, 0.5571 }, // 45
-  { 0.8679, 0.6176 }, // 50
-  { 0.8350, 0.6769 }, // 55
-  { 0.7986, 0.7346 }, // 60
-  { 0.7597, 0.7903 }, // 65
-  { 0.7186, 0.8435 }, // 70
-  { 0.6732, 0.8936 }, // 75
-  { 0.6213, 0.9394 }, // 80
-  { 0.5722, 0.9761 }, // 85
-  { 0.5322, 1.0000 }  // 90
-};
+  [ 1.0000, 0.0000 ], // 00
+  [ 0.9986, 0.0620 ], // 05
+  [ 0.9954, 0.1240 ], // 10
+  [ 0.9900, 0.1860 ], // 15
+  [ 0.9822, 0.2480 ], // 20
+  [ 0.9730, 0.3100 ], // 25
+  [ 0.9600, 0.3720 ], // 30
+  [ 0.9427, 0.4340 ], // 35
+  [ 0.9216, 0.4958 ], // 40
+  [ 0.8962, 0.5571 ], // 45
+  [ 0.8679, 0.6176 ], // 50
+  [ 0.8350, 0.6769 ], // 55
+  [ 0.7986, 0.7346 ], // 60
+  [ 0.7597, 0.7903 ], // 65
+  [ 0.7186, 0.8435 ], // 70
+  [ 0.6732, 0.8936 ], // 75
+  [ 0.6213, 0.9394 ], // 80
+  [ 0.5722, 0.9761 ], // 85
+  [ 0.5322, 1.0000 ]  // 90
+];
 
 oev.RobinsonMapProjector.project = function(polCoord) {
   var table = oev.RobinsonProjector.table;
@@ -118,6 +122,7 @@ oev.RobinsonMapProjector.project = function(polCoord) {
 oev.RobinsonMapProjector.unproject = function(mapCoord) {
 };
 
+/* Winkel tripel map projection (not usable) */
 oev.W3MapProjector = {};
 
 oev.W3MapProjector.project = function(polCoord) {
@@ -132,4 +137,31 @@ oev.W3MapProjector.project = function(polCoord) {
 
 oev.W3MapProjector.unproject = function(mapCoord) {
   // Complicated reverse projection
+};
+
+/* Note: This algorithm needs a newline at the end of the file.  It
+   also does not handle files with non-Unix line endings.  */
+oev.csvParse = function(csvText) {
+  var tgtArray = [];
+  var i = 0;
+  var rowEnd;
+
+  while ((rowEnd = csvText.indexOf('\n', i)) != -1) {
+    var taEnd = tgtArray.push([]) - 1;
+    var commaIdx;
+
+    while ((commaIdx = csvText.indexOf(',', i)) < rowEnd &&
+	   commaIdx != -1) {
+      tgtArray[taEnd].push(csvText.substring(i, commaIdx));
+      i = commaIdx + 1
+    }
+
+    if (csvText[rowEnd-1] != ',') {
+      // Parse the last entry in the row.
+      tgtArray[taEnd].push(csvText.substring(i, rowEnd))
+    }
+    i = rowEnd + 1
+  }
+
+  return tgtArray;
 };

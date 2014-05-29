@@ -1,4 +1,5 @@
 // Global variables for this module only
+var drawingContainer;
 var canvas;
 var ctx;
 
@@ -29,32 +30,45 @@ var scale = 1.0;
 // perspective altitude
 var persp_altitude = 35786;
 // perspective field of view
-var persp_fov = 19.0;
+var persp_fov = 17.5;
 // Render the sea surface height data
 var render_ssh = true;
 // Render textured land masses
 var render_land_tex = true;
 
-function initCTModule() {
-  var drawingContainer = document.getElementById('drawingContainer');
-  canvas = document.getElementById('drawingPad');
-  if (!canvas) {
-    canvas = document.createElement('canvas');
-    canvas.id = 'drawingPad';
-    canvas.style.cssText = 'display: none';
-    drawingContainer.appendChild(canvas);
-  }
-  ctx = canvas.getContext('2d');
+/* Resize the frontbuffer canvas to fit the CSS allocated space.
 
-  // Resize canvas to fit CSS allocated space.
+   NOTE: Because modern browsers do not provide an event that fires if
+   the width or height of a CSS element has changed, this function
+   must be called every time the screen is updated via one of the
+   render() functions.  */
+function fitCanvasToCntr() {
+  // var drawingContainer = document.getElementById("drawingContainer");
   // Warning: clientWidth and clientHeight marked as unstable in MDN.
+  if (canvas.width == drawingContainer.width &&
+      canvas.height == drawingContainer.height)
+    return;
   canvas.width = drawingContainer.clientWidth;
   canvas.height = drawingContainer.clientHeight;
   // window.innerWidth, window.innerHeight
+}
+
+function initCTModule() {
+  /* var */ drawingContainer = document.getElementById("drawingContainer");
+  canvas = document.getElementById("drawingPad");
+  if (!canvas) {
+    canvas = document.createElement("canvas");
+    canvas.id = "drawingPad";
+    canvas.style.cssText = "display: none";
+    drawingContainer.appendChild(canvas);
+  }
+  ctx = canvas.getContext("2d");
+
+  fitCanvasToCntr();
 
   // Create a backbuffer canvas to pull pixels from.
-  earth_buffer = document.createElement('canvas');
-  earth_buffer.id = 'earth_buffer';
+  earth_buffer = document.createElement("canvas");
+  earth_buffer.id = "earth_buffer";
   initOverlay();
 }
 
@@ -63,7 +77,7 @@ function finishStartup() {
   if (httpRequest.readyState === 4) {
     if (httpRequest.status === 200) {
 
-      var ajaxDebug = document.getElementById('ajaxDebug');
+      var ajaxDebug = document.getElementById("ajaxDebug");
       if (ajaxDebug)
         ajaxDebug.innerHTML = httpRequest.responseText;
 
@@ -73,7 +87,7 @@ function finishStartup() {
       refreshOverlay();
       pointerTestInit();
     } else {
-      // alert('There was a problem with the request.');
+      // alert("There was a problem with the request.");
     }
   }
 }
@@ -85,7 +99,7 @@ function initOverlay() {
   earth_tex.onload = function () {
     earth_buffer.width = earth_tex.width;
     earth_buffer.height = earth_tex.height;
-    ec = earth_buffer.getContext('2d');
+    ec = earth_buffer.getContext("2d");
     // ec.drawImage(earth_tex, 0, 0, earth_buffer.width, earth_buffer.height);
 
     ssh_tex = new Image();
@@ -100,11 +114,11 @@ function initOverlay() {
           httpRequest = new ActiveXObject("Microsoft.XMLHTTP");
           // Plus we would need lots of error handling...
         if (!httpRequest) {
-          alert('Could not create an XMLHttpRequest.');
+          alert("Could not create an XMLHttpRequest.");
           // return;
         }
         httpRequest.onreadystatechange = finishStartup;
-        httpRequest.open('GET', '../web_eddy_viewer_test/eddy_tracks.json', true);
+        httpRequest.open("GET", "../web_eddy_viewer_test/eddy_tracks.json", true);
         httpRequest.send();
       }
     }
@@ -120,7 +134,7 @@ function initOverlay() {
 }
 
   /* {
-    var drawingContainer = document.getElementById('drawingContainer');
+    var drawingContainer = document.getElementById("drawingContainer");
     drawingContainer.onkeydown = keyEvent;
     drawingContainer.onmousedown = function() {
       if (!rotating) rotating = window.setTimeout(periodic_render, 10);
@@ -140,8 +154,8 @@ function refreshOverlay() {
 
   // Render the eddy tracks.
   ec.lineWidth = 5;
-  ec.strokeStyle = '#ff8000';
-  ec.lineJoin = 'round';
+  ec.strokeStyle = "#ff8000";
+  ec.lineJoin = "round";
   for (var i = 0; i < eddyTracks.length; i++) {
     ec.beginPath();
     var lon = eddyTracks[i].coordinates[0].lon;
@@ -162,19 +176,19 @@ function refreshOverlay() {
   /* Draw a V that looks like a heart when projected onto a globe
      to finish off.  */
   /* ec.lineWidth = 20;
-  ec.strokeStyle = '#800000';
+  ec.strokeStyle = "#800000";
   ec.beginPath();
   ec.moveTo(0, 0);
   ec.lineTo(earth_buffer.width / 2, earth_buffer.height / 2);
   ec.lineTo(earth_buffer.width, 0);
   ec.stroke();
-  ec.strokeStyle = '#00ff00'; */
+  ec.strokeStyle = "#00ff00"; */
 
   try {
     src_data = ec.getImageData(0, 0, earth_buffer.width,
 			       earth_buffer.height);
   } catch (e) {
-    alert('Error: Cannot read pixels from image buffer.');
+    alert("Error: Cannot read pixels from image buffer.");
     throw new Error("unable to access image data: " + e);
   }
 }
@@ -207,14 +221,19 @@ var old_tilt;
 function setMouseDown(event) {
   if (ptMSIE <= 6 && ptMSIE > 0)
     event = window.event;
+
+  // TODO: Need a cross browser setCapture();
+  // this.setCapture();
+  // if (isChrome) window.onmousemove = ...
+
   mouseDown = true;
   buttonDown = event.button;
   firstPoint.x = event.clientX; firstPoint.y = event.clientY;
   if (!topLeft.x) {
     topLeft.x = firstPoint.x - canvas.width / 2;
     topLeft.y = firstPoint.y - canvas.height / 2;
-    var ctx = canvas.getContext('2d');
-    ctx.fillStyle = '#ffffff';
+    var ctx = canvas.getContext("2d");
+    ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
   }
   old_lon_rot = lon_rot;
@@ -227,7 +246,7 @@ function panGlobe(event) {
   if (ptMSIE <= 6 && ptMSIE > 0)
     event = window.event;
 
-  var ctx = canvas.getContext('2d');
+  var ctx = canvas.getContext("2d");
 
   /* var disp_rad = Math.min(canvas.height, canvas.width) * scale / 2.0;
   var first_ang_x = Math.asin((firstPoint.x - canvas.width / 2) / disp_rad);
@@ -263,10 +282,10 @@ function panGlobe(event) {
   while (lon_rot < 0) lon_rot += 360;
   while (lon_rot >= 360) lon_rot -= 360;
 
-  var gui_latLon = document.getElementById('gui.latLon');
+  var gui_latLon = document.getElementById("gui.latLon");
   if (gui_latLon) {
-    gui_latLon.value = tilt.toFixed(3) + ' N ' +
-      (lon_rot - 180).toFixed(3) + ' E';
+    gui_latLon.value = tilt.toFixed(3) + " N " +
+      (lon_rot - 180).toFixed(3) + " E";
   }
 
   // TODO: This should use a queue_render_job() function so that
@@ -297,7 +316,7 @@ function zoomGlobe(event) {
       else
         scale /= (event.deltaY / 53) * 1.1;
     }
-    var gui_zoomFac = document.getElementById('gui.zoomFac');
+    var gui_zoomFac = document.getElementById("gui.zoomFac");
     if (gui_zoomFac) gui_zoomFac.value = scale;
   } else {
     if (event.deltaMode == 0x01) { // DOM_DELTA_LINE
@@ -311,11 +330,12 @@ function zoomGlobe(event) {
       else
         persp_fov *= (event.deltaY / 53) * 1.1;
     }
-    var gui_perspFOV = document.getElementById('gui.perspFOV');
+    var gui_perspFOV = document.getElementById("gui.perspFOV");
     if (gui_perspFOV) gui_perspFOV.value = persp_fov;
   }
 
   render_globe();
+  event.preventDefault();
   return false;
 }
 
@@ -336,11 +356,11 @@ function zoomGlobe(event) {
 
   // Detect an available wheel event.
   support = "onwheel" in
-    document.getElementById("scriptWrapper") ? "wheel" : // Standardized
+    document.createElement("div") ? "wheel" : // Standardized
     document.onmousewheel !== undefined ? "mousewheel" : // Webkit and IE
     "DOMMouseScroll"; // Assume that remaining browsers are older Firefox
 
-  /* oev. */ addWheelListener = function(elem, callback, useCapture) {
+  /* oev. */ document.addWheelListener = function(elem, callback, useCapture) {
     _addWheelListener(elem, support, callback, useCapture);
 
     // Handle MozMousePixelScroll in older Firefox.
@@ -389,22 +409,23 @@ function zoomGlobe(event) {
  })(window, document);
 
 function pointerTestInit() {
-  var loadingScreen = document.getElementById('loadingScreen');
+  var loadingScreen = document.getElementById("loadingScreen");
   if (loadingScreen)
-    loadingScreen.style.cssText = 'display: none';
-  canvas.style.cssText = '';
+    loadingScreen.style.cssText = "display: none";
+  canvas.style.cssText = "";
   canvas.onmousedown = setMouseDown;
   canvas.onmousemove = panGlobe;
   canvas.onmouseup = setMouseUp;
   // canvas.onwheel = zoomGlobe;
-  addWheelListener(canvas, zoomGlobe);
+  document.addWheelListener(canvas, zoomGlobe);
+  // window.onkeydown = keyEvent;
 
-  ctx.font = '12pt Sans';
-  ctx.fillStyle = '#ffffff';
+  ctx.font = "12pt Sans";
+  ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = '#000000';
-  ctx.fillText('Calibrate, please!', 10, ~~(canvas.height / 4));
-  ctx.fillText('Click on the dot in the center.',
+  ctx.fillStyle = "#000000";
+  ctx.fillText("Calibrate, please!", 10, ~~(canvas.height / 4));
+  ctx.fillText("Click on the dot in the center.",
 	       10, ~~(canvas.height * 3 / 4));
   ctx.fillRect(~~(canvas.width / 2),
     ~~(canvas.height / 2), 1, 1);
@@ -416,6 +437,7 @@ function pointerTestInit() {
 // gets called from a callback to complete the render.  In general,
 // JavaScript cannot support threads.
 function render_globe() {
+  fitCanvasToCntr();
   if (equirect_project)
     return render_map();
   if (render_in_prog)

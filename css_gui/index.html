@@ -47,6 +47,19 @@ function initGUIHooks() {
     if (choice == 'Perspective') {
       persp_project = true;
       equirect_project = false;
+
+      var zoomCtl = document.getElementById('gui.zoomFac');
+      zoomCtl.setAttribute('disabled', true); // Needed for Firefox.
+      zoomCtl.disabled = true; // Needed for older versions of IE.
+
+      var fovCtl = document.getElementById('gui.perspFOV');
+      fovCtl.setAttribute('disabled', false);
+      fovCtl.disabled = false;
+
+      var altCtl = document.getElementById('gui.perspAltitude');
+      altCtl.setAttribute('disabled', false);
+      altCtl.disabled = false;
+
     } else if (choice == 'Equirectangular') {
       persp_project = false;
       equirect_project = true;
@@ -54,8 +67,27 @@ function initGUIHooks() {
       persp_project = false;
       equirect_project = false;
     }
+
+    if (choice != 'Perspective') {
+      var zoomCtl = document.getElementById('gui.zoomFac');
+      zoomCtl.setAttribute('disabled', false); // Needed for Firefox.
+      zoomCtl.disabled = false; // Needed for older versions of IE.
+
+      var fovCtl = document.getElementById('gui.perspFOV');
+      fovCtl.setAttribute('disabled', true);
+      fovCtl.disabled = true;
+
+      var altCtl = document.getElementById('gui.perspAltitude');
+      altCtl.setAttribute('disabled', true);
+      altCtl.disabled = true;
+    }
+
     render_globe();
   };
+
+/* TODO: When "refresh" is hit on the browser, some browsers preserve
+   the previous form values in the controls.  Ideally, we should get
+   the initial values from all the controls on startup.  */
 
   document.getElementById('gui.zoomFac').onchange = function(event) {
     scale = +this.value; // Convert string to float
@@ -101,15 +133,19 @@ function initGUIHooks() {
 
   document.getElementById('gui.lenRange').onchange = function(event) {
     var parts = this.value.split(', ');
-    if (parts[0] == 'any')
-      min_track_len = -1;
-    else
-      min_track_len = +parts[0];
-    if (parts[1] == 'any')
+    min_track_len = +parts[0];
+    if (parts[1] == 'max')
       max_track_len = -1;
     else
       max_track_len = +parts[1];
+    renderEddyTracks();
     refreshOverlay();
+    render_globe();
+  };
+
+  document.getElementById('gui.osaFactor').onchange = function(event) {
+    osa_factor = ~~(+this.value);
+    inv_osa_factor = 1 / osa_factor;
     render_globe();
   };
 }
@@ -158,7 +194,7 @@ document.getElementById('scriptWrapper').style.cssText = '';
 	  <option>Perspective</option>
 	</select><br />
 	<fieldset>
-	  <legend style="text-align: left">Grid Line Density</legend>
+	  <legend style="text-align: left">Graticule</legend>
 	  <label for="gui.gridDensity">Latitude, Longitude:</label>
 	  <input id="gui.gridDensity" type="text" value="10, 10"
 		 class="numinput" />
@@ -197,11 +233,11 @@ document.getElementById('scriptWrapper').style.cssText = '';
 		   class="numinput" /><br />
 	    <label for="gui.perspAltitude">Altitude:</label>
 	    <input id="gui.perspAltitude" type="text" value="35786"
-		   class="numinput" />
+		   disabled="disabled" class="numinput" />
 	    <label for="gui.perspAltitude">kilometers</label><br />
 	    <label for="gui.perspFOV">Field of View:</label>
 	    <input id="gui.perspFOV" type="text" value="17.5"
-		   class="numinput" />
+		   disabled="disabled" class="numinput" />
 	    <label for="gui.perspFOV">degrees</label><br />
 	  </fieldset><br />
 
@@ -231,9 +267,9 @@ document.getElementById('scriptWrapper').style.cssText = '';
 	    <input id="gui.showChelton" type="checkbox" />
 	    <label for="gui.showChelton">Chelton Tracks</label><br />
 	    <label for="gui.lenRange">Length Range (min, max)</label>
-	    <input id="gui.lenRange" type="text" value="any, any"
+	    <input id="gui.lenRange" type="text" value="0, max"
 		   class="wideinput" />
-	    <label for="gui.lenRange">km</label>
+	    <label for="gui.lenRange">weeks</label>
 	  </fieldset><br />
 
 	  <fieldset>

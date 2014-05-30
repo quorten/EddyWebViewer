@@ -1,19 +1,21 @@
 // Global variables for this module only
 var drawingContainer;
 var canvas;
-var ctx;
 
 var earth_buffer;
-var ec;
+var backbuf_scale = 4;
 var earth_tex;
 var ssh_tex;
 var eddyTracks;
+var eddy_imgbuf;
 var src_data;
 
 var httpRequest;
 
 var rotating = 0;
 var render_in_prog = false;
+// A render queue that can store up to one pending job.
+var render_queue = false;
 
 // GUI parameters
 
@@ -31,6 +33,8 @@ var scale = 1.0;
 var persp_altitude = 35786;
 // perspective field of view
 var persp_fov = 17.5;
+// Oversampling factor
+var osa_factor = 1;
 // Render the sea surface height data
 var render_ssh = true;
 // Render textured land masses
@@ -39,6 +43,13 @@ var render_land_tex = true;
 var min_track_len = -1;
 // Maximum track length, -1 for any.
 var max_track_len = -1;
+
+// Convenience variables for rendering.
+var DEG2RAD = Math.PI / 180;
+var RAD2DEG = 180 / Math.PI;
+var inv_180 = 1 / 180;
+var inv_360 = 1 / 360;
+var inv_osa_factor = 1 / osa_factor;
 
 /* Resize the frontbuffer canvas to fit the CSS allocated space.
 
@@ -66,7 +77,6 @@ function initCTModule() {
     canvas.style.cssText = "display: none";
     drawingContainer.appendChild(canvas);
   }
-  ctx = canvas.getContext("2d");
 
   fitCanvasToCntr();
 
@@ -86,29 +96,30 @@ function finishStartup() {
         ajaxDebug.innerHTML = httpRequest.responseText;
 
       eddyTracks = JSON.parse(httpRequest.responseText);
-      // alert(eddyTracks[0].coordinates[0].lon);
 
+      renderEddyTracks();
       refreshOverlay();
       pointerTestInit();
     } else {
-      // alert("There was a problem with the request.");
+      alert("There was a problem with the request.");
     }
   }
 }
 
 // NOTE: Verify if HTML 5 style image loading works with IE6.
+// Works with Firefox 3.6.
 function initOverlay() {
   // WARNING: Large image loading is slow.
   earth_tex = new Image();
   earth_tex.onload = function () {
-    earth_buffer.width = earth_tex.width;
-    earth_buffer.height = earth_tex.height;
-    ec = earth_buffer.getContext("2d");
-    // ec.drawImage(earth_tex, 0, 0, earth_buffer.width, earth_buffer.height);
+    earth_buffer.width = earth_tex.width * backbuf_scale;
+    earth_buffer.height = earth_tex.height * backbuf_scale;
 
     ssh_tex = new Image();
     ssh_tex.onload = function() {
-      // ec.drawImage(ssh_tex, 0, 0, earth_buffer.width, earth_buffer.height);
+      eddy_imgbuf = document.createElement("canvas");
+      eddy_imgbuf.width = earth_buffer.width;
+      eddy_imgbuf.height = earth_buffer.height;
 
       { // Load the eddy tracks.
         // var httpRequest;
@@ -149,17 +160,62 @@ function initOverlay() {
 /* Compute the great circle distance between two latitude-longitude
    polar coordinates.  */
 function gCircLen(p1, p2) {
-  var dlat = Math.abs(p2.lat - p1.lat);
-  var dlon = Math.abs(p2.lon - p1.lon);
+  var dlat = Math.abs((p2.lat - p1.lat) * DEG2RAD);
+  var dlon = Math.abs((p2.lon - p1.lon) * DEG2RAD);
   var dsigma = 2 * Math.asin(Math.sqrt(Math.pow(Math.sin(dlat / 2), 2) +
-				       Math.cos(p1.lat) * Math.cos(p2.lat) *
+				       Math.cos(p1.lat * DEG2RAD) *
+				       Math.cos(p2.lat * DEG2RAD) *
 				       Math.pow(Math.sin(dlon / 2), 2)));
   var r = 6371; // mean radius of Earth in kilometers
   return r * dsigma;
 }
 
+function renderEddyTracks() {
+  var edc = eddy_imgbuf.getContext("2d");
+  edc.clearRect(0, 0, eddy_imgbuf.width, eddy_imgbuf.height);
+  edc.lineWidth = backbuf_scale;
+  edc.strokeStyle = "#800080";
+  edc.lineJoin = "round";
+  for (var i = 0; i < eddyTracks.length; i++) {
+    if (min_track_len > 0 || max_track_len != -1) {
+      /* Compute the length of the track to determine if it should be
+         drawn.  */
+      var track_len = 0;
+      for (var j = 1; j < eddyTracks[i].coordinates.length; j++) {
+	track_len += gCircLen(eddyTracks[i].coordinates[j-1],
+			      eddyTracks[i].coordinates[j]);
+      }
+      /* NOTE: Since some of the eddy tracks are considerably
+         twisted, we only compute the straight line distance from the
+         beginning of the track to the end of the track.  */
+      /* var track_len = gCircLen(eddyTracks[i].coordinates[0],
+	   eddyTracks[i].coordinates[eddyTracks[i].coordinates.length-1]); */
+      if (track_len < min_track_len)
+	continue;
+      if (max_track_len != -1 && track_len > max_track_len)
+	continue;
+    }
+
+    edc.beginPath();
+    var lon = eddyTracks[i].coordinates[0].lon;
+    var lat = eddyTracks[i].coordinates[0].lat;
+    var map_x = (lon + 180) * inv_360 * earth_buffer.width;
+    var map_y = (90 - lat) * inv_180 * earth_buffer.height;
+    edc.moveTo(map_x, map_y);
+    for (var j = 1; j < eddyTracks[i].coordinates.length; j++) {
+      lon = eddyTracks[i].coordinates[j].lon;
+      lat = eddyTracks[i].coordinates[j].lat;
+      map_x = (lon + 180) * inv_360 * earth_buffer.width;
+      map_y = (90 - lat) * inv_180 * earth_buffer.height;
+      edc.lineTo(map_x, map_y);
+    }
+    edc.stroke();
+  }
+}
+
 // Refresh the backbuffer with any possible UI changes taking effect.
 function refreshOverlay() {
+  var ec = earth_buffer.getContext("2d");
   ec.clearRect(0, 0, earth_buffer.width, earth_buffer.height);
 
   if (render_land_tex)
@@ -168,45 +224,7 @@ function refreshOverlay() {
   if (render_ssh)
     ec.drawImage(ssh_tex, 0, 0, earth_buffer.width, earth_buffer.height);
 
-  // Render the eddy tracks.
-  ec.lineWidth = 1;
-  ec.strokeStyle = "#800080";
-  ec.lineJoin = "round";
-  for (var i = 0; i < eddyTracks.length; i++) {
-    if (min_track_len != -1 || max_track_len != -1) {
-      /* Compute the length of the track to determine if it should be
-         drawn.  */
-      /* var track_len = 0;
-      for (var j = 1; j < eddyTracks[i].coordinates.length; j++) {
-	track_len += gCircLen(eddyTracks[i].coordinates[j-1],
-			      eddyTracks[i].coordinates[j]);
-      } */
-      /* NOTE: Since some of the eddy tracks are considerably
-         twisted, we only compute the straight line distance from the
-         beginning of the track to the end of the track.  */
-      var track_len = gCircLen(eddyTracks[i].coordinates[0],
-	       eddyTracks[i].coordinates[eddyTracks[i].coordinates.length-1]);
-      if (track_len < min_track_len)
-	continue;
-      if (max_track_len != -1 && track_len > max_track_len)
-	continue;
-    }
-
-    ec.beginPath();
-    var lon = eddyTracks[i].coordinates[0].lon;
-    var lat = eddyTracks[i].coordinates[0].lat;
-    var map_x = (lon + 180) / 360 * earth_buffer.width;
-    var map_y = (90 - lat) / 180 * earth_buffer.height;
-    ec.moveTo(map_x, map_y);
-    for (var j = 1; j < eddyTracks[i].coordinates.length; j++) {
-      lon = eddyTracks[i].coordinates[j].lon;
-      lat = eddyTracks[i].coordinates[j].lat;
-      map_x = (lon + 180) / 360 * earth_buffer.width;
-      map_y = (90 - lat) / 180 * earth_buffer.height;
-      ec.lineTo(map_x, map_y);
-    }
-    ec.stroke();
-  }
+  ec.drawImage(eddy_imgbuf, 0, 0, earth_buffer.width, earth_buffer.height);
 
   /* Draw a V that looks like a heart when projected onto a globe
      to finish off.  */
@@ -257,9 +275,11 @@ function setMouseDown(event) {
   if (ptMSIE <= 6 && ptMSIE > 0)
     event = window.event;
 
-  // TODO: Need a cross browser setCapture();
-  if (this.setCapture) this.setCapture();
-  // if (isChrome) window.onmousemove = ...
+  if (this.setCapture) {
+    this.setCapture();
+  }
+  else
+    window.onmouseup = setMouseUp;
 
   mouseDown = true;
   buttonDown = event.button;
@@ -304,8 +324,8 @@ function panGlobe(event) {
   else
     pan_scale = 1; // TODO: Do more complicated calculation
   if (equirect_project) {
-    equirect_scale_x = 2;
-    equirect_scale_y = 2 * canvas.height / canvas.width;
+    equirect_scale_x = 1;
+    equirect_scale_y = 1 * canvas.height / canvas.width;
   }
   lon_rot = old_lon_rot + (firstPoint.x - event.clientX) /
     canvas.width / pan_scale * equirect_scale_x * 180;
@@ -323,8 +343,6 @@ function panGlobe(event) {
       (lon_rot - 180).toFixed(3) + " E";
   }
 
-  // TODO: This should use a queue_render_job() function so that
-  // multiple events don't get bottled up and make the UI slow.
   render_globe();
 
   if (ptMSIE <= 6 && ptMSIE > 0)
@@ -335,6 +353,7 @@ function panGlobe(event) {
 function setMouseUp(event) {
   mouseDown = false;
   render_globe();
+  window.onmouseup = null;
   return false;
 }
 
@@ -449,12 +468,19 @@ function pointerTestInit() {
     loadingScreen.style.cssText = "display: none";
   canvas.style.cssText = "";
   canvas.onmousedown = setMouseDown;
-  canvas.onmousemove = panGlobe;
-  canvas.onmouseup = setMouseUp;
-  // canvas.onwheel = zoomGlobe;
+  if (!canvas.setCapture) {
+    window.onmousemove = panGlobe;
+  }
+  else {
+    canvas.onmousemove = panGlobe;
+    canvas.onmouseup = setMouseUp;
+    /* Sadly, "loosecapture" does not work on Firefox, even though
+       setCapture() does.  */
+  }
   document.addWheelListener(canvas, zoomGlobe);
   // window.onkeydown = keyEvent;
 
+  var ctx = canvas.getContext("2d");
   ctx.font = "12pt Sans";
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -466,19 +492,45 @@ function pointerTestInit() {
     ~~(canvas.height / 2), 1, 1);
 }
 
+/* Try to allocate a new render job.  This will either preempt an
+   existing job or deny rendering if preemption is disabled.  Returns
+   true if the render job can proceed, false if rendering is
+   denied.  */
+function allocRenderJob() {
+  if (render_in_prog) {
+    render_queue = true;
+    return false;
+  }
+  render_in_prog = true;
+  if (requestAnimationFrame) requestAnimationFrame(freeRenderJob);
+  else setTimeout(freeRenderJob, 100);
+  /* Either use 100 ms or 20 ms.  Performance benchmarking can be used
+     to automatically select which one works best with the target
+     browser.  */
+  return true;
+}
+
+function freeRenderJob() {
+  render_in_prog = false;
+  if (render_queue) {
+    render_queue = false;
+    return render_globe();
+  }
+}
+
 // ----------------------------------------
 
 // TODO: This function should be a tile-based rendering engine that
 // gets called from a callback to complete the render.  In general,
 // JavaScript cannot support threads.
 function render_globe() {
+  if (!allocRenderJob())
+    return;
   fitCanvasToCntr();
   if (equirect_project)
     return render_map();
-  if (render_in_prog)
-    return;
-  render_in_prog = true;
   // Project and render the image.
+  var ctx = canvas.getContext("2d");
   var dest_data = ctx.createImageData(canvas.width, canvas.height);
   var dest_index = 0;
   var y_center = dest_data.height / 2;
@@ -490,107 +542,124 @@ function render_globe() {
   var disp_rad = Math.min(dest_data.height, dest_data.width) * disp_scale / 2.0;
   for (var y = 0; y < dest_data.height; y++) {
     for (var x = 0; x < dest_data.width; x++) {
-      /* 1. Get the 3D rectangular coordinate of the ray intersection
-            with the sphere.  The camera is looking down the negative
-            z axis.  */
-      var r3src_x, r3src_y, r3src_z;
+      for (var of = 0; of < osa_factor; of++) {
+	// X and Y jitter for oversampling.
+	var xj, yj;
+	if (of == 0)
+	  xj = yj = 0;
+	else {
+	  xj = 0.5 - Math.random();
+	  yj = 0.5 - Math.random();
+	}
 
-      if (!persp_project) {
-        // Orthographic projection
-        r3src_y = (y - y_center) / disp_rad;
-        r3src_x = (x - x_center) / disp_rad;
-        r3src_z = Math.sin(Math.acos(Math.sqrt(Math.pow(r3src_x, 2) +
-                                               Math.pow(r3src_y, 2))));
-      } else {
-        // Perspective projection
-        // r must be one: this simplifies the calculations
-        var r = 1; // 6371; // radius of the earth in kilometers
-        var d = persp_altitude / 6371; // 35786; // altitude in kilometers
-        // focal length in units of the screen dimensions
-        var f = 1 / Math.tan(persp_fov * Math.PI / 180 / 2);
-        var x_pix = (x - x_center) / disp_rad;
-        var y_pix = (y - y_center) / disp_rad;
+	/* 1. Get the 3D rectangular coordinate of the ray intersection
+	   with the sphere.  The camera is looking down the negative
+	   z axis.  */
+	var r3src_x, r3src_y, r3src_z;
 
-        var w = (Math.pow(x_pix, 2) + Math.pow(y_pix, 2)) / Math.pow(f, 2);
+	if (!persp_project) {
+	  // Orthographic projection
+	  r3src_y = (y + yj - y_center) / disp_rad;
+	  r3src_x = (x + xj - x_center) / disp_rad;
+	  r3src_z = Math.sin(Math.acos(Math.sqrt(Math.pow(r3src_x, 2) +
+						 Math.pow(r3src_y, 2))));
+	  if (isNaN(r3src_z))
+	    continue;
+	} else {
+	  // Perspective projection
+	  // r must be one: this simplifies the calculations
+	  var r = 1; // 6371; // radius of the earth in kilometers
+	  var d = persp_altitude / 6371; // 35786; // altitude in kilometers
+	  // focal length in units of the screen dimensions
+	  var f = 1 / Math.tan(persp_fov * DEG2RAD / 2);
+	  var x_pix = (x + xj - x_center) / disp_rad;
+	  var y_pix = (y + yj - y_center) / disp_rad;
 
-        var a = 1 + w;
-        var b = -2 * w * (r + d);
-        var c = w * Math.pow(r + d, 2) - Math.pow(r, 2);
+	  var w = (Math.pow(x_pix, 2) + Math.pow(y_pix, 2)) / Math.pow(f, 2);
 
-	/* Divide by the radius at the intersection so that there is a
-	   normalized coordinate that ranges from -1..1.  (Don't
-	   actually need to do this since r == 1.)  */
-        r3src_z = (-b + Math.sqrt(Math.pow(b, 2) - 4 * a * c)) / (2 * a);
-        r3src_x = -x_pix / f * (r3src_z - (r + d));
-        r3src_y = -y_pix / f * (r3src_z - (r + d));
+	  var a = 1 + w;
+	  var b = -2 * w * (r + d);
+	  var c = w * Math.pow(r + d, 2) - 1 /* 1 == Math.pow(r, 2) */;
+
+	  /* Divide by the radius at the intersection so that there is a
+	     normalized coordinate that ranges from -1..1.  (Don't
+	     actually need to do this since r == 1.)  */
+	  r3src_z = (-b + Math.sqrt(Math.pow(b, 2) - 4 * a * c)) / (2 * a);
+	  if (isNaN(r3src_z))
+	    continue;
+	  r3src_x = -x_pix / f * (r3src_z - (r + d));
+	  r3src_y = -y_pix / f * (r3src_z - (r + d));
+	}
+
+	/* 2. Inverse rotate this coordinate around the x axis by the
+	   current globe tilt.  */
+	var i_tilt = -tilt * DEG2RAD;
+	var cos_tilt = Math.cos(i_tilt); var sin_tilt = Math.sin(i_tilt);
+	var r3dest_x, r3dest_y, r3dest_z;
+	r3dest_x = r3src_x;
+	r3dest_z = r3src_z * cos_tilt - r3src_y * sin_tilt;
+	r3dest_y = r3src_z * sin_tilt + r3src_y * cos_tilt;
+
+	/* 3. Measure the latitude and longitude of this coordinate.  */
+	var latitude = Math.asin(r3dest_y);
+	var longitude = Math.atan2(r3dest_x, r3dest_z);
+
+	/* 4. Convert from radians to degrees.  */
+	latitude = latitude * RAD2DEG;
+	longitude = longitude * RAD2DEG;
+
+	/* 5. Inverse shift by the longitudinal rotation around the pole.  */
+	longitude += lon_rot;
+
+	/* 6. Verify that the coordinates are in bounds.  */
+	latitude += 90;
+	if (latitude < 0) latitude = 0;
+	if (latitude > 180) latitude = 180;
+	/* while (longitude < 0) {
+	  longitude += 360;
+	}
+	while (longitude >= 360) {
+	  longitude -= 360;
+	} */
+	longitude += (longitude < 0) * 360;
+	longitude = longitude % 360.0;
+
+	{ /* Plot the pixel.  */
+	  var src_y = ~~(latitude * src_data.height * inv_180);
+	  var src_x = ~~(longitude * src_data.width * inv_360);
+	  if (src_y == src_data.height)
+	    src_y -= 1;
+	  var src_index = (src_data.width * src_y + src_x) * 4;
+	  dest_data.data[dest_index+0] +=
+	    src_data.data[src_index++] * inv_osa_factor;
+	  dest_data.data[dest_index+1] +=
+	    src_data.data[src_index++] * inv_osa_factor;
+	  dest_data.data[dest_index+2] +=
+	    src_data.data[src_index++] * inv_osa_factor;
+	  dest_data.data[dest_index+3] +=
+	    src_data.data[src_index++] * inv_osa_factor;
+	  continue;
+	}
       }
-
-      /* 2. Inverse rotate this coordinate around the x axis by the
-            current globe tilt.  */
-      var i_tilt = -tilt * Math.PI / 180;
-      var cos_tilt = Math.cos(i_tilt); var sin_tilt = Math.sin(i_tilt);
-      var r3dest_x, r3dest_y, r3dest_z;
-      r3dest_x = r3src_x;
-      r3dest_z = r3src_z * cos_tilt - r3src_y * sin_tilt;
-      r3dest_y = r3src_z * sin_tilt + r3src_y * cos_tilt;
-
-      /* 3. Measure the latitude and longitude of this coordinate.  */
-      var latitude = Math.asin(r3dest_y);
-      var longitude = Math.atan2(r3dest_x, r3dest_z);
-
-      /* 4. Convert from radians to degrees.  */
-      latitude = latitude * 180 / Math.PI;
-      longitude = longitude * 180 / Math.PI;
-
-      /* 5. Inverse shift by the longitudinal rotation around the pole.  */
-      longitude += lon_rot;
-
-      /* 6. Verify that the coordinates are in bounds.  */
-      latitude += 90;
-      if (latitude < 0) latitude = 0;
-      if (latitude > 180) latitude = 180;
-      while (longitude < 0) {
-        longitude += 360;
-      }
-      while (longitude >= 360) {
-        longitude -= 360;
-      }
-
-      if (!isNaN(latitude) && !isNaN(longitude)) {
-        var src_y = ~~(latitude * src_data.height / 180);
-        var src_x = ~~(longitude * src_data.width / 360);
-        if (src_y == src_data.height)
-          src_y -= 1;
-        var src_index = (src_data.width * src_y + src_x) * 4;
-        dest_data.data[dest_index++] = src_data.data[src_index++];
-        dest_data.data[dest_index++] = src_data.data[src_index++];
-        dest_data.data[dest_index++] = src_data.data[src_index++];
-        dest_data.data[dest_index++] = src_data.data[src_index++];
-        continue;
-      } else {
-        dest_data.data[dest_index++] = 255;
-        dest_data.data[dest_index++] = 0;
-        dest_data.data[dest_index++] = 0;
-        dest_data.data[dest_index++] = 0;
-      }
+      dest_index += 4;
     }
   }
 
   ctx.putImageData(dest_data, 0, 0);
-  render_in_prog = false;
 }
 
 /* This function just copies the backbuffer to the frontbuffer, with
    the correct shifting and scaling factors.  */
 function render_map() {
-  if (render_in_prog)
-    return;
-  render_in_prog = true;
+  /* Multiply screen_scalfac two at the end: When only half of the map
+     width is visible at zoom factor 1, equirectangular and
+     orthographic projections line up almost perfectly at the same
+     zoom level.  */
+  var screen_scalfac = canvas.width * scale * 2;
+  var x_shift = (180 - lon_rot) * inv_360 * screen_scalfac - screen_scalfac / 2;
+  var y_shift = tilt * inv_360 * screen_scalfac - screen_scalfac / 4;
 
-  var screen_scalfac = canvas.width * scale;
-  var x_shift = (180 - lon_rot) / 360 * screen_scalfac - screen_scalfac / 2;
-  var y_shift = tilt / 360 * screen_scalfac - screen_scalfac / 4;
-
+  var ctx = canvas.getContext("2d");
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.drawImage(earth_buffer, 0, 0, earth_buffer.width, earth_buffer.height,
 		x_shift + canvas.width / 2,
@@ -599,7 +668,6 @@ function render_map() {
 
   // Draw a second image for a continuous wrapped display.
   if (lon_rot == 180) {
-    render_in_prog = false;
     return;
   }
   if (lon_rot < 180) x_shift -= screen_scalfac;
@@ -610,7 +678,6 @@ function render_map() {
      these visibility tests.  */
   var real_x_shift = x_shift + canvas.width / 2;
   /* if (real_x_shift + screen_scalfac < 0 || real_x_shift > canvas.width) {
-    render_in_prog = false;
     return;
   } */
 
@@ -618,8 +685,6 @@ function render_map() {
 		real_x_shift,
                 y_shift + canvas.height / 2,
                 screen_scalfac, screen_scalfac / 2);
-
-  render_in_prog = false;
 }
 
 function periodic_render() {

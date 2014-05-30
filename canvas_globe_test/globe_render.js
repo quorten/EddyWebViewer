@@ -35,6 +35,10 @@ var persp_fov = 17.5;
 var render_ssh = true;
 // Render textured land masses
 var render_land_tex = true;
+// Minimum track length, -1 for any.
+var min_track_len = -1;
+// Maximum track length, -1 for any.
+var max_track_len = -1;
 
 /* Resize the frontbuffer canvas to fit the CSS allocated space.
 
@@ -142,6 +146,18 @@ function initOverlay() {
     };
   } */
 
+/* Compute the great circle distance between two latitude-longitude
+   polar coordinates.  */
+function gCircLen(p1, p2) {
+  var dlat = Math.abs(p2.lat - p1.lat);
+  var dlon = Math.abs(p2.lon - p1.lon);
+  var dsigma = 2 * Math.asin(Math.sqrt(Math.pow(Math.sin(dlat / 2), 2) +
+				       Math.cos(p1.lat) * Math.cos(p2.lat) *
+				       Math.pow(Math.sin(dlon / 2), 2)));
+  var r = 6371; // mean radius of Earth in kilometers
+  return r * dsigma;
+}
+
 // Refresh the backbuffer with any possible UI changes taking effect.
 function refreshOverlay() {
   ec.clearRect(0, 0, earth_buffer.width, earth_buffer.height);
@@ -153,10 +169,29 @@ function refreshOverlay() {
     ec.drawImage(ssh_tex, 0, 0, earth_buffer.width, earth_buffer.height);
 
   // Render the eddy tracks.
-  ec.lineWidth = 5;
-  ec.strokeStyle = "#ff8000";
+  ec.lineWidth = 1;
+  ec.strokeStyle = "#800080";
   ec.lineJoin = "round";
   for (var i = 0; i < eddyTracks.length; i++) {
+    if (min_track_len != -1 || max_track_len != -1) {
+      /* Compute the length of the track to determine if it should be
+         drawn.  */
+      /* var track_len = 0;
+      for (var j = 1; j < eddyTracks[i].coordinates.length; j++) {
+	track_len += gCircLen(eddyTracks[i].coordinates[j-1],
+			      eddyTracks[i].coordinates[j]);
+      } */
+      /* NOTE: Since some of the eddy tracks are considerably
+         twisted, we only compute the straight line distance from the
+         beginning of the track to the end of the track.  */
+      var track_len = gCircLen(eddyTracks[i].coordinates[0],
+	       eddyTracks[i].coordinates[eddyTracks[i].coordinates.length-1]);
+      if (track_len < min_track_len)
+	continue;
+      if (max_track_len != -1 && track_len > max_track_len)
+	continue;
+    }
+
     ec.beginPath();
     var lon = eddyTracks[i].coordinates[0].lon;
     var lat = eddyTracks[i].coordinates[0].lat;
@@ -223,7 +258,7 @@ function setMouseDown(event) {
     event = window.event;
 
   // TODO: Need a cross browser setCapture();
-  // this.setCapture();
+  if (this.setCapture) this.setCapture();
   // if (isChrome) window.onmousemove = ...
 
   mouseDown = true;
@@ -468,7 +503,7 @@ function render_globe() {
                                                Math.pow(r3src_y, 2))));
       } else {
         // Perspective projection
-        // r must be one in the current algorithm
+        // r must be one: this simplifies the calculations
         var r = 1; // 6371; // radius of the earth in kilometers
         var d = persp_altitude / 6371; // 35786; // altitude in kilometers
         // focal length in units of the screen dimensions
@@ -482,6 +517,9 @@ function render_globe() {
         var b = -2 * w * (r + d);
         var c = w * Math.pow(r + d, 2) - Math.pow(r, 2);
 
+	/* Divide by the radius at the intersection so that there is a
+	   normalized coordinate that ranges from -1..1.  (Don't
+	   actually need to do this since r == 1.)  */
         r3src_z = (-b + Math.sqrt(Math.pow(b, 2) - 4 * a * c)) / (2 * a);
         r3src_x = -x_pix / f * (r3src_z - (r + d));
         r3src_y = -y_pix / f * (r3src_z - (r + d));

@@ -662,6 +662,8 @@ function pointerTestInit() {
   var ctx = pointerTestZone.getContext('2d');
   ctx.font = '12pt Sans';
   ctx.fillText('Calibrate, please!', 10, ~~(pointerTestZone.height / 4));
+  ctx.fillText('Click on the dot.',
+    10, ~~(pointerTestZone.height * 3 / 4));
   ctx.fillRect(~~(pointerTestZone.width / 2),
     ~~(pointerTestZone.height / 2), 1, 1);
 }

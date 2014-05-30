@@ -35,6 +35,7 @@
     .solocoldiv { text-align: right; }
     /* input, select { color: white; background-color: gray; } */
     .numinput { width: 4em; }
+    .wideinput { width: auto; }
   </style>
   <script type="text/javascript"
 	  src="../canvas_globe_test/globe_render.js"></script>
@@ -94,6 +95,20 @@ function initGUIHooks() {
       render_ssh = true;
     else if (choice == 'None')
       render_ssh = false;
+    refreshOverlay();
+    render_globe();
+  };
+
+  document.getElementById('gui.lenRange').onchange = function(event) {
+    var parts = this.value.split(', ');
+    if (parts[0] == 'any')
+      min_track_len = -1;
+    else
+      min_track_len = +parts[0];
+    if (parts[1] == 'any')
+      max_track_len = -1;
+    else
+      max_track_len = +parts[1];
     refreshOverlay();
     render_globe();
   };
@@ -217,7 +232,8 @@ document.getElementById('scriptWrapper').style.cssText = '';
 	    <label for="gui.showChelton">Chelton Tracks</label><br />
 	    <label for="gui.lenRange">Length Range (min, max)</label>
 	    <input id="gui.lenRange" type="text" value="any, any"
-		   class="numinput" />
+		   class="wideinput" />
+	    <label for="gui.lenRange">km</label>
 	  </fieldset><br />
 
 	  <fieldset>

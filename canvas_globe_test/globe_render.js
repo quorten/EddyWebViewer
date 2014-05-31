@@ -502,7 +502,8 @@ function allocRenderJob() {
     return false;
   }
   render_in_prog = true;
-  if (requestAnimationFrame) requestAnimationFrame(freeRenderJob);
+  if (typeof requestAnimationFrame != "undefined")
+    requestAnimationFrame(freeRenderJob);
   else setTimeout(freeRenderJob, 100);
   /* Either use 100 ms or 20 ms.  Performance benchmarking can be used
      to automatically select which one works best with the target

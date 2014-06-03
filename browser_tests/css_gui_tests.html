@@ -195,6 +195,8 @@ function init() {
 </head>
 <body onload="init()">
 
+<div id="minimizeCntr">
+
 <h1>CSS GUI Tests</h1>
 
 <h2>Test Listing</h2>
@@ -585,20 +587,29 @@ correctly.  It does so by plotting a line drawing on an HTML Canvas
 indicating the path of the pointer.</p>
 
 <p class="btest-output"><strong>Expected Output:</strong> First click
-exactly on top of on the small black center point to calibrate the
-pointer translation delta.  This is used to mitigate differences in
-event handling in different browsers.  After that, click and drag
-around on the canvas.  You should see the traced line on the HTML
-Canvas follow the pointer's path exactly.</p>
+on the "Minimize Document" button to hide the rest of the document.
+By eliminating the vertical scrollbar in the document, the code does
+not need to worry about the otherwise nearly impossible method to
+determine where the mouse pointer is in the document.  After that,
+click and drag around on the canvas.  You should see the traced line
+on the HTML Canvas follow the pointer's path exactly.</p>
 
 <p class="failed">If this requirement is not met, then the test
 fails.</p>
 
+</div> <!-- END minimizeCntr -->
+
 <p><strong>Content Zone:</strong></p>
 
 <div class="btest-content">
+
+<form action="">
+<p><input id="toggleMinimize" type="button" value="Minimize Document" /></p>
+</form>
+
 <canvas id="pointerTestZone" width="200" height="200"
 	style="border-style: solid; border-color: gray"></canvas>
+
 <script type="text/javascript">
 <!--//--><![CDATA[//><!--
 var pointerTestZone;
@@ -653,19 +664,32 @@ function setMouseUp(event) {
   return false;
 }
 
+function minimizeActivate(event) {
+  var minCntr = document.getElementById('minimizeCntr');
+  if (minCntr.style.cssText == '')
+    minCntr.style.cssText = 'display: none';
+  else
+    minCntr.style.cssText = '';
+
+  topLeft.x = pointerTestZone.clientLeft + pointerTestZone.offsetLeft;
+  topLeft.y = pointerTestZone.clientLeft + pointerTestZone.offsetTop;
+}
+
 function pointerTestInit() {
   pointerTestZone = document.getElementById('pointerTestZone');
   pointerTestZone.onmousedown = setMouseDown;
   pointerTestZone.onmousemove = drawLineOnMove;
   pointerTestZone.onmouseup = setMouseUp;
 
+  document.getElementById('toggleMinimize').onclick = minimizeActivate;
+
   var ctx = pointerTestZone.getContext('2d');
-  ctx.font = '12pt Sans';
+  /* ctx.font = '12pt Sans';
   ctx.fillText('Calibrate, please!', 10, ~~(pointerTestZone.height / 4));
   ctx.fillText('Click on the dot.',
     10, ~~(pointerTestZone.height * 3 / 4));
   ctx.fillRect(~~(pointerTestZone.width / 2),
-    ~~(pointerTestZone.height / 2), 1, 1);
+    ~~(pointerTestZone.height / 2), 1, 1); */
 }
 // pointerTestInit(); // Actual function call in init() above.
 //--><!]]>

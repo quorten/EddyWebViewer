@@ -289,8 +289,8 @@ implementation of the Eddy Web Viewer.</p>
   <li>This info document</li>
   <li>Browser feature test suite</li>
   <li>Transforming lat/lon for additional map projections.</li>
-  <li>Connect the CSS UI to the current code base.</li>
   <li>Improve the organization the current code base.</li>
+  <li>Creating an improved CSS user interface.</li>
 </ul>
 
 <p>Completed goals:</p>
@@ -301,6 +301,7 @@ implementation of the Eddy Web Viewer.</p>
   <li>Initial working implementation of the eddy web viewer.</li>
   <li>Transforming lat/lon for essential map projections.</li>
   <li>Built the CSS user interface.</li>
+  <li>Connect the CSS UI to the current code base.</li>
 </ul>
 
 <hr />
@@ -469,23 +470,22 @@ of this process is to determine a vector from the center of the globe
 to this point.  To keep things simple, assume this vector will be
 represented as a normalized 3-dimensional rectangular vector.  The
 coordinate system at this step will be assumed to have the X-Y plane
-coincide with the screen and the Z-axis run from the center of the
-screen through the center of the globe.</li>
+coincide with the screen, with the 3D origin (0, 0, 0) at the center
+of the screen and quadrant I of the X-Y plane at the top-right corner.
+The camera will be looking down the negative Z-axis, and the center of
+the globe will lie on the Z-axis.</li>
 
 <li>Once a vector describing the point on the globe in relation to the
 center has been found, the vector should be inverse rotated by the
 current rotation of the Earth to generate a vector that describes a
 position on the Earth.  It is critical that the pole tilt
 transformation is the independent transformation and the longitudinal
-rotation transformation is the dependent transformation.  At this
-step, the coordinate system should also be transformed so that the X-Y
-plane coincides with the equator and the Z-axis runs through the
-poles.</li>
+rotation transformation is the dependent transformation.</li>
 
 <li>Now it is possible to determine the latitude and longitude of the
 point.  The longitude can be determined by using <code>atan2()</code>
-on a normalized vector from the X and Y coordinates, and the latitude
-can be determined by using <code>sin()</code> on the Z
+on a normalized vector from the X and Z coordinates, and the latitude
+can be determined by using <code>sin()</code> on the Y
 coordinate.</li>
 </ol>
 
@@ -559,9 +559,9 @@ reasonable height manually.  Maybe there is some browser setting that
 I don't know about that limits the maximum intrinsic height of
 embedded objects. -->
 <p style="text-align: center">
-<object type="application/xhtml+xml" data="perspective_math.xhtml"
+<object type="application/xhtml+xml" data="persp_math1.xhtml"
 	width="100%" height="678">
-<img src="perspective_math.png" alt="raster mathematics rendering"
+<img src="persp_math1.png" alt="raster mathematics rendering"
      width="604" height="678" />
 </object>
 </p>
@@ -572,6 +572,37 @@ coordinates of the point on the generic globe have been found, the Z
 coordinate can be found by using <code>z = sin(acos(sqrt(x^2 +
 y^2)))</code>, the same equation given above for the orthographic
 projection.</p>
+
+<p>Unfortunately, the above simplification of considering the X and Y
+coordinates separately is incorrect.  Look at it this way: Suppose you
+have a point on the Z axis located a distance "r + d" away from the
+center of a sphere.  Try drawing a plane through the equator of the
+sphere and the point on the Z axis.  You'll get a circular
+cross-section with radius "r" just as expected from the equations
+above.  Now suppose you tilt that plane around the Y axis, making sure
+the plane still passes through the distanced point on the Z axis.  The
+cross-section of the sphere that lies on the plane will end up having
+a radius smaller than "r".  Thus, the above algorithm cannot be used
+for X and Y independently, since that computational method is
+flawed.</p>
+
+<p>Luckily, it turns out that the solution with a 3D sphere equation
+is not that much more difficult.  Starting with the equation of a
+sphere and two equations for X and Y screen coordinates, the Z
+coordinate on the sphere is solved for, which gives the quadratic
+formula.  Only the "near" solution needs to be considered, since the
+"far" solution is occluded by the front of the sphere.  After the Z
+coordinate on the sphere is found, the X and Y coordinates of the
+point on the sphere can be trivially found using the X and Y ray
+equations.</p>
+
+<p style="text-align: center">
+<object type="application/xhtml+xml" data="persp_math2.xhtml"
+	width="100%" height="617">
+<img src="persp_math2.png" alt="raster mathematics rendering"
+     width="540" height="617" />
+</object>
+</p>
 
 <h3>Display Considerations</h3>
 

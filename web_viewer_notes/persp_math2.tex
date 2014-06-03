@@ -1,0 +1,61 @@
+%% Mathematics documenting solution to perspective ray tracing, part 2.
+%%
+%% To generate the PNG web image from this document, run the following
+%% commands in order:
+%%   latex persp_math2.tex
+%%   dvips persp_math2.dvi -o persp_math2.ps
+%%   convert -density 161x161 -trim persp_math2.ps persp_math2.png
+%%   rm persp_math2.aux persp_math2.log persp_math2.dvi \
+%%     persp_math2.ps
+%%
+%% Optionally, you might want to make the image have an opaque white
+%% background so that the image does cause problems for IE6 users.
+%% You should also keep the alpha channel in the PNG rather than
+%% removing it, since for some odd reason, some versions of
+%% semi-modern software don't cope well with rendering PNG images with
+%% no alpha channel.
+%%
+%% blahtexml <http://gva.noekeon.org/blahtexml> can be used to
+%% generate MathML from this LaTeX code.  To generate the MathML
+%% fragments from this document, start blahtexml with the `--mathml'
+%% option and run each portion of mathematics between the `\[' and
+%% `\]' that is marked with ``New blahtexml run'' through blahtexml.
+%% This will give you back a series of MathML fragments.
+%%
+%% After that, you will have to merge the fragments into
+%% `persp_math2.xhtml'.
+\documentclass{article}
+\usepackage{amsmath}
+\pagestyle{empty}
+\begin{document}
+
+\[ %% New blahtexml run.
+\begin{pmatrix}
+x^2 + y^2 + z^2 = r^2 \\
+x = x_p / f (-z + (r + d)) \\
+y = y_p / f (-z + (r + d))
+\end{pmatrix}
+\]
+
+\[ %% New blahtexml run.
+\begin{aligned}
+\left(\frac{x_p}{f} (-z + (r + d)) \right)^2 +
+  \left(\frac{y_p}{f} (-z + (r + d)) \right)^2 + z^2 &= r^2 \\
+\frac{x_p^2 + y_p^2}{f^2} (-z + (r + d))^2 + z^2 &= r^2 \\
+\frac{x_p^2 + y_p^2}{f^2} (z^2 - 2(r + d)z + (r + d)^2) + z^2 &= r^2 \\
+\text{let} \ w = \frac{x_p^2 + y_p^2}{f^2} \\
+(1 + w) z^2 - 2w(r + d)z + w(r + d)^2 - r^2 &= 0
+\end{aligned}
+\]
+
+\[ %% New blahtexml run.
+\begin{aligned}
+a &= 1 + w \\
+b &= -2w(r + d) \\
+c &= w(r + d)^2 - r^2 \\
+z &= \frac{-b \pm \sqrt{b^2 - 4ac}}{2a} \\
+z &= \frac{-b + \sqrt{b^2 - 4ac}}{2a}
+\end{aligned}
+\]
+
+\end{document}

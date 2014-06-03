@@ -439,6 +439,13 @@ images:</p>
 
 <h3>3D Rendering Projections</h3>
 
+<p>First of all, what factor distinguishes a 3D projection from a 2D
+projection?  For the purposes of this application, it is basically the
+need to carry around three of some kind of position variables in the
+projection/unprojection equations.  Tilting the pole of the globe
+before projection computations basically requires three-dimensional
+mathematics in the intermediate equations.</p>
+
 <p>Raytrace rendering a 3D view of the Earth is less trivial than one
 would think at first.  The process of backtracing from screen pixels
 to a a map pixel is a multistep process.</p>
@@ -598,7 +605,7 @@ equations.</p>
 
 <p style="text-align: center">
 <object type="application/xhtml+xml" data="persp_math2.xhtml"
-	width="100%" height="617">
+	width="100%" height="647">
 <img src="persp_math2.png" alt="raster mathematics rendering"
      width="540" height="617" />
 </object>
@@ -661,6 +668,7 @@ panels: a top panel (topbar) and a side panel (sidebar).</p>
 <ul>
   <li>The UI needs to be able to consistenly respond when the user
   presses the escape key.</li>
+  <li>The UI should provide a convenient keyboard user interface.</li>
   <li>There will be no "select eddy" button, since just clicking and
   not moving the mouse will select an eddy if it is visible.</li>
   <li>Clicking and dragging the mouse pans the Earth.</li>
@@ -668,6 +676,8 @@ panels: a top panel (topbar) and a side panel (sidebar).</p>
   zooms out.</li>
   <li>Pulling fingers apart on touchscreen zooms out, pushing fingers
   together zooms in.</li>
+  <li>A zoom slider could also be convenient for touchscreen
+  users.</li>
   <li>The panels should be able to dynamically hide and show on small
   screen layouts.</li>
   <li>The UI needs to be able to dynamically resize the height on the
@@ -679,11 +689,6 @@ panels: a top panel (topbar) and a side panel (sidebar).</p>
   <li>With as many widgets as there are going to be in the user
   interface, there also needs to be a way to iconify the grouping
   boxes.</li>
-  <li>Older browsers have had significant issues with providing a
-  standard way to determine the mouse/pointer position.  If the
-  browser makes retrieving pointer information too difficult or there
-  is no pointing device available, then the scripts may need to
-  provide a fallback that uses the keyboard as a replacement.</li>
 </ul>
 
 <p>These are the required controls in the CSS user interface:</p>
@@ -876,8 +881,8 @@ faster than LaTeX-to-intermediate-to-HTML translation.</p>
 <p>For best backwards compatibility support, avoid text and clones in
 SVG images.  Also note that older versions of Firefox (3.6) treated
 SVG images as "documents" and did not support including SVG images in
-a document via the <code>&lt;img&gt;</code> element.  Note, however,
-that when an SVG image is included in a document via
+a document via the <code>&lt;img&gt;</code> element.  Note that when
+an SVG image is included in a document via
 the <code>&lt;img&gt;</code> element rather than via
 the <code>&lt;object&gt;</code> element or some other inlining method,
 there are a
@@ -988,11 +993,66 @@ reasons.</p>
       http://www.webcredible.com/blog-reports/css/internet-explorer.shtml</a></li>
 </ul>
 
-<h3>Mouse Pointer Coordinates Compatibility</h3>
+<h3>JavaScript Events and Web App Provisions</h3>
 
-<h3>Mouse Wheel Compatibility</h3>
+<h4>Mouse Pointer Coordinates Compatibility</h4>
 
-<h3>requestAnimationFrame() Compatibility</h3>
+<p>When a page has a vertical scrollbar, it can be impossible on some
+older browsers to determine where the mouse pointer is located.
+Without a vertical scrollbar, it is possible to determine the mouse
+pointer's location with a few capability checks.  See the following
+link for more information:</p>
+
+<p>Mission Impossible Mouse Coordinates:
+  <a href="http://evolt.org/node/23335/">
+    http://evolt.org/node/23335/</a>
+</p>
+
+<h4>Mouse Wheel Events</h4>
+
+<p>Older browsers had a lot of different ways of handling the mouse
+wheel.  The
+  <a href="https://developer.mozilla.org/en-US/docs/Web/Reference/Events/wheel">
+    wheel event page on Mozilla Developers Network</a> provides a
+good cross-browser compatibility function for handling wheel
+events.</p>
+
+<h4>Mouse Capturing Compatibility</h4>
+
+<p>Many browsers do not support the <code>setCapture()</code> method.
+The solution to this problem is usually to set up an event handler on
+the <code>window</code> object instead, which the browser will
+automatically provide mouse capture for.</p>
+
+<p><a href="http://news.qooxdoo.org/mouse-capturing">
+  http://news.qooxdoo.org/mouse-capturing</a></p>
+
+<h4>CSS Box Size Change Events</h4>
+
+<p>In modern HTML and CSS, there is no way to listen for an event that
+fires when the size of a CSS box changes.  (Older browsers had a
+<code>DOMAttrModified</code> event, but it is now
+<a href="https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#event-type-DOMAttrModified">deprecated</a>.)
+Instead, the equivalent functionality must be implemented by polling
+at a periodic interval to detect changes.  If a script is frequently
+called to refresh the contents of an element, the beginning of the
+execution of this script would be the most logical place to put such
+polling code.  Otherwise, timer timeouts must be used to call the
+polling code.</p>
+
+<h4>requestAnimationFrame() Compatibility</h4>
+
+<p>The best possible cross-browser compatibility for
+requestAnimationFrame() involves defining a polyfill shim:<br/ >
+<a href="http://www.paulirish.com/2011/requestanimationframe-for-smart-animating/">
+http://www.paulirish.com/2011/requestanimationframe-for-smart-animating/</a></p>
+
+<p>It is necessary to use <code>requestAnimationFrame()</code> for any
+code that gets frequently executed and makes updates to the screen,
+such as a pointer motion handling code, in order to get good rendering
+performance in modern versions of Firefox.  Otherwise, the graphics
+refresh rate in Firefox is going to trail dramatically behind the
+graphics refresh rate in Google Chrome.</p>
 
 <hr />
 <!-- ________________________________________ -->
@@ -1032,6 +1092,12 @@ available or not.</p>
 <p>Use namespaces in the JavaScript code.</p>
 
 <p>The Ocean Eddies Web Viewer needs to have a favicon.</p>
+
+<p>Stay away from CSS transitions.  Opt instead to provide the user
+with a fast and snappy user interface.</p>
+
+<p>Hardly any browsers do not support JavaScript 1.5: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference">
+    https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference</a></p>
 
 <p>My globe rendering test can sometimes crash Firefox 3.6.</p>
 
@@ -1108,13 +1174,6 @@ http://stackoverflow.com/questions/10652513/html5-dynamically-create-canvas</a><
 
 <p><a href="http://www.scriptingmaster.com/html/versions-of-HTML.asp">
     http://www.scriptingmaster.com/html/versions-of-HTML.asp</a></p>
-
-<p><a href="http://www.quirksmode.org/">
-    http://www.quirksmode.org/</a></p>
-
-<p>Mission Impossible Mouse Coordinates:<br />
-  <a href="http://evolt.org/node/23335/">
-    http://evolt.org/node/23335/</a></p>
 
 <p><a href="http://stackoverflow.com/questions/4002234/do-we-need-semicolon-at-the-end">
     http://stackoverflow.com/questions/4002234/do-we-need-semicolon-at-the-end</a></p>

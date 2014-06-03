@@ -3,7 +3,7 @@ var drawingContainer;
 var canvas;
 
 var earth_buffer;
-var backbuf_scale = 4;
+var backbuf_scale = 1;
 var earth_tex;
 var ssh_tex;
 var eddyTracks;
@@ -462,6 +462,37 @@ function zoomGlobe(event) {
 
  })(window, document);
 
+/* NOTE: Avoid assigning directly to the window object, this may not
+   work well on all browsers.  */
+(function() {
+  var lastTime = 0;
+  var vendors = ['webkit', 'moz'];
+  for(var x = 0; x < vendors.length && !window.requestAnimationFrame; ++x) {
+    window.requestAnimationFrame = window[vendors[x]+'RequestAnimationFrame'];
+    window.cancelAnimationFrame = window[vendors[x]+'CancelAnimationFrame'] ||
+      window[vendors[x]+'CancelRequestAnimationFrame'];
+  }
+
+  if (!window.requestAnimationFrame)
+    window.requestAnimationFrame = function(callback) {
+      return setTimeout(callback, 20);
+    };
+    /* window.requestAnimationFrame = function(callback, element) {
+      var currTime = new Date().getTime();
+      var timeToCall = Math.max(0, 16 - (currTime - lastTime));
+      var id = window.setTimeout(
+	function() { callback(currTime + timeToCall); },
+				 timeToCall);
+      lastTime = currTime + timeToCall;
+      return id;
+    }; */
+
+  if (!window.cancelAnimationFrame)
+    window.cancelAnimationFrame = function(id) {
+      clearTimeout(id);
+    };
+ }());
+
 function pointerTestInit() {
   var loadingScreen = document.getElementById("loadingScreen");
   if (loadingScreen)
@@ -502,12 +533,7 @@ function allocRenderJob() {
     return false;
   }
   render_in_prog = true;
-  if (typeof requestAnimationFrame != "undefined")
-    requestAnimationFrame(freeRenderJob);
-  else setTimeout(freeRenderJob, 100);
-  /* Either use 100 ms or 20 ms.  Performance benchmarking can be used
-     to automatically select which one works best with the target
-     browser.  */
+  requestAnimationFrame(freeRenderJob);
   return true;
 }
 
@@ -588,8 +614,8 @@ function render_globe() {
 	  r3src_z = (-b + Math.sqrt(Math.pow(b, 2) - 4 * a * c)) / (2 * a);
 	  if (isNaN(r3src_z))
 	    continue;
-	  r3src_x = -x_pix / f * (r3src_z - (r + d));
-	  r3src_y = -y_pix / f * (r3src_z - (r + d));
+	  r3src_x = x_pix / f * (-r3src_z + (r + d));
+	  r3src_y = y_pix / f * (-r3src_z + (r + d));
 	}
 
 	/* 2. Inverse rotate this coordinate around the x axis by the
@@ -625,22 +651,20 @@ function render_globe() {
 	longitude += (longitude < 0) * 360;
 	longitude = longitude % 360.0;
 
-	{ /* Plot the pixel.  */
-	  var src_y = ~~(latitude * src_data.height * inv_180);
-	  var src_x = ~~(longitude * src_data.width * inv_360);
-	  if (src_y == src_data.height)
-	    src_y -= 1;
-	  var src_index = (src_data.width * src_y + src_x) * 4;
-	  dest_data.data[dest_index+0] +=
-	    src_data.data[src_index++] * inv_osa_factor;
-	  dest_data.data[dest_index+1] +=
-	    src_data.data[src_index++] * inv_osa_factor;
-	  dest_data.data[dest_index+2] +=
-	    src_data.data[src_index++] * inv_osa_factor;
-	  dest_data.data[dest_index+3] +=
-	    src_data.data[src_index++] * inv_osa_factor;
-	  continue;
-	}
+	/* Plot the pixel.  */
+	var src_y = ~~(latitude * src_data.height * inv_180);
+	var src_x = ~~(longitude * src_data.width * inv_360);
+	if (src_y == src_data.height)
+	  src_y -= 1;
+	var src_index = (src_data.width * src_y + src_x) * 4;
+	dest_data.data[dest_index+0] +=
+	  src_data.data[src_index++] * inv_osa_factor;
+	dest_data.data[dest_index+1] +=
+	  src_data.data[src_index++] * inv_osa_factor;
+	dest_data.data[dest_index+2] +=
+	  src_data.data[src_index++] * inv_osa_factor;
+	dest_data.data[dest_index+3] +=
+	  src_data.data[src_index++] * inv_osa_factor;
       }
       dest_index += 4;
     }

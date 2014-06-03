@@ -1,0 +1,93 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"
+      lang="en" xml:lang="en">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <title>Ocean Eddies Web Viewer</title>
+  <style type="text/css">
+    html, body { margin: 0; padding: 0; height: 100%; }
+    #bottomBar { position: absolute; bottom: 0px; width: 100%;
+                 background-color: #333348; text-align: center;
+                 margin: 0px; padding: 0px; vertical-align: bottom;
+                 /* padding-left: 10px; padding-right: 10px; */ }
+    .iconBtns { display: inline-block; height: 34px; vertical-align: bottom;
+                margin: 0px; margin-top: 1px; margin-bottom: 1px;
+                padding: 0px; }
+    .iconBtns img, .iconBtns .imgbtn { border-style: solid; border-width: 1px;
+                     border-color: white; margin: 0px; padding: 0px;
+                     vertical-align: bottom; }
+    .iconBtns .imgbtn { display: inline-block; width: 32px; height: 32px; }
+    #beginbtn { background-image: url("beginning.png"); }
+    #beginbtn:active { background-image: url("beginning_light.png"); }
+    #rewindbtn { background-image: url("rewind.png"); }
+    #rewindbtn:active { background-image: url("rewind_light.png"); }
+    #pausebtn { background-image: url("pause.png"); }
+    #pausebtn:active { background-image: url("pause_light.png"); }
+    #playbtn { background-image: url("play.png"); }
+    #playbtn:active { background-image: url("play_light.png"); }
+    #playbtn { background-image: url("play.png"); }
+    #playbtn:active { background-image: url("play_light.png"); }
+    #ffwdbtn { background-image: url("fast_forward.png"); }
+    #ffwdbtn:active { background-image: url("fast_forward_light.png"); }
+    #endbtn { background-image: url("end.png"); }
+    #endbtn:active { background-image: url("end_light.png"); }
+    #configbtn { background-image: url("config.png"); }
+    #configbtn:active { background-image: url("config_light.png"); }
+    #helpbtn { background-image: url("help.png"); }
+    #helpbtn:active { background-image: url("help_light.png"); }
+    .position-time { display: inline-block; height: 34px;
+                     vertical-align: bottom;
+                     margin: 0px; margin-top: 1px; margin-bottom: 1px;
+                     padding: 0px; }
+    .position-time input { width: 7em; text-align: center; }
+    .position-time input#graticule { width: 4em; }
+    .spacer { display: inline-block; width: 10px; }
+    label { color: white; }
+    label img { vertical-align: middle; }
+
+    /* Note: Button highlight color is "#6a6a96".  */
+  </style>
+</head>
+<body>
+
+<form id="bottomBar" action="">
+
+   <div class="iconBtns">
+   <div class="imgbtn" id="beginbtn" title="Beginning"></div><!--
+--><div class="imgbtn" id="rewindbtn" title="Backward faster"></div><!--
+--><div class="imgbtn" id="pausebtn" title="Pause"></div><!--
+--><div class="imgbtn" id="playbtn" title="Play"></div><!--
+--><div class="imgbtn" id="ffwdbtn" title="Forward faster"></div><!--
+--><div class="imgbtn" id="endbtn" title="End"></div>
+   </div><!--
+
+--><div class="spacer"></div><!--
+
+--><div class="iconBtns">
+   <div class="imgbtn" id="configbtn" title="Configure"></div><!--
+
+--><div class="spacer"></div><!--
+
+--><div class="imgbtn" id="helpbtn" title="Help/About"></div>
+   </div><!--
+
+--><div class="spacer"></div><!--
+
+--><div class="position-time">
+   <input id="gui.curDate" type="text" value="1998-10-02"
+	  title="Current Date" />
+   <input id="gui.latLon" type="text" value="0 N 0 E"
+	  title="Latitude, Longitude" />
+   <label for="gui.graticule"
+	  title="Graticule (degrees/line)">
+     <img src="graticule.png" alt="G:" />
+   </label>
+   <input id="graticule" type="text" value="15"
+	  title="Graticule (degrees/line)" />
+   </div>
+
+</form>
+
+</body>
+</html>

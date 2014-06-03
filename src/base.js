@@ -116,10 +116,27 @@ oev.RobinsonMapProjector.project = function(polCoord) {
   mapCoord.y = pdfe * 0.5072;
   if (polCoord.lat < 0)
     mapCoord.y = -mapCoord.y;
+  return mapCoord;
 };
 
-// TODO: Need an efficient reverse lookup table.  Hash function.
 oev.RobinsonMapProjector.unproject = function(mapCoord) {
+  var table = oev.RobinsonProjector.table;
+  var pdfe = Math.abs(mapCoord.y) / 0.5072;
+  if (pdfe < 0 || pdfe > 1)
+    return { lat: NaN, lon: NaN };
+  var approxIndex = ~~(pdfe * 18);
+  while (table[approxIndex][1] < pdfe) approxIndex++;
+  while (table[approxIndex][1] > pdfe) approxIndex--;
+  var tbIdx1 = approxIndex;
+  var tbIdx2 = approxIndex + 1;
+  if (tbIdx2 > 18) tbIdx2 = 18;
+  var interpol = ((pdfe - table[tbIdx1][1]) /
+		  (table[tbIdx2][1] - table[tbIdx1][1]));
+  var plen = table[tbIdx2][0] * (1 - interpol) + table[tbIdx1][0] * interpol;
+  var polCoord = {};
+  polCoord.lat = 5 * (tbIdx1 + interpol);
+  polCoord.lon = mapCoord.x / plen * 180;
+  return polCoord;
 };
 
 /* Winkel tripel map projection (not usable) */

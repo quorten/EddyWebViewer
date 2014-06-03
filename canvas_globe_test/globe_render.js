@@ -558,8 +558,11 @@ function render_globe() {
   if (!allocRenderJob())
     return;
   fitCanvasToCntr();
-  if (equirect_project)
+  if (equirect_project) {
+    if (wire_render)
+      return render_equi_graticule();
     return render_map();
+  }
   if (wire_render)
     return render_ortho_graticule();
   // Project and render the image.
@@ -718,8 +721,68 @@ function render_map() {
                 screen_scalfac, screen_scalfac / 2);
 }
 
+function render_equi_graticule() {
+  /* Multiply screen_scalfac two at the end: When only half of the map
+     width is visible at zoom factor 1, equirectangular and
+     orthographic projections line up almost perfectly at the same
+     zoom level.  */
+  var screen_scalfac = canvas.width * scale * 2;
+  var x_shift = (180 - lon_rot) * inv_360 * screen_scalfac - screen_scalfac / 2;
+  var y_shift = tilt * inv_360 * screen_scalfac - screen_scalfac / 4;
+
+  render_map();
+
+  var ctx = canvas.getContext("2d");
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+  ctx.strokeStyle = 'rgba(128, 128, 128, 0.5)';
+  ctx.lineWidth = scale;
+  // ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.translate(x_shift + canvas.width / 2, y_shift + canvas.height / 2);
+  // ctx.fillRect(0, 0, screen_scalfac, screen_scalfac / 2);
+
+  ctx.beginPath();
+  for (var lat = 0; lat < 180; lat += grat_density) {
+    ctx.moveTo(0, (lat / 180) * screen_scalfac / 2);
+    ctx.lineTo(screen_scalfac, (lat / 180) * screen_scalfac / 2);
+  }
+  for (var lon = 0; lon < 360; lon += grat_density) {
+    ctx.moveTo((lon / 360) * screen_scalfac, 0);
+    ctx.lineTo((lon / 360) * screen_scalfac, screen_scalfac / 2);
+  }
+  ctx.stroke();
+
+  // Draw a second image for a continuous wrapped display.
+  if (lon_rot == 180) {
+    return;
+  }
+  if (lon_rot < 180) x_shift -= screen_scalfac;
+  if (lon_rot > 180) x_shift += screen_scalfac;
+
+  /* NOTE: Since JavaScript has a performance disadvantage compared to
+     compiled C code, it might actually be faster to just skip all
+     these visibility tests.  */
+  var real_x_shift = x_shift + canvas.width / 2;
+  /* if (real_x_shift + screen_scalfac < 0 || real_x_shift > canvas.width) {
+    return;
+  } */
+
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.translate(real_x_shift, y_shift + canvas.height / 2);
+  // ctx.fillRect(0, 0, screen_scalfac, screen_scalfac / 2);
+
+  ctx.beginPath();
+  for (var lat = 0; lat < 180; lat += grat_density) {
+    ctx.moveTo(0, (lat / 180) * screen_scalfac / 2);
+    ctx.lineTo(screen_scalfac, (lat / 180) * screen_scalfac / 2);
+  }
+  for (var lon = 0; lon < 360; lon += grat_density) {
+    ctx.moveTo((lon / 360) * screen_scalfac, 0);
+    ctx.lineTo((lon / 360) * screen_scalfac, screen_scalfac / 2);
+  }
+  ctx.stroke();
+}
+
 function render_ortho_graticule() {
-  // Project and render the image.
   var ctx = canvas.getContext("2d");
   var y_center = canvas.height / 2;
   var x_center = canvas.width / 2;
@@ -741,7 +804,7 @@ function render_ortho_graticule() {
 
   // Draw all the latitude lines.
   for (var lat = -90; lat < 90; lat += grat_density) {
-    var pole_height = canvas.height / 2 * Math.cos(tilt * DEG2RAD);
+    var pole_height = disp_rad * Math.cos(tilt * DEG2RAD);
     // The parallel ellipse's width and height.
     var par_width = disp_rad * Math.cos(lat * DEG2RAD);
     var par_height = Math.sin(tilt * DEG2RAD);
@@ -762,7 +825,7 @@ function render_ortho_graticule() {
   }
 
   // Draw all the longitude lines.
-  for (var lon = 0; lon < 180; lon += grat_density) {
+  for (var lon = -lon_rot; lon < -lon_rot + 180; lon += grat_density) {
     /* Computing the 2D rotation and dimensions of the longitude
        ellipses requires 3D transformations.  */
 

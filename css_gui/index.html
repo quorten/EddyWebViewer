@@ -148,6 +148,20 @@ function initGUIHooks() {
     inv_osa_factor = 1 / osa_factor;
     render_globe();
   };
+
+  document.getElementById('gui.gridDensity').onchange = function(event) {
+    var parts = this.value.split(', ');
+    grat_density = +parts[0];
+    render_globe();
+  };
+
+  document.getElementById('gui.wireRender').onclick = function(event) {
+    if (this.checked)
+      wire_render = true;
+    else
+      wire_render = false;
+    render_globe();
+  };
 }
 
   --></script>
@@ -196,7 +210,7 @@ document.getElementById('scriptWrapper').style.cssText = '';
 	<fieldset>
 	  <legend style="text-align: left">Graticule</legend>
 	  <label for="gui.gridDensity">Latitude, Longitude:</label>
-	  <input id="gui.gridDensity" type="text" value="10, 10"
+	  <input id="gui.gridDensity" type="text" value="15, 15"
 		 class="numinput" />
 	  <label for="gui.gridDensity">degrees/line</label><br />
 	</fieldset>
@@ -205,8 +219,8 @@ document.getElementById('scriptWrapper').style.cssText = '';
 	<label for="gui.trackLWRatio">Eddy Track Length/Width Ratio</label>
 	<input id="gui.trackLWRatio" type="text" value="75"
 	       class="numinput" /><br />
-	<input id="gui.wireScroll" type="checkbox" checked="checked" />
-	<label for="gui.wireScroll">Wireframe Render When Scrolling
+	<input id="gui.wireRender" type="checkbox" />
+	<label for="gui.wireRender">Wireframe Render
 	</label><br />
 	<input id="gui.landScroll" type="checkbox" />
 	<label for="gui.landScroll">Land Mass Outlines When Scrolling

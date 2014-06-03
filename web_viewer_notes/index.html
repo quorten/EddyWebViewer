@@ -190,7 +190,7 @@ tests each component feature in the browser.</p>
     Minimum Browser Requirements</a></h3>
 
 <ul>
-  <li>JavaScript (1.2) interpreter</li>
+  <li>JavaScript (1.5) interpreter</li>
   <li>HTML 4.01</li>
   <li>Web developers: XHTML 1.0</li>
   <li>CSS 1</li>
@@ -312,27 +312,27 @@ implementation of the Eddy Web Viewer.</p>
 
 <p class="image-flow">
 <object type="image/svg+xml" data="pentagon.svg"
-	width="202" height="202">
+	width="226" height="226">
   <img src="pentagon.png" alt="Pentagon construction"
-       width="202" height="202" />
+       width="226" height="226" />
 </object>
 
 <object type="image/svg+xml" data="elevation.svg"
-	width="202" height="202">
+	width="226" height="226">
   <img src="elevation.png" alt="&quot;Top hat&quot; construction diagram"
-       width="202" height="202" />
+       width="226" height="226" />
 </object>
 
 <object type="image/svg+xml" data="topview.svg"
-	width="202" height="202">
+	width="226" height="226">
   <img src="topview.png" alt="Flattened top view"
-       width="202" height="202" />
+       width="226" height="226" />
 </object>
 
 <object type="image/svg+xml" data="sideview.svg"
-	width="202" height="202">
+	width="226" height="226">
   <img src="sideview.png" alt="Side view construction"
-       width="202" height="202" />
+       width="226" height="226" />
 </object>
 </p>
 
@@ -874,13 +874,21 @@ faster than LaTeX-to-intermediate-to-HTML translation.</p>
 <h3>SVG Compatibility</h3>
 
 <p>For best backwards compatibility support, avoid text and clones in
-SVG images.</p>
+SVG images.  Also note that older versions of Firefox (3.6) treated
+SVG images as "documents" and did not support including SVG images in
+a document via the <code>&lt;img&gt;</code> element.  Note, however,
+that when an SVG image is included in a document via
+the <code>&lt;img&gt;</code> element rather than via
+the <code>&lt;object&gt;</code> element or some other inlining method,
+there are a
+  <a href="https://developer.mozilla.org/en-US/docs/Web/SVG/SVG_as_an_Image#Restrictions">
+    variety of limitations applied to the SVG image.</a></p>
 
 <h3>HTML Compatibility</h3>
 
 <p>Make sure your browser is sending the right charset in the HTTP
-Content-Type headers; otherwise, you are not going to be able to read
-extended characters correctly.</p>
+Content-Type headers for the character set; otherwise, you are not
+going to be able to read extended characters correctly.</p>
 
 <h3>XHTML Compatibility</h3>
 
@@ -951,7 +959,7 @@ reasons.</p>
   then you must write a JavaScript to do that.  Keep in mind the
   differences of box layout between IE5 and IE6 when doing this.</li>
   <li>All versions of IE that support scripting generally support it
-  well.  Expect JavaScript 1.2 to be well supported.  However, you
+  well.  Expect JavaScript 1.5 to be well supported.  However, you
   must take care not to use certain web API scripting idioms that
   won't be supported by IE, such as<br />
     element.setAttribute('style', 'styleText');<br />
@@ -979,6 +987,12 @@ reasons.</p>
   <li><a href="http://www.webcredible.com/blog-reports/css/internet-explorer.shtml">
       http://www.webcredible.com/blog-reports/css/internet-explorer.shtml</a></li>
 </ul>
+
+<h3>Mouse Pointer Coordinates Compatibility</h3>
+
+<h3>Mouse Wheel Compatibility</h3>
+
+<h3>requestAnimationFrame() Compatibility</h3>
 
 <hr />
 <!-- ________________________________________ -->

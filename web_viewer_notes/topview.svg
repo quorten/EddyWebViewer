@@ -9,8 +9,8 @@
    xmlns="http://www.w3.org/2000/svg"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
-   width="202"
-   height="202"
+   width="226"
+   height="226"
    id="svg2"
    version="1.1"
    inkscape:version="0.47 r22583"
@@ -25,8 +25,8 @@
      inkscape:pageopacity="1"
      inkscape:pageshadow="2"
      inkscape:zoom="2"
-     inkscape:cx="105.21276"
-     inkscape:cy="91.438235"
+     inkscape:cx="127.21276"
+     inkscape:cy="112.43823"
      inkscape:document-units="px"
      inkscape:current-layer="layer1"
      showgrid="false"
@@ -57,10 +57,10 @@
      inkscape:label="Layer 1"
      inkscape:groupmode="layer"
      id="layer1"
-     transform="translate(0,-850.36218)">
+     transform="translate(0,-826.36218)">
     <g
        id="g2837"
-       transform="matrix(0,1,-1,0,1052.3622,850.36218)">
+       transform="matrix(0,1,-1,0,1064.3622,838.36218)">
       <g
          id="g3607">
         <path

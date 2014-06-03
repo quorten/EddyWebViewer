@@ -10,8 +10,8 @@
    xmlns:xlink="http://www.w3.org/1999/xlink"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
-   width="202"
-   height="202"
+   width="226"
+   height="226"
    id="svg2"
    version="1.1"
    inkscape:version="0.47 r22583"
@@ -26,8 +26,8 @@
      inkscape:pageopacity="1"
      inkscape:pageshadow="2"
      inkscape:zoom="2"
-     inkscape:cx="104.93697"
-     inkscape:cy="96.732879"
+     inkscape:cx="124.93697"
+     inkscape:cy="112.23288"
      inkscape:document-units="px"
      inkscape:current-layer="layer1"
      showgrid="false"
@@ -59,10 +59,10 @@
      inkscape:label="Layer 1"
      inkscape:groupmode="layer"
      id="layer1"
-     transform="translate(0,-850.36218)">
+     transform="translate(0,-826.36218)">
     <g
        id="g3631"
-       transform="translate(8.204005,-5.01642)">
+       transform="translate(20.204071,-17.016551)">
       <path
          sodipodi:nodetypes="ccc"
          id="path2837"
@@ -79,29 +79,27 @@
          style="fill:none;stroke:#666666;stroke-width:2.13154101;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
     </g>
     <path
-       style="fill:none;stroke:#666666;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-opacity:1;stroke-miterlimit:4;stroke-dasharray:none"
-       d="M 173.83485,145.6498 129.04179,56.35018 73.541895,145.64986 28.165149,56.35018 11.196705,145.64986"
-       id="path2821"
-       transform="translate(0,850.36218)" />
+       style="fill:none;stroke:#666666;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none"
+       d="M 185.83492,984.01185 141.04186,894.71223 85.541961,984.01191 40.165215,894.71223 23.196771,984.01191"
+       id="path2821" />
     <use
        x="0"
        y="0"
        xlink:href="#g3631"
        id="use3644"
-       transform="matrix(-1,0,0,-1,202,1902.7244)"
+       transform="matrix(-1,0,0,-1,226.00014,1878.7242)"
        width="202"
        height="202" />
     <path
        style="fill:none;stroke:#000000;stroke-width:2.13154101;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none"
-       d="m 173.83485,906.71236 0,89.29962 16.96844,-89.29962 -16.96844,0 z"
+       d="m 185.83492,894.71223 0,89.29962 16.96844,-89.29962 -16.96844,0 z"
        id="path2820"
        inkscape:transform-center-x="-8.4842228"
        inkscape:transform-center-y="-44.649818"
        sodipodi:nodetypes="cccc" />
     <path
-       transform="translate(0,850.36218)"
        style="fill:#ffffff;fill-opacity:0.50196078;stroke:#000000;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-opacity:1"
-       d="m 183.5,56.350182 0,9.665149 -9.66515,0"
+       d="m 195.50007,894.71223 0,9.66515 -9.66515,0"
        id="rect3660"
        sodipodi:nodetypes="ccc" />
   </g>

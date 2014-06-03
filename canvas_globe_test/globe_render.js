@@ -27,6 +27,10 @@ var tilt = 0;
 var persp_project = false;
 // Equirectangular projection?
 var equirect_project = false;
+// Wireframe graticule rendering?
+var wire_render = false;
+// Graticule density in degrees
+var grat_density = 15;
 // orthographic globe scale
 var scale = 1.0;
 // perspective altitude
@@ -556,6 +560,8 @@ function render_globe() {
   fitCanvasToCntr();
   if (equirect_project)
     return render_map();
+  if (wire_render)
+    return render_ortho_graticule();
   // Project and render the image.
   var ctx = canvas.getContext("2d");
   var dest_data = ctx.createImageData(canvas.width, canvas.height);
@@ -710,6 +716,90 @@ function render_map() {
 		real_x_shift,
                 y_shift + canvas.height / 2,
                 screen_scalfac, screen_scalfac / 2);
+}
+
+function render_ortho_graticule() {
+  // Project and render the image.
+  var ctx = canvas.getContext("2d");
+  var y_center = canvas.height / 2;
+  var x_center = canvas.width / 2;
+  var disp_scale = 1;
+  if (!persp_project)
+    disp_scale = scale;
+  /* display radius */
+  var disp_rad = Math.min(canvas.height, canvas.width) * disp_scale / 2.0;
+
+  ctx.fillStyle = '#ffffff';
+  ctx.strokeStyle = '#000000';
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Draw the outermost bounding circle.
+  ctx.beginPath();
+  ctx.arc(x_center, y_center, disp_rad, 0, 2 * Math.PI);
+  ctx.stroke();
+
+  // Draw all the latitude lines.
+  for (var lat = -90; lat < 90; lat += grat_density) {
+    var pole_height = canvas.height / 2 * Math.cos(tilt * DEG2RAD);
+    // The parallel ellipse's width and height.
+    var par_width = disp_rad * Math.cos(lat * DEG2RAD);
+    var par_height = Math.sin(tilt * DEG2RAD);
+    // The ascent of the parallel along the pole.
+    var par_ascent = Math.sin(lat * DEG2RAD);
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.translate(x_center, y_center + pole_height * par_ascent);
+    if (par_height != 0)
+      ctx.scale(1, par_height);
+    ctx.beginPath();
+    if (par_height != 0)
+      ctx.arc(0, 0, par_width, 0, 2 * Math.PI);
+    else {
+      ctx.moveTo(-par_width, 0); ctx.lineTo(par_width, 0);
+    }
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.stroke();
+  }
+
+  // Draw all the longitude lines.
+  for (var lon = 0; lon < 180; lon += grat_density) {
+    /* Computing the 2D rotation and dimensions of the longitude
+       ellipses requires 3D transformations.  */
+
+    /* The key property to recognize is that the center of each
+       ellipse will always coincide with the center of the screen.
+       Another key is that the angle of the major axis of the ellipse
+       will be the line that traces right through the equator line of
+       a given longitude circle.  */
+
+    // 1. Rotate the ellipse by its longitude in 3D.
+
+    // 2. Squash the ellipse by its tilt in 3D.
+
+    var lon_x_scale = Math.sin(lon * DEG2RAD);
+    var lon_z_scale = Math.cos(lon * DEG2RAD);
+    var lon_height = Math.cos(tilt * DEG2RAD);
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.translate(x_center, y_center);
+    // Shear transform by the z component.
+    // Shear: y = y + x_dist * shear_factor
+    // shear_factor = lon_z_scale * Math.sin(tilt * DEG2RAD);
+    if (!isNaN(lon_z_scale / lon_x_scale))
+      ctx.transform(1, lon_z_scale / lon_x_scale * Math.sin(tilt * DEG2RAD), 0,
+		    1, 0, 0);
+    ctx.beginPath();
+
+
+    if (lon_x_scale != 0) {
+      ctx.scale(lon_x_scale, lon_height);
+      ctx.arc(0, 0, disp_rad, 0, 2 * Math.PI);
+    } else if (lon_height != 0) {
+      ctx.scale(1, lon_height);
+      ctx.moveTo(0, -disp_rad); ctx.lineTo(0, disp_rad);
+    }
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.stroke();
+  }
 }
 
 function periodic_render() {

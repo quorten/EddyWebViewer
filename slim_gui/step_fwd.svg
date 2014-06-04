@@ -34,8 +34,8 @@
      inkscape:snap-smooth-nodes="false"
      inkscape:window-width="1268"
      inkscape:window-height="737"
-     inkscape:window-x="65"
-     inkscape:window-y="24"
+     inkscape:window-x="953"
+     inkscape:window-y="364"
      inkscape:window-maximized="0" />
   <metadata
      id="metadata7">
@@ -58,12 +58,12 @@
        inkscape:connector-curvature="0"
        sodipodi:nodetypes="cccc"
        id="path3645"
-       d="m 15,1026.8622 0,19 9,-9.5 -9,-9.5 z"
+       d="m 14,1026.8622 0,19 9,-9.5 -9,-9.5 z"
        style="fill:#ffffff;stroke:none" />
     <path
        sodipodi:nodetypes="cc"
        id="path3647"
-       d="m 11,1026.8622 0,19"
+       d="m 10,1026.8622 0,19"
        style="fill:none;stroke:#ffffff;stroke-width:2;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none"
        inkscape:connector-curvature="0" />
   </g>

@@ -246,9 +246,16 @@ fails.</p>
 
 <noscript>
 <div style="margin: 0.5em">
-<h2>Sorry</h2>
+
+<h1>Sorry</h1>
+
 <p>You need a JavaScript-enabled web browser to use the the
 interactive web viewer.</p>
+
+<p>If you can see anything below the following line, then please
+ignore it, since it will be unusable to you.</p>
+
+<hr />
 </div>
 </noscript>
 
@@ -279,7 +286,7 @@ document.getElementById('scriptWrapper').style.cssText = '';
       <p style="text-align: center">
 	<object type="image/svg+xml" data="../css_gui/loading_composite.svg">
 	  <img class="ieImgFix" src="../css_gui/loading_composite.png"
-	       alt="Decorative Loading Icon" />
+	       alt="Decorative Loading Icon." />
 	</object><br />
 	<strong>Loading</strong>
       </p>
@@ -601,14 +608,14 @@ fails.</p>
 
 <p><strong>Content Zone:</strong></p>
 
-<div class="btest-content">
+<div class="btest-content" id="pointerTestCntr">
 
 <form action="">
 <p><input id="toggleMinimize" type="button" value="Minimize Document" /></p>
 </form>
 
-<canvas id="pointerTestZone" width="200" height="200"
-	style="border-style: solid; border-color: gray"></canvas>
+<!-- <canvas id="pointerTestZone" width="200" height="200"
+	style="border-style: solid; border-color: gray"></canvas> -->
 
 <script type="text/javascript">
 <!--//--><![CDATA[//><!--
@@ -676,10 +683,15 @@ function minimizeActivate(event) {
 }
 
 function pointerTestInit() {
-  pointerTestZone = document.getElementById('pointerTestZone');
+  pointerTestZone = document.createElement('canvas');
+  pointerTestZone.id = 'pointerTestZone';
+  pointerTestZone.width = 200;
+  pointerTestZone.height = 200;
+  pointerTestZone.style.cssText = 'border-style: solid; border-color: gray';
   pointerTestZone.onmousedown = setMouseDown;
   pointerTestZone.onmousemove = drawLineOnMove;
   pointerTestZone.onmouseup = setMouseUp;
+  document.getElementById('pointerTestCntr').appendChild(pointerTestZone);
 
   document.getElementById('toggleMinimize').onclick = minimizeActivate;
 

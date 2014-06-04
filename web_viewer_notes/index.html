@@ -190,7 +190,7 @@ tests each component feature in the browser.</p>
     Minimum Browser Requirements</a></h3>
 
 <ul>
-  <li>JavaScript (1.5) interpreter</li>
+  <li>JavaScript 1.5 interpreter</li>
   <li>HTML 4.01</li>
   <li>Web developers: XHTML 1.0</li>
   <li>CSS 1</li>
@@ -313,25 +313,25 @@ implementation of the Eddy Web Viewer.</p>
 <p class="image-flow">
 <object type="image/svg+xml" data="pentagon.svg"
 	width="226" height="226">
-  <img src="pentagon.png" alt="Pentagon construction"
+  <img src="pentagon.png" alt="Pentagon construction."
        width="226" height="226" />
 </object>
 
 <object type="image/svg+xml" data="elevation.svg"
 	width="226" height="226">
-  <img src="elevation.png" alt="&quot;Top hat&quot; construction diagram"
+  <img src="elevation.png" alt="&quot;Top hat&quot; construction."
        width="226" height="226" />
 </object>
 
 <object type="image/svg+xml" data="topview.svg"
 	width="226" height="226">
-  <img src="topview.png" alt="Flattened top view"
+  <img src="topview.png" alt="Flattened top view."
        width="226" height="226" />
 </object>
 
 <object type="image/svg+xml" data="sideview.svg"
 	width="226" height="226">
-  <img src="sideview.png" alt="Side view construction"
+  <img src="sideview.png" alt="Side view construction."
        width="226" height="226" />
 </object>
 </p>
@@ -453,19 +453,19 @@ to a a map pixel is a multistep process.</p>
 <p class="image-flow">
 <object type="image/svg+xml" data="orthographic.svg"
 	width="202" height="142">
-  <img src="orthographic.png" alt="Orthographic projection diagram"
+  <img src="orthographic.png" alt="Orthographic projection diagram."
        width="202" height="142" />
 </object>
 
 <object type="image/svg+xml" data="earth_rotate.svg"
 	width="202" height="142">
-  <img src="earth_rotate.png" alt="Point rotation diagram"
+  <img src="earth_rotate.png" alt="Point rotation diagram."
        width="202" height="142" />
 </object>
 
 <object type="image/svg+xml" data="angle_measure.svg"
 	width="202" height="142">
-  <img src="angle_measure.png" alt="Angle measurement diagram"
+  <img src="angle_measure.png" alt="Angle measurement diagram."
        width="202" height="142" />
 </object>
 </p>
@@ -510,7 +510,7 @@ or not.</p>
 <p class="image-flow" style="float: left">
 <object type="image/svg+xml" data="orthographic.svg"
 	width="202" height="142">
-  <img src="orthographic.png" alt="Orthographic projection diagram"
+  <img src="orthographic.png" alt="Orthographic projection diagram."
        width="202" height="142" />
 </object>
 </p>
@@ -528,13 +528,13 @@ offset along the direction of projection can be obtained via
 <p class="image-flow">
 <object type="image/svg+xml" data="perspective.svg"
 	width="244" height="142">
-  <img src="perspective.png" alt="Perspective projection diagram"
+  <img src="perspective.png" alt="Perspective projection diagram."
        width="244" height="142" />
 </object>
 
 <object type="image/svg+xml" data="persp_graph2d.svg"
 	width="202" height="202">
-  <img src="persp_graph2d.png" alt="2D perspective graph"
+  <img src="persp_graph2d.png" alt="2D perspective graph."
        width="202" height="202" />
 </object>
 </p>
@@ -568,7 +568,8 @@ embedded objects. -->
 <p style="text-align: center">
 <object type="application/xhtml+xml" data="persp_math1.xhtml"
 	width="100%" height="678">
-<img src="persp_math1.png" alt="raster mathematics rendering"
+<img src="persp_math1.png" alt="[complicated math that spans multiple lines,
+ don't even try to read this without raster image display]"
      width="604" height="678" />
 </object>
 </p>
@@ -606,7 +607,8 @@ equations.</p>
 <p style="text-align: center">
 <object type="application/xhtml+xml" data="persp_math2.xhtml"
 	width="100%" height="647">
-<img src="persp_math2.png" alt="raster mathematics rendering"
+<img src="persp_math2.png" alt="[complicated math that spans multiple lines,
+ don't even try to read this without raster image display]"
      width="540" height="617" />
 </object>
 </p>
@@ -870,11 +872,12 @@ plugins like MathPlayer.</p>
 mathematics browsing experience than MathML, there are ways around
 this.  Rather than using LaTeX equations in your HTML documents with
 MathJax, you should first convert them to MathML and insert the MathML
-in your documents.  Then load the MML_HTMLorMML config for MathJax on
-your webpage.  This will result in MathJax using the browser's native
-MathML display when it is of sufficient quality and falling back to
-HTML output otherwise.  MathML-to-HTML translation is considerably
-faster than LaTeX-to-intermediate-to-HTML translation.</p>
+in your documents.  Then load the <code>MML_HTMLorMML</code> config
+for MathJax on your webpage.  This will result in MathJax using the
+browser's native MathML display when it is of sufficient quality and
+falling back to HTML output otherwise.  MathML-to-HTML translation is
+considerably faster than LaTeX-to-intermediate-to-HTML
+translation.</p>
 
 <h3>SVG Compatibility</h3>
 
@@ -1013,9 +1016,8 @@ link for more information:</p>
 <p>Older browsers had a lot of different ways of handling the mouse
 wheel.  The
   <a href="https://developer.mozilla.org/en-US/docs/Web/Reference/Events/wheel">
-    wheel event page on Mozilla Developers Network</a> provides a
-good cross-browser compatibility function for handling wheel
-events.</p>
+    wheel event page on Mozilla Developer Network</a> provides a good
+cross-browser compatibility function for handling wheel events.</p>
 
 <h4>Mouse Capturing Compatibility</h4>
 
@@ -1040,10 +1042,11 @@ execution of this script would be the most logical place to put such
 polling code.  Otherwise, timer timeouts must be used to call the
 polling code.</p>
 
-<h4>requestAnimationFrame() Compatibility</h4>
+<h4><code>requestAnimationFrame()</code> Compatibility</h4>
 
 <p>The best possible cross-browser compatibility for
-requestAnimationFrame() involves defining a polyfill shim:<br/ >
+<code>requestAnimationFrame()</code> involves defining a polyfill
+shim:<br/ >
 <a href="http://www.paulirish.com/2011/requestanimationframe-for-smart-animating/">
 http://www.paulirish.com/2011/requestanimationframe-for-smart-animating/</a></p>
 
@@ -1082,12 +1085,6 @@ of web browsers.</p>
 <p>The most important thing to take note of GUI design in XHTML/CSS is
 that all widgets must be within a FORM element, just like has been
 demonstrated in the HTML 4 reference on the W3C's website.</p>
-
-<p>Although <code>requestAnimationFrame()</code> poses a number of
-advantages over <code>setTimeout()</code>, it has very bad browser
-compatibility, so if it is used, it will have to be wrapped in
-a <code>try()</code> block at initialization to determine if it is
-available or not.</p>
 
 <p>Use namespaces in the JavaScript code.</p>
 

@@ -13,7 +13,7 @@
    height="32"
    id="svg2"
    version="1.1"
-   inkscape:version="0.47 r22583"
+   inkscape:version="0.48.3.1 r9886"
    sodipodi:docname="rewind.svg">
   <defs
      id="defs4" />
@@ -24,9 +24,9 @@
      borderopacity="1.0"
      inkscape:pageopacity="1"
      inkscape:pageshadow="2"
-     inkscape:zoom="2"
-     inkscape:cx="86.496308"
-     inkscape:cy="4.6688193"
+     inkscape:zoom="4"
+     inkscape:cx="36.310077"
+     inkscape:cy="5.1303512"
      inkscape:document-units="px"
      inkscape:current-layer="layer1"
      showgrid="false"
@@ -34,8 +34,8 @@
      inkscape:snap-smooth-nodes="false"
      inkscape:window-width="1268"
      inkscape:window-height="737"
-     inkscape:window-x="0"
-     inkscape:window-y="0"
+     inkscape:window-x="65"
+     inkscape:window-y="24"
      inkscape:window-maximized="0" />
   <metadata
      id="metadata7">
@@ -55,19 +55,16 @@
      id="layer1"
      transform="translate(0,-1020.3622)">
     <path
+       inkscape:connector-curvature="0"
        style="fill:#ffffff;stroke:none"
-       d="m 26,1026.8622 0,19 -9,-9.5 9,-9.5 z"
+       d="m 25,1026.8622 0,19 -9,-9.5 9,-9.5 z"
        id="path3655"
        sodipodi:nodetypes="cccc" />
     <path
+       inkscape:connector-curvature="0"
        sodipodi:nodetypes="cccc"
        id="path3657"
-       d="m 17,1026.8622 0,19 -9,-9.5 9,-9.5 z"
+       d="m 16,1026.8622 0,19 -9,-9.5 9,-9.5 z"
        style="fill:#ffffff;stroke:none" />
-    <path
-       sodipodi:nodetypes="cc"
-       id="path3659"
-       d="m 8,1026.8622 0,19"
-       style="fill:none;stroke:#ffffff;stroke-width:2;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
   </g>
 </svg>

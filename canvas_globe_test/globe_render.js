@@ -793,7 +793,7 @@ function render_ortho_graticule() {
 
   // Draw the outermost bounding circle.
   ctx.beginPath();
-  ctx.arc(x_center, y_center, disp_rad, 0, 2 * Math.PI);
+  ctx.arc(x_center, y_center, disp_rad, 0, 2 * Math.PI, false);
   ctx.stroke();
 
   // Draw all the latitude lines.
@@ -810,7 +810,7 @@ function render_ortho_graticule() {
       ctx.scale(1, par_height);
     ctx.beginPath();
     if (par_height != 0)
-      ctx.arc(0, 0, par_width, 0, 2 * Math.PI);
+      ctx.arc(0, 0, par_width, 0, 2 * Math.PI, false);
     else {
       ctx.moveTo(-par_width, 0); ctx.lineTo(par_width, 0);
     }
@@ -849,7 +849,7 @@ function render_ortho_graticule() {
 
     if (lon_x_scale != 0) {
       ctx.scale(lon_x_scale, lon_height);
-      ctx.arc(0, 0, disp_rad, 0, 2 * Math.PI);
+      ctx.arc(0, 0, disp_rad, 0, 2 * Math.PI, false);
     } else if (lon_height != 0) {
       ctx.scale(1, lon_height);
       ctx.moveTo(0, -disp_rad); ctx.lineTo(0, disp_rad);

@@ -8,16 +8,6 @@
   <style type="text/css">
     html, body { margin: 0; padding: 0; height: 100%; }
     body { color: white; background-color: #333348; }
-    #wrap { min-height: 100%; }
-
-    /* Opera Fix */
-    body:before {
-      content:"";
-      height:100%;
-      float:left;
-      width:0;
-      margin-top:-32767px;/
-    }
 
     #drawingContainer { position: absolute; width: 100%;
                         top: 0px; bottom: 36px;
@@ -67,12 +57,6 @@
     /* Note: Button highlight color is "#6a6a96".  */
   </style>
 
-<!--[if !IE 7]>
-  <style type="text/css">
-    #wrap { display: table; height: 100%; }
-  </style>
-<![endif]-->
-
   <script type="text/javascript"
 		  src="../canvas_globe_test/globe_render.js"></script>
   <script type="text/javascript">
@@ -119,7 +103,6 @@ document.getElementById('scriptWrapper').style.cssText = '';
 //--><!]]>
 </script>
 
-<div id="wrap">
 <div id="drawingContainer">
 
       <p id="loadingScreen" style="text-align: center">
@@ -131,7 +114,6 @@ document.getElementById('scriptWrapper').style.cssText = '';
 		<strong>Loading</strong>
       </p>
 
-</div>
 </div>
 
 <form id="bottomBar" action="">

@@ -1,19 +1,20 @@
-/*
+/* A simple trigonometric lookup table implementation.
+
 The MIT License
- 
+
 Copyright (C) 2011 Jackson Dunstan
-Rewritten to JavaScript by Andrew Makousky.
- 
+Rewritten to JavaScript and modified by Andrew Makousky.
+
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
 in the Software without restriction, including without limitation the rights
 to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 copies of the Software, and to permit persons to whom the Software is
 furnished to do so, subject to the following conditions:
- 
+
 The above copyright notice and this permission notice shall be included in
 all copies or substantial portions of the Software.
- 
+
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -25,29 +26,27 @@ THE SOFTWARE.
 
 /**
  *   Make the look up table
- *   @param numDigits Number of digits places of precision
- *   @param mathFunc Math function to call to generate stored values.
- *                   Must be valid on [0,2pi).
- *   @throws Error If mathFunc is null or invalid on [0,2pi)
+ *   @constructor
+ *   @param {function} mathFunc - Math function to call to generate
+ *   stored values. Must be valid on [0,range).
+ *   @param {uint} numDigits - Number of digits places of precision
+ *   @param {Number} range - Maximum unique value of function. Must be
+ *   greater than zero. Typically set to (2 * Math.PI).
+ *   @throws Error If mathFunc is null or invalid on [0,range)
  */
-var TrigLUT = function(numDigits, mathFunc) {
-  /** The static TWO_PI cached as a non-static field*/
-  this.TWO_PI = 2.0 * Math.PI;
-
-  /** Table of trig function values*/
+var TrigLUT = function(mathFunc, numDigits, range) {
+  /** Table of trig function values */
   this.table = [];
 
-  /** 10^decimals of precision*/
-  var pow = this.pow = Math.pow(10, numDigits);
+  /** 10^decimals of precision */
+  this.pow = Math.pow(10, numDigits);
+  var pow = this.pow;
 
-  this.val = TrigLUT.val;
-  this.valPositive = TrigLUT.valPositive;
-  this.valNormalized = TrigLUT.valNormalized;
-  this.valNormalizedPositive = TrigLUT.valNormalizedPositive;
-
+  /** Maximum unique value of function */
+  this.range = range;
 
   var round = 1.0 / pow;
-  var len = 1 + this.TWO_PI * pow;
+  var len = 1 + this.range * pow;
   var table = this.table = [];
 
   var theta = 0;
@@ -57,48 +56,51 @@ var TrigLUT = function(numDigits, mathFunc) {
   }
 };
 
-/** 2 * PI, the number of radians in a circle*/
+/** 2 * PI, the number of radians in a circle */
 TrigLUT.TWO_PI = 2.0 * Math.PI;
 
 /**
  *   Look up the value of the given number of radians
- *   @param radians Radians to look up the value of
- *   @return The value of the given number of radians
+ *   @param {Number} radians - Radians to look up the value of
+ *   @returns The value of the given number of radians
  */
-TrigLUT.val = function(radians) {
+TrigLUT.prototype.val = function(radians) {
   return radians >= 0 ?
-    this.table[~~((radians % this.TWO_PI) * this.pow)] :
-    this.table[~~((this.TWO_PI + radians % this.TWO_PI) * this.pow)];
+    this.table[~~((radians % this.range) * this.pow)] :
+    this.table[~~((this.range + radians % this.range) * this.pow)];
 };
 
 /**
  *   Look up the value of the given number of radians
- *   @param radians Radians to look up the value of. Must be positive.
- *   @return The sine of the given number of radians
+ *   @param {Number} radians - Radians to look up the value of. Must
+ *   be positive.
+ *   @returns The value of the given number of radians
  *   @throws RangeError If radians is not positive
  */
-TrigLUT.valPositive = function(radians) {
-  return this.table[~~((radians % this.TWO_PI) * this.pow)];
+TrigLUT.prototype.valPositive = function(radians) {
+  return this.table[~~((radians % this.range) * this.pow)];
 };
 
 /**
  *   Look up the value of the given number of radians
- *   @param radians Radians to look up the value of. Must be on (-2pi,2pi).
- *   @return The value of the given number of radians
+ *   @param {Number} radians - Radians to look up the value of. Must
+ *   be on (-2pi,2pi).
+ *   @returns The value of the given number of radians
  *   @throws RangeError If radians is not on (-2pi,2pi)
  */
-TrigLUT.valNormalized = function(radians) {
+TrigLUT.prototype.valNormalized = function(radians) {
   return radians >= 0 ?
     this.table[~~(radians * this.pow)] :
-    this.table[~~((this.TWO_PI + radians) * this.pow)];
+    this.table[~~((this.range + radians) * this.pow)];
 };
 
 /**
  *   Look up the value of the given number of radians
- *   @param radians Radians to look up the value of. Must be on [0,2pi).
- *   @return The value of the given number of radians
+ *   @param {Number} radians - Radians to look up the value of. Must
+ *   be on [0,2pi).
+ *   @returns The value of the given number of radians
  *   @throws RangeError If radians is not on [0,2pi)
  */
-TrigLUT.valNormalizedPositive = function(radians) {
+TrigLUT.prototype.valNormalizedPositive = function(radians) {
   return this.table[~~(radians * this.pow)];
 };

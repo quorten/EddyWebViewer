@@ -1,0 +1,91 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"
+      lang="en" xml:lang="en">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <title>Cothreaded Procedure Example</title>
+</head>
+<body>
+
+<p>The following code demonstrates how to create a cothreaded
+sum-of-squares function using the <code>Cothread</code> class.</p>
+
+<pre>
+import "cothread";
+
+/**
+ * Compute the sum of squares from zero up to N^2.
+ *
+ * Parameters:
+ *
+ * "n" (args[0]) -- The maximum number squared to sum.
+ *
+ * Return value: the sum of squares from zero to N^2.
+ */
+var computeSumOfSquares = (function() {
+  "use strict";
+
+  function startExec() {
+    this.n = args[0];
+    this.inv_n = 1 / n;
+
+    this.sum = 0;
+    this.i = 1;
+  }
+
+  /* TODO: Check the actual performance benefits of this local variable
+     copying.  This might just bog down the garbage collector.  */
+  function contExec() {
+    var n = this.n;
+    var inv_n = this.inv_n;
+    var sum = this.sum;
+    var i = this.i;
+
+    var lastTime = Date.now;
+    var timeout = this.timeout;
+    while (Date.now - lastTime &lt; timeout &amp;&amp; i &lt;= n) {
+      sum += i * i;
+      i++;
+      lastTime = Date.now;
+    }
+
+    this.setExitStatus(i &lt;= n);
+    if (i &gt; n)
+      this.retVal = sum;
+    this.status.preemptCode = 0; // Not useful for such a simple function.
+    this.status.percent = (n - (i - 1)) * CothreadStatus.MAX_PERCENT * inv_n;
+
+    this.sum = sum;
+    this.i = i;
+    return this.status;
+  }
+
+  return new Cothread(startExec, contExec);
+})();
+
+// Test the cothreaded computation unit.
+
+function execTime() {
+  computeSumOfSquares.continueCT();
+  if (computeSumOfSquares.status.returnType == CothreadStatus.FINISHED)
+    return alert(computeSumOfSquares.retVal);
+  return browserTime();
+}
+
+function browserTime() {
+  return setTimeout(execTime, 80);
+}
+
+function setup() {
+  computeSumOfSquares.timeout = 20;
+  computeSumOfSquares.args.push(65536); // N
+  computeSumOfSquares.start();
+}
+
+// &lt;body onload="setup()"&gt; ...
+
+</pre>
+
+</body>
+</html>

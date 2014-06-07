@@ -321,12 +321,18 @@ function panGlobe(event) {
   tilt = old_tilt - (first_ang_x - cur_ang_x); */
 
   var pan_scale;
+  var equirect_x_scale = 1;
   if (!persp_project)
     pan_scale = scale;
   else
     pan_scale = 1; // TODO: Do more complicated calculation
+  if (equirect_project) {
+    var disp_rad = Math.min(canvas.width, canvas.height) * scale / 2.0;
+    var screen_scalfac = disp_rad * 2 * Math.PI;
+    equirect_x_scale = 1;
+  }
   lon_rot = old_lon_rot + (firstPoint.x - event.clientX) /
-    canvas.width / pan_scale * 180;
+    canvas.width / pan_scale * equirect_x_scale * 180;
   tilt = old_tilt - (firstPoint.y - event.clientY) /
     canvas.height / pan_scale * 180;
 
@@ -716,11 +722,11 @@ function render_map() {
 }
 
 function render_equi_graticule() {
-  /* Multiply screen_scalfac two at the end: When only half of the map
-     width is visible at zoom factor 1, equirectangular and
-     orthographic projections line up almost perfectly at the same
-     zoom level.  */
-  var screen_scalfac = canvas.width * scale * 2;
+  /* Compute the screen scale factor so that it corresponds to
+     unwrapping the orthographically projected globe.  The width of
+     the equirectangular map is stretched to `screen_scalfac'.  */
+  var disp_rad = Math.min(canvas.width, canvas.height) * scale / 2.0;
+  var screen_scalfac = disp_rad * 2 * Math.PI;
   var x_shift = (180 - lon_rot) * inv_360 * screen_scalfac - screen_scalfac / 2;
   var y_shift = tilt * inv_360 * screen_scalfac - screen_scalfac / 4;
 

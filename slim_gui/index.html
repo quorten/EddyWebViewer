@@ -9,6 +9,11 @@
     html, body { margin: 0; padding: 0; height: 100%; }
     body { color: white; background-color: #333348; }
 
+    /* "wrap" is only used to get rid of a scrollbar that appears if a
+       website page disclaimer must be displayed underneath the CSS
+       GUI.  */
+    #wrap { height: 100%; }
+
     #drawingContainer { position: absolute; width: 100%;
                         top: 0px; bottom: 36px;
                         overflow: hidden; }
@@ -103,6 +108,7 @@ document.getElementById('scriptWrapper').style.cssText = '';
 //--><!]]>
 </script>
 
+<div id="wrap">
 <div id="drawingContainer">
 
       <p id="loadingScreen" style="text-align: center">
@@ -114,6 +120,7 @@ document.getElementById('scriptWrapper').style.cssText = '';
 		<strong>Loading</strong>
       </p>
 
+</div>
 </div>
 
 <form id="bottomBar" action="">

@@ -39,7 +39,7 @@ Brief Summary of Included Commands
 ----------------------------------
 
 * hjsprep.sh --- Convert JavaScript to "hjs" ("header" JavaScript):
-  JavaScript with a C preprocessor statements
+  JavaScript with a C preprocessor statements.
 
 * hjssmash.sh --- Merge all JavaScript files included from the given
   input `hjs` file into an output JavaScript bundle.

@@ -149,7 +149,13 @@ function initOverlay() {
 
      The PNG version had the black surrounding border trimmed off.
   */
-  earth_tex.src = "../canvas_globe_test/Equirectangular_projection_SW.png";
+  // earth_tex.src = "../canvas_globe_test/Equirectangular_projection_SW.png";
+
+  // Blue marble images.
+  earth_tex.src = "../blue_marble/land_ocean_ice_2048.jpg";
+  // earth_tex.src = "../blue_marble/land_shallow_topo_2048.jpg";
+  // earth_tex.src = "../blue_marble/world.200408.3x5400x2700.jpg";
+  // earth_tex.src = "../blue_marble/world.200402.3x5400x2700.jpg";
 }
 
   /* {

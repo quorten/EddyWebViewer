@@ -17,18 +17,6 @@ var earthTex; // Textured Earth land masses
 var sshBuffer; // Sea Surface Height rendering buffer
 var tracksBuffer; // Eddy tracks rendering buffer
 
-// Public interfaces
-tracks.setViewport();
-tracks.render();
-
-// Standard private functions
-tracks.loadData();
-tracks.data;
-tracks.frontBuf;
-tracks.render();
-tracks.backBufs;
-tracks.setViewport();
-
 /*
 
 setViewport sets the following attributes:
@@ -76,6 +64,12 @@ anything.  Otherwise, you have to use cothreads to provide
 responsiveness.
 
 */
+
+/* When the system performs slow, the viewer will scale down its
+   effects, independent of whether the slowness is due to the viewer
+   or the rest of the user's system.  Since a JavaScript web app has
+   no way of determining real system performance, it is up to the user
+   to determine the cause of the slowdown.  */
 
 var httpRequest;
 

@@ -27,8 +27,10 @@ var computeSumOfSquares = (function() {
   "use strict";
 
   function startExec() {
-    this.n = args[0];
-    this.inv_n = 1 / n;
+    this.n = this.args[0];
+    /* Loop progress multiplier: Add one since the loop body
+       terminates on `&gt;=' rather than `&gt;'.  */
+    this.lpMult = 1 / (this.n + 1);
 
     this.sum = 0;
     this.i = 1;
@@ -38,23 +40,22 @@ var computeSumOfSquares = (function() {
      copying.  This might just bog down the garbage collector.  */
   function contExec() {
     var n = this.n;
-    var inv_n = this.inv_n;
+    var lpMult = this.lpMult;
     var sum = this.sum;
     var i = this.i;
 
-    var lastTime = Date.now;
+    var lastTime = Date.now();
     var timeout = this.timeout;
-    while (Date.now - lastTime &lt; timeout &amp;&amp; i &lt;= n) {
+    while (Date.now() - lastTime &lt; timeout &amp;&amp; i &lt;= n) {
       sum += i * i;
       i++;
-      lastTime = Date.now;
     }
 
     this.setExitStatus(i &lt;= n);
     if (i &gt; n)
       this.retVal = sum;
     this.status.preemptCode = 0; // Not useful for such a simple function.
-    this.status.percent = (n - (i - 1)) * CothreadStatus.MAX_PERCENT * inv_n;
+    this.status.percent = i * CothreadStatus.MAX_PERCENT * lpMult;
 
     this.sum = sum;
     this.i = i;
@@ -66,25 +67,66 @@ var computeSumOfSquares = (function() {
 
 // Test the cothreaded computation unit.
 
+/* Play around with different values for the timeouts and the constant
+   `N' and see how your browser responds.  */
+
 function execTime() {
-  computeSumOfSquares.continueCT();
-  if (computeSumOfSquares.status.returnType == CothreadStatus.FINISHED)
-    return alert(computeSumOfSquares.retVal);
+  var status = computeSumOfSquares.continueCT();
+  document.getElementById("progElmt").innerHTML =
+    (status.percent * 100 / CothreadStatus.MAX_PERCENT).toFixed(2) + "%";
+
+  if (status.returnType == CothreadStatus.FINISHED) {
+    var resultElmt = document.createElement("p");
+    resultElmt.id = "resultElmt";
+    resultElmt.innerHTML = "Result: " + computeSumOfSquares.retVal;
+    document.documentElement.children[1].appendChild(resultElmt);
+    return;
+  }
   return browserTime();
 }
 
 function browserTime() {
+  /* Note: If a cothread should use all available processing time yet
+     still let the browser stay responsive, this timeout should be set
+     to zero.  Otherwise, any value larger than zero can be used to
+     throttle a task to use only a fraction of available processing
+     time.  */
   return setTimeout(execTime, 80);
 }
 
 function setup() {
+  /* Append a progress counter element to the document body, assuming
+     that the &lt;body&gt; element is the second child of the
+     documentElement.  */
+  var progElmt = document.createElement("p");
+  progElmt.id = "progElmt";
+  progElmt.innerHTML = "Please wait...";
+  document.documentElement.children[1].appendChild(progElmt);
+
   computeSumOfSquares.timeout = 20;
-  computeSumOfSquares.args.push(65536); // N
+  computeSumOfSquares.args.push(65536 * 20); // N
   computeSumOfSquares.start();
+  return browserTime();
 }
 
-// &lt;body onload="setup()"&gt; ...
+// Use the following HTML as the test container for this script:
 
+&lt;!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"&gt;
+&lt;html xmlns="http://www.w3.org/1999/xhtml"
+      lang="en" xml:lang="en"&gt;
+&lt;head&gt;
+  &lt;meta http-equiv="Content-Type" content="text/html; charset=utf-8" /&gt;
+  &lt;title&gt;Ocean Eddies Web Viewer&lt;/title&gt;
+  &lt;script type="text/javascript" src="bundle.js"&gt;&lt;/script&gt;
+&lt;/head&gt;
+&lt;body onload="setup()"&gt;
+
+&lt;p&gt;This is the HTML container for the Cothread test JavaScript.  Good
+Luck!&lt;/p&gt;
+
+&lt;/body&gt;
+&lt;/html&gt;
 </pre>
 
 </body>

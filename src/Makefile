@@ -1,6 +1,7 @@
 CPP = cpp
 cjs_dir = ../libs/cjs
-SOURCES = cothread.js cttest.js
+SOURCES = triglut.js oevns.js oevmath.js cothread.js renderlayer.js \
+	projector.js
 
 all: bundle.js docs
 
@@ -10,7 +11,7 @@ bundle.js: cttest.hjs
 	$(cjs_dir)/hjssmash.sh $< -o $@
 
 docs:
-	../../jsdoc-master/jsdoc triglut.js cothread.js ../README.md -u docs_in
+	../../jsdoc-master/jsdoc $(SOURCES) ../README.md -u docs_in
 	rm -rf ../docs/jsdocs
 	mv out jsdocs
 	mv jsdocs ../docs/

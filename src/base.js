@@ -1,21 +1,6 @@
 // TODO: Do all those class object existence checks...
 // "use strict";
 
-var oev;
-if (!oev)
-  oev = {};
-else if (typeof oev != 'object')
-  throw new
-    Error("Namespace conflict: oev already exists and is not an object.");
-
-oev.DEG2RAD = function(deg) {
-  return deg * Math.PI / 180;
-};
-
-oev.RAD2DEG = function(rad) {
-  return rad * 180 / Math.PI;
-};
-
 // Abstract class
 oev.MapProjector = {};
 

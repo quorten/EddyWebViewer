@@ -600,7 +600,10 @@ By eliminating the vertical scrollbar in the document, the code does
 not need to worry about the otherwise nearly impossible method to
 determine where the mouse pointer is in the document.  After that,
 click and drag around on the canvas.  You should see the traced line
-on the HTML Canvas follow the pointer's path exactly.</p>
+on the HTML Canvas follow the pointer's path exactly.  Now unminimize
+the document, then click and drag around on the canvas.  If your
+browser is reasonably new, then you should see the traced line on the
+HTML Canvas follow the pointer's path exactly.</p>
 
 <p class="failed">If this requirement is not met, then the test
 fails.</p>
@@ -630,7 +633,19 @@ function setMouseDown(event) {
     event = window.event;
   mouseDown = true;
   buttonDown = event.button;
-  lastPoint.x = event.clientX; lastPoint.y = event.clientY;
+  if (typeof event.pageX != "undefined")
+    { lastPoint.x = event.pageX; lastPoint.y = event.pageY; }
+  else
+    { lastPoint.x = event.clientX; lastPoint.y = event.clientY; }
+  // if (typeof event.scrollX != "undefined")
+  //   alert("Firefox wasn't supposed to implement that!");
+
+  /* If this is an old version of Internet Explorer, then check for
+     the scrollX and scrollY properties, then add those to clientX and
+     clientY to get the scrolling offset.  */
+  /* Note: Opera, Konqueror, and iCab define clientX and clientY to be
+     relative to the document, not the window.  */
+
   if (!topLeft.x) {
     topLeft.x = lastPoint.x - pointerTestZone.width / 2;
     topLeft.y = lastPoint.y - pointerTestZone.height / 2;
@@ -656,7 +671,10 @@ function drawLineOnMove(event) {
   }
   ctx.beginPath();
   ctx.moveTo(lastPoint.x - topLeft.x, lastPoint.y - topLeft.y);
-  lastPoint.x = event.clientX; lastPoint.y = event.clientY;
+  if (typeof event.pageX != "undefined")
+    { lastPoint.x = event.pageX; lastPoint.y = event.pageY; }
+  else
+    { lastPoint.x = event.clientX; lastPoint.y = event.clientY; }
   ctx.lineTo(lastPoint.x - topLeft.x, lastPoint.y - topLeft.y);
   ctx.stroke();
   if (ptMSIE <= 6 && ptMSIE > 0)
@@ -692,6 +710,9 @@ function pointerTestInit() {
   document.getElementById('pointerTestCntr').appendChild(pointerTestZone);
 
   document.getElementById('toggleMinimize').onclick = minimizeActivate;
+
+  topLeft.x = pointerTestZone.clientLeft + pointerTestZone.offsetLeft;
+  topLeft.y = pointerTestZone.clientLeft + pointerTestZone.offsetTop;
 
   var ctx = pointerTestZone.getContext('2d');
   /* ctx.font = '12pt Sans';

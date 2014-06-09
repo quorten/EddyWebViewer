@@ -1,7 +1,7 @@
 CPP = cpp
 cjs_dir = ../libs/cjs
 SOURCES = triglut.js oevns.js oevmath.js cothread.js renderlayer.js \
-	projector.js
+	projector.js trackslayer.js
 
 all: bundle.js docs
 

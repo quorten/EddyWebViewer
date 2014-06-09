@@ -557,6 +557,22 @@ function freeRenderJob() {
 
 // ----------------------------------------
 
+var g_dest_data = null;
+var g_random_table = null;
+var g_ctx = null;
+
+var MyObject = function() {
+};
+
+MyObject.prototype.resetColors = function(data, index) {
+  data[index+0] = 0;
+  data[index+1] = 0;
+  data[index+2] = 0;
+  data[index+3] = 0;
+};
+
+var actor = new MyObject();
+
 // TODO: This function should be a tile-based rendering engine that
 // gets called from a callback to complete the render.  In general,
 // JavaScript cannot support threads.
@@ -572,21 +588,71 @@ function render_globe() {
   if (wire_render)
     return render_ortho_graticule();
   // Project and render the image.
-  var ctx = canvas.getContext("2d");
-  var dest_data = ctx.createImageData(canvas.width, canvas.height);
+  if (!g_ctx)
+      g_ctx = canvas.getContext("2d");
+  var ctx = g_ctx;
+  if (!g_dest_data)
+    g_dest_data = ctx.createImageData(canvas.width, canvas.height);
+  var dest_data = g_dest_data;
+  // var dest_data = ctx.createImageData(canvas.width, canvas.height);
+  var dest_ddata = dest_data.data;
   var dest_index = 0;
-  var y_center = dest_data.height / 2;
-  var x_center = dest_data.width / 2;
+  var y_center = dest_data.height * 0.5;
+  var x_center = dest_data.width * 0.5;
   var disp_scale = 1;
   if (!persp_project)
     disp_scale = scale;
   /* display radius */
-  var disp_rad = Math.min(dest_data.height, dest_data.width) * disp_scale / 2.0;
-  for (var y = 0; y < dest_data.height; y++) {
-    for (var x = 0; x < dest_data.width; x++) {
-      for (var of = 0; of < osa_factor; of++) {
+  var min_wh = (dest_data.height < dest_data.width) ? dest_data.height : dest_data.width;
+  var disp_rad = min_wh * disp_scale * 0.5;
+      // var disp_rad = Math.min(dest_data.height, dest_data.width) * disp_scale * 0.5;
+
+  var y, x, of;
+  var height = dest_data.height;
+  var width = dest_data.width;
+  var local_osa_factor = osa_factor;
+  var inv_osa_factor = 1 / local_osa_factor;
+  var lDEG2RAD = DEG2RAD;
+  var lRAD2DEG = RAD2DEG;
+  var linv_180 = inv_180;
+  var linv_360 = inv_360;
+  var inv_disp_rad = 1 / disp_rad;
+  var lsrc_width = src_data.width;
+  var lsrc_height = src_data.height;
+  var lsrc_data = src_data.data;
+  var random_table = g_random_table;
+  if (!random_table) {
+    random_table = [];
+    for (y = 0; y < 65536; y++) {
+      random_table.push(0|(Math.random() * 255));
+    }
+    g_random_table = random_table;
+  }
+  // var seed = 0|(Math.random() * 255);
+
+  var xj, yj;
+  var r3src_x, r3src_y, r3src_z;
+  var r, d, f, x_pix, y_pix, w, r_d, a, b, c, i_tilt, cos_tilt, sin_tilt;
+  var r3dest_x, r3dest_y, r3dest_z;
+  var latitude, longitude;
+  var src_y, src_x, src_index;
+
+  for (y = 0; y < height; y++) {
+    for (x = 0; x < width; x++) {
+      dest_ddata[dest_index+0] = 0;
+      dest_ddata[dest_index+1] = 0;
+      dest_ddata[dest_index+2] = 0;
+      dest_ddata[dest_index+3] = 0;
+
+      /* dest_ddata[dest_index+0] = random_table[++seed % 65536];
+      dest_ddata[dest_index+1] = random_table[++seed % 65536];
+      dest_ddata[dest_index+2] = random_table[++seed % 65536];
+      dest_ddata[dest_index+3] = random_table[++seed % 65536];
+      dest_index += 4;
+      continue; */
+      for (of = 0; of < local_osa_factor; of++) {
 	// X and Y jitter for oversampling.
-	var xj, yj;
+	// var xj, yj;
 	if (of == 0)
 	  xj = yj = 0;
 	else {
@@ -597,36 +663,37 @@ function render_globe() {
 	/* 1. Get the 3D rectangular coordinate of the ray intersection
 	   with the sphere.  The camera is looking down the negative
 	   z axis.  */
-	var r3src_x, r3src_y, r3src_z;
+	// var r3src_x, r3src_y, r3src_z;
 
 	if (!persp_project) {
 	  // Orthographic projection
-	  r3src_y = (y + yj - y_center) / disp_rad;
-	  r3src_x = (x + xj - x_center) / disp_rad;
-	  r3src_z = Math.sin(Math.acos(Math.sqrt(Math.pow(r3src_x, 2) +
-						 Math.pow(r3src_y, 2))));
+	  r3src_y = (y + yj - y_center) * inv_disp_rad;
+	  r3src_x = (x + xj - x_center) * inv_disp_rad;
+	  r3src_z = Math.sin(Math.acos(Math.sqrt(r3src_x * r3src_x +
+						 r3src_y * r3src_y)));
 	  if (isNaN(r3src_z))
 	    continue;
 	} else {
 	  // Perspective projection
 	  // r must be one: this simplifies the calculations
-	  var r = 1; // 6371; // radius of the earth in kilometers
-	  var d = persp_altitude / 6371; // 35786; // altitude in kilometers
+	  /*var*/ r = 1; // 6371; // radius of the earth in kilometers
+	  /*var*/ d = persp_altitude / 6371; // 35786; // altitude in kilometers
 	  // focal length in units of the screen dimensions
-	  var f = 1 / Math.tan(persp_fov * DEG2RAD / 2);
-	  var x_pix = (x + xj - x_center) / disp_rad;
-	  var y_pix = (y + yj - y_center) / disp_rad;
+	  /*var*/ f = 1 / Math.tan(persp_fov * lDEG2RAD * 0.5);
+	  /*var*/ x_pix = (x + xj - x_center) * inv_disp_rad;
+	  /*var*/ y_pix = (y + yj - y_center) * inv_disp_rad;
 
-	  var w = (Math.pow(x_pix, 2) + Math.pow(y_pix, 2)) / Math.pow(f, 2);
+	  /*var*/ w = (x_pix * x_pix + y_pix * y_pix) / (f * f);
 
-	  var a = 1 + w;
-	  var b = -2 * w * (r + d);
-	  var c = w * Math.pow(r + d, 2) - 1 /* 1 == Math.pow(r, 2) */;
+	  /*var*/ r_d = r + d;
+	  /*var*/ a = 1 + w;
+	  /*var*/ b = -2 * w * r_d;
+	  /*var*/ c = w * (r_d * r_d) - 1 /* 1 == Math.pow(r, 2) */;
 
 	  /* Divide by the radius at the intersection so that there is a
 	     normalized coordinate that ranges from -1..1.  (Don't
 	     actually need to do this since r == 1.)  */
-	  r3src_z = (-b + Math.sqrt(Math.pow(b, 2) - 4 * a * c)) / (2 * a);
+	  r3src_z = (-b + Math.sqrt(b * b - 4 * a * c)) / (2 * a);
 	  if (isNaN(r3src_z))
 	    continue;
 	  r3src_x = x_pix / f * (-r3src_z + (r + d));
@@ -635,20 +702,20 @@ function render_globe() {
 
 	/* 2. Inverse rotate this coordinate around the x axis by the
 	   current globe tilt.  */
-	var i_tilt = -tilt * DEG2RAD;
-	var cos_tilt = Math.cos(i_tilt); var sin_tilt = Math.sin(i_tilt);
-	var r3dest_x, r3dest_y, r3dest_z;
+	/*var*/ i_tilt = -tilt * lDEG2RAD;
+	/*var*/ cos_tilt = Math.cos(i_tilt); /*var*/ sin_tilt = Math.sin(i_tilt);
+	// var r3dest_x, r3dest_y, r3dest_z;
 	r3dest_x = r3src_x;
 	r3dest_z = r3src_z * cos_tilt - r3src_y * sin_tilt;
 	r3dest_y = r3src_z * sin_tilt + r3src_y * cos_tilt;
 
 	/* 3. Measure the latitude and longitude of this coordinate.  */
-	var latitude = Math.asin(r3dest_y);
-	var longitude = Math.atan2(r3dest_x, r3dest_z);
+	/*var*/ latitude = Math.asin(r3dest_y);
+	/*var*/ longitude = Math.atan2(r3dest_x, r3dest_z);
 
 	/* 4. Convert from radians to degrees.  */
-	latitude = latitude * RAD2DEG;
-	longitude = longitude * RAD2DEG;
+	latitude = latitude * lRAD2DEG;
+	longitude = longitude * lRAD2DEG;
 
 	/* 5. Inverse shift by the longitudinal rotation around the pole.  */
 	longitude += lon_rot;
@@ -667,19 +734,19 @@ function render_globe() {
 	longitude = longitude % 360.0;
 
 	/* Plot the pixel.  */
-	var src_y = ~~(latitude * src_data.height * inv_180);
-	var src_x = ~~(longitude * src_data.width * inv_360);
-	if (src_y == src_data.height)
+	/*var*/ src_y = ~~(latitude * lsrc_height * linv_180);
+	/*var*/ src_x = ~~(longitude * lsrc_width * linv_360);
+	if (src_y == lsrc_height)
 	  src_y -= 1;
-	var src_index = (src_data.width * src_y + src_x) * 4;
-	dest_data.data[dest_index+0] +=
-	  src_data.data[src_index++] * inv_osa_factor;
-	dest_data.data[dest_index+1] +=
-	  src_data.data[src_index++] * inv_osa_factor;
-	dest_data.data[dest_index+2] +=
-	  src_data.data[src_index++] * inv_osa_factor;
-	dest_data.data[dest_index+3] +=
-	  src_data.data[src_index++] * inv_osa_factor;
+	/*var*/ src_index = (lsrc_width * src_y + src_x) * 4;
+	dest_ddata[dest_index+0] +=
+	  lsrc_data[src_index++] * inv_osa_factor;
+	dest_ddata[dest_index+1] +=
+	  lsrc_data[src_index++] * inv_osa_factor;
+	dest_ddata[dest_index+2] +=
+	  lsrc_data[src_index++] * inv_osa_factor;
+	dest_ddata[dest_index+3] +=
+	  lsrc_data[src_index++] * inv_osa_factor;
       }
       dest_index += 4;
     }
@@ -701,8 +768,6 @@ function render_map() {
 
   var ctx = canvas.getContext("2d");
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.imageSmoothingEnabled = false;
-  ctx.mozImageSmoothingEnabled = false;
   ctx.drawImage(earth_buffer, 0, 0, earth_buffer.width, earth_buffer.height,
 		x_shift + canvas.width / 2,
                 y_shift + canvas.height / 2,

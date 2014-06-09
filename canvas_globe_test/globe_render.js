@@ -10,6 +10,10 @@ var eddyTracks;
 var eddy_imgbuf;
 var src_data;
 
+var dateList;
+var dateIndex = 0;
+var realTimes = []; // Time since 1970 in weeks
+
 var httpRequest;
 
 var rotating = 0;
@@ -43,10 +47,11 @@ var osa_factor = 1;
 var render_ssh = true;
 // Render textured land masses
 var render_land_tex = true;
+
 // Minimum track length, -1 for any.
 var min_track_len = -1;
 // Maximum track length, -1 for any.
-var max_track_len = -1;
+var max_track_len = 5;
 
 // Convenience variables for rendering.
 var DEG2RAD = Math.PI / 180;
@@ -90,8 +95,40 @@ function initCTModule() {
   initOverlay();
 }
 
-function finishStartup() {
+function processDates() {
+  if (httpRequest.readyState === 4) {
+    if (httpRequest.status === 200) {
 
+      /* var ajaxDebug = document.getElementById("ajaxDebug");
+      if (ajaxDebug)
+        ajaxDebug.innerHTML = httpRequest.responseText; */
+
+      dateList = httpRequest.responseText.split("\n");
+
+      var i;
+      for (i = 0; i < dateList.length; i++) {
+	var dlen = dateList[i].length;
+	var day = dateList[i].substr(dlen - 2, 2);
+	var month = dateList[i].substr(dlen - 4, 2);
+	var year = dateList[i].substring(0, dlen - 4);
+	var fmtDate = [ year, month, day ].join("-");
+	var realTime = +(new Date(fmtDate)) / (1000 * 60 * 60 * 24 * 7);
+	realTimes.push(realTime);
+      }
+
+      var dateSel = document.getElementById("gui.dateSel");
+      if (dateSel) {
+	for (i = 0; i < dateList.length; i++) {
+	  dateSel.options[dateSel.options.length] = new Option(dateList[i]);
+	}
+      }
+    } else {
+      alert("There was a problem with the request.");
+    }
+  }
+}
+
+function finishStartup() {
   if (httpRequest.readyState === 4) {
     if (httpRequest.status === 200) {
 
@@ -125,6 +162,22 @@ function initOverlay() {
       eddy_imgbuf.width = earth_buffer.width;
       eddy_imgbuf.height = earth_buffer.height;
 
+      { // Load the eddy dates.
+        if (window.XMLHttpRequest) // Mozilla, Safari, ...
+          httpRequest = new XMLHttpRequest();
+        else if (window.ActiveXObject) // IE 8 and older
+          httpRequest = new ActiveXObject("Microsoft.XMLHTTP");
+          // Plus we would need lots of error handling...
+        if (!httpRequest) {
+          alert("Could not create an XMLHttpRequest.");
+          // return;
+        }
+        httpRequest.onreadystatechange = processDates;
+        // httpRequest.open("GET", "../web_eddy_viewer_test/eddy_tracks.json", true);
+	httpRequest.open("GET", "../data/dates.dat", false);
+        httpRequest.send();
+      }
+
       { // Load the eddy tracks.
         // var httpRequest;
         if (window.XMLHttpRequest) // Mozilla, Safari, ...
@@ -137,7 +190,8 @@ function initOverlay() {
           // return;
         }
         httpRequest.onreadystatechange = finishStartup;
-        httpRequest.open("GET", "../web_eddy_viewer_test/eddy_tracks.json", true);
+        // httpRequest.open("GET", "../web_eddy_viewer_test/eddy_tracks.json", true);
+	httpRequest.open("GET", "../data/tracks/acyc_bu_tracks.json", true);
         httpRequest.send();
       }
     }
@@ -186,20 +240,36 @@ function renderEddyTracks() {
   edc.lineWidth = backbuf_scale;
   edc.strokeStyle = "#800080";
   edc.lineJoin = "round";
-  for (var i = 0; i < eddyTracks.length; i++) {
+  for (var i = 0; i < eddyTracks.length && i < 1000; i++) {
+
+    /* Data format: [list of tracks]
+       track: [ list of eddies ]
+       eddy: [ latitude, longitude, date_index, eddy_index ]
+     */
+
     if (min_track_len > 0 || max_track_len != -1) {
       /* Compute the length of the track to determine if it should be
          drawn.  */
-      var track_len = 0;
+      /* var track_len = 0;
       for (var j = 1; j < eddyTracks[i].coordinates.length; j++) {
 	track_len += gCircLen(eddyTracks[i].coordinates[j-1],
 			      eddyTracks[i].coordinates[j]);
-      }
+      } */
       /* NOTE: Since some of the eddy tracks are considerably
          twisted, we only compute the straight line distance from the
          beginning of the track to the end of the track.  */
       /* var track_len = gCircLen(eddyTracks[i].coordinates[0],
 	   eddyTracks[i].coordinates[eddyTracks[i].coordinates.length-1]); */
+      /* if (track_len < min_track_len)
+	continue;
+      if (max_track_len != -1 && track_len > max_track_len)
+	continue; */
+
+      /* Determine the length of the eddy in weeks.  */
+      var num_eddies = eddyTracks[i].length;
+      var date_idx_first = eddyTracks[i][0][2];
+      var date_idx_last = eddyTracks[i][num_eddies-1][2];
+      var track_len = realTimes[date_idx_last] - realTimes[date_idx_first];
       if (track_len < min_track_len)
 	continue;
       if (max_track_len != -1 && track_len > max_track_len)
@@ -207,17 +277,19 @@ function renderEddyTracks() {
     }
 
     edc.beginPath();
-    var lon = eddyTracks[i].coordinates[0].lon;
-    var lat = eddyTracks[i].coordinates[0].lat;
+    var lat = eddyTracks[i][0][0];
+    var lon = eddyTracks[i][0][1];
     var map_x = (lon + 180) * inv_360 * earth_buffer.width;
     var map_y = (90 - lat) * inv_180 * earth_buffer.height;
     edc.moveTo(map_x, map_y);
-    for (var j = 1; j < eddyTracks[i].coordinates.length; j++) {
-      lon = eddyTracks[i].coordinates[j].lon;
-      lat = eddyTracks[i].coordinates[j].lat;
+    for (var j = 1; j < eddyTracks[i].length; j++) {
+      lat = eddyTracks[i][j][0];
+      lon = eddyTracks[i][j][1];
       map_x = (lon + 180) * inv_360 * earth_buffer.width;
       map_y = (90 - lat) * inv_180 * earth_buffer.height;
       edc.lineTo(map_x, map_y);
+      if (eddyTracks[i][j][2] == dateIndex)
+	edc.arc(map_x, map_y, 2 * backbuf_scale, 0, 2 * Math.PI, false);
     }
     edc.stroke();
   }

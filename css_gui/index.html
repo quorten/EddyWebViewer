@@ -163,6 +163,29 @@ function initGUIHooks() {
       wire_render = false;
     render_globe();
   };
+
+  document.getElementById('gui.dateSel').onchange = function(event) {
+    dateIndex = this.selectedIndex;
+    renderEddyTracks();
+    refreshOverlay();
+    render_globe();
+  };
+
+  document.getElementById('gui.datePrev').onclick = function(event) {
+    dateIndex--;
+    document.getElementById('gui.dateSel').selectedIndex = dateIndex;
+    renderEddyTracks();
+    refreshOverlay();
+    render_globe();
+  };
+
+  document.getElementById('gui.dateNext').onclick = function(event) {
+    dateIndex++;
+    document.getElementById('gui.dateSel').selectedIndex = dateIndex;
+    renderEddyTracks();
+    refreshOverlay();
+    render_globe();
+  };
 }
 
   //--><!]]>
@@ -269,11 +292,9 @@ document.getElementById('scriptWrapper').style.cssText = '';
 	  <br />
 
 	  <label for="gui.curDate">Date:</label>
-	  <input id="gui.curDate" type="text" value="1999-03-22"
+	  <input id="gui.curDate" type="text"
 		 style="width: 6em" />
 	  <select id="gui.dateSel">
-	    <option selected="selected">1999-03-22</option>
-	    <option>2003-01-01</option>
 	  </select><br />
 	  <input id="gui.dateBegin" type="button" value="&lt;&lt; Begin" />
 	  <input id="gui.datePrev" type="button" value="&lt; Prev" />

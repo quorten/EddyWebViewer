@@ -4,12 +4,12 @@ SOURCES = triglut.js oevns.js oevmath.js cothread.js renderlayer.js \
 	projector.js trackslayer.js doc.js
 BUNDLES = bundle.js docbundle.js
 
-all: bundle.js docs
+all: docs
 
 include $(cjs_dir)/cjs.mak
 
-bundle.js: cttest.hjs
-	$(cjs_dir)/hjssmash.sh $< -o $@
+# bundle.js: ...
+# 	$(cjs_dir)/hjssmash.sh $< -o $@
 
 docs: docbundle.js
 	../../jsdoc-master/jsdoc $^ ../README.md -u docs_in

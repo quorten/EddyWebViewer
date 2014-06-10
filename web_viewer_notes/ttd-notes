@@ -531,7 +531,7 @@ What is a projection property?
 
 Affline transformations have nothing to do with the projection.
 
-Questions to ask other Woodrow and James:
+Questions to ask Woodrow and James:
 
 * Data precision?  32-bit floating point SSH.  24-bit mantissa.
   +/- 32 before the decimal, after the decimal.  JPEG
@@ -550,6 +550,13 @@ Questions to ask other Woodrow and James:
 
 * Features vs. solidness of design.
 
+* Visualization?  Highlight track datapoints how?
+
+* What about the other viewers people are using?  Hung's viewer too
+  slow?
+
+* License notices?
+
 * What's with that computer next to this one that seems not to
   work?
 
@@ -563,17 +570,10 @@ Things to say:
 
 * C to JavaScript translator.
 
-* Visualization?  Highlight track datapoints how?
-
-* What about the other viewers people are using?  Hung's viewer too
-  slow?
-
 * In case the whole web app thing cannot deliver that great of
   performance, we'll have a native backup.
 
 * Plus, I'll be using all of my best codebase tricks in the code.
-
-* License notices?
 
 * Draw a crosshair at the center?
 
@@ -599,3 +599,7 @@ Things for me to do:
 * Multiple color schemes on the SSH RenderLayer.
 
 * Interlaced raytracer.
+
+HTTP 1.1 Specification for XMLHttpRequest headers:
+
+http://www.w3.org/Protocols/rfc2616/rfc2616.html

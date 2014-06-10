@@ -47,6 +47,9 @@ RenderLayer.prototype.loadData = function() {
   throw new Error("Must be implemented by a subclass!");
 };
 
+RenderLayer.READY = 0;
+RenderLayer.NEED_DATA = 1;
+
 /**
  * Setup the viewport and projection of a render layer.
  * @abstract
@@ -72,6 +75,9 @@ RenderLayer.prototype.setViewport =
   function(center, width, height, projection) {
   throw new Error("Must be implemented by a subclass!");
 };
+
+RenderLayer.FRAME_AVAIL = 0;
+RenderLayer.NO_DISP_FRAME = 1;
 
 /**
  * Cothreaded rendering routine.

@@ -228,17 +228,16 @@ var computeSumOfSquares = (function() {
     this.i = 1;
   }
 
-  /* TODO: Check the actual performance benefits of this local variable
-     copying.  This might just bog down the garbage collector.  */
   function contExec() {
     var n = this.n;
     var lpMult = this.lpMult;
     var sum = this.sum;
     var i = this.i;
+    var lDate_now = Date.now;
 
-    var lastTime = Date.now();
+    var lastTime = lDate_now();
     var timeout = this.timeout;
-    while (Date.now() - lastTime < timeout && i <= n) {
+    while (lDate_now() - lastTime < timeout && i <= n) {
       sum += i * i;
       i++;
     }

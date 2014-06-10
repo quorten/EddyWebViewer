@@ -22,7 +22,9 @@ var PolarPoint = function(lat, lon) {
 /**
  * Normalize the polar coordinate measured in degrees so that the
  * latitude is within -90 and 90 and the longitude is within -180 and
- * 180.  */
+ * 180.
+ * @param polarPt
+ */
 PolarPoint.degNormalize = function(polarPt) {
   polarPt.lat %= 180;
   polarPt.lon %= 360;
@@ -32,7 +34,9 @@ PolarPoint.degNormalize = function(polarPt) {
   if (polarPt.lon >= 180) polarPt.lon -= 180;
 };
 
-/** Method wrapper to static function.  */
+/**
+ * Method wrapper to static function.
+ */
 PolarPoint.prototype.degNormalize = function() {
   return PolarPoint.degNormalize(this);
 };
@@ -42,6 +46,7 @@ PolarPoint.prototype.degNormalize = function() {
  * given polar coordinate.  The polar coordinate must be in radians.
  * The positive pole is aligned with the positive Z axis, and
  * longitude zero points in the direction of the positive X axis.
+ * @param polarPt
  */
 PolarPoint.toPoint3D = function(polarPt) {
   var destPoint = new Point3D();
@@ -51,7 +56,9 @@ PolarPoint.toPoint3D = function(polarPt) {
   return destPoint;
 };
 
-/** Method wrapper to static function.  */
+/**
+ * Method wrapper to static function.
+ */
 PolarPoint.prototype.toPoint3D = function() {
   return PolarPoint.toPoint3D(this);
 };
@@ -59,6 +66,8 @@ PolarPoint.prototype.toPoint3D = function() {
 /**
  * 2D rectangular coordinates point.
  * @constructor
+ * @param x
+ * @param y
  */
 var Point2D = function(x, y) {
   if (typeof x != "undefined") {
@@ -67,7 +76,10 @@ var Point2D = function(x, y) {
   }
 };
 
-/** Return a new point vector of unit length.  */
+/**
+ * Return a new point vector of unit length.
+ * @param srcPoint
+ */
 Point2D.normalize = function(srcPoint) {
   var len = Math.sqrt(srcPoint.x * srcPoint.x +
 		      srcPoint.y * srcPoint.y);
@@ -77,7 +89,9 @@ Point2D.normalize = function(srcPoint) {
   return destPoint;
 };
 
-/** Method wrapper to static function.  */
+/**
+ * Method wrapper to static function.
+ */
 Point2D.prototype.normalize = function() {
   return Point2D.normalize(this);
 };
@@ -85,6 +99,9 @@ Point2D.prototype.normalize = function() {
 /**
  * 3D rectangular coordinates point.
  * @constructor
+ * @param x
+ * @param y
+ * @param z
  */
 var Point3D = function(x, y, z) {
   if (typeof x != "undefined") {
@@ -94,37 +111,57 @@ var Point3D = function(x, y, z) {
   }
 };
 
-/** Return a new copy of an existing point.  */
+/**
+ * Return a new copy of an existing point.
+ */
 Point3D.prototype.copy = function() {
   return new Point3D(this.x, this.y, this.z);
 };
 
-/** Scale the point around the origin.  */
+/**
+ * Scale the point around the origin.
+ * @param srcPoint
+ * @param scaleFactor
+ */
 Point3D.scale = function(srcPoint, scaleFactor) {
   srcPoint.x *= scaleFactor;
   srcPoint.y *= scaleFactor;
   srcPoint.z *= scaleFactor;
 };
 
-/** Method wrapper to static function.  */
+/**
+ * Method wrapper to static function.
+ * @param scaleFactor
+ */
 Point3D.prototype.scale = function(scaleFactor) {
   return Point3D.scale(this, scaleFactor);
 };
 
-/** Translate the point by the vector of another point.  */
+/**
+ * Translate the point by the vector of another point.
+ * @param srcPoint
+ * @param vectorPt
+ */
 Point3D.translate = function(srcPoint, vectorPt) {
   srcPoint.x += vectorPt.x;
   srcPoint.y += vectorPt.y;
   srcPoint.z += vectorPt.z;
 };
 
-/** Method wrapper to static function.  */
+/**
+ * Method wrapper to static function.
+ * @param vectorPt
+ */
 Point3D.prototype.translate = function(vectorPt) {
   return Point3D.translate(this, vectorPt);
 };
 
-/** Return a new point rotated around the X axis by the angle given in
-    radians.  */
+/**
+ * Return a new point rotated around the X axis by the angle given in
+ * radians.
+ * @param srcPoint
+ * @param angle
+ */
 Point3D.rotateX = function(srcPoint, angle) {
   var cosAngle = Math.cos(angle);
   var sinAngle = Math.sin(angle);
@@ -135,13 +172,20 @@ Point3D.rotateX = function(srcPoint, angle) {
   return rotPoint;
 };
 
-/** Method wrapper to static function.  */
+/**
+ * Method wrapper to static function.
+ * @param angle
+ */
 Point3D.prototype.rotateX = function(angle) {
   return Point3D.rotateX(this, angle);
 };
 
-/** Return a new point rotated around the Y axis by the angle given in
-    radians.  */
+/**
+ * Return a new point rotated around the Y axis by the angle given in
+ * radians.
+ * @param srcPoint
+ * @param angle
+ */
 Point3D.rotateY = function(srcPoint, angle) {
   var cosAngle = Math.cos(angle);
   var sinAngle = Math.sin(angle);
@@ -152,13 +196,20 @@ Point3D.rotateY = function(srcPoint, angle) {
   return rotPoint;
 };
 
-/** Method wrapper to static function.  */
+/**
+ * Method wrapper to static function.
+ * @param angle
+ */
 Point3D.prototype.rotateY = function(angle) {
   return Point3D.rotateY(this, angle);
 };
 
-/** Return a new point rotated around the Z axis by the angle given in
-    radians.  */
+/**
+ * Return a new point rotated around the Z axis by the angle given in
+ * radians.
+ * @param srcPoint
+ * @param angle
+ */
 Point3D.rotateZ = function(srcPoint, angle) {
   var cosAngle = Math.cos(angle);
   var sinAngle = Math.sin(angle);
@@ -169,12 +220,18 @@ Point3D.rotateZ = function(srcPoint, angle) {
   return rotPoint;
 };
 
-/** Method wrapper to static function.  */
+/**
+ * Method wrapper to static function.
+ * @param angle
+ */
 Point3D.prototype.rotateZ = function(angle) {
   return Point3D.rotateZ(this, angle);
 };
 
-/** Return a new point vector of unit length.  */
+/**
+ * Return a new point vector of unit length.
+ * @param srcPoint
+ */
 Point3D.normalize = function(srcPoint) {
   var len = Math.sqrt(srcPoint.x * srcPoint.x +
 		      srcPoint.y * srcPoint.y +
@@ -186,14 +243,19 @@ Point3D.normalize = function(srcPoint) {
   return destPoint;
 };
 
-/** Method wrapper to static function.  */
+/**
+ * Method wrapper to static function.
+ */
 Point3D.prototype.normalize = function() {
   return Point3D.normalize(this);
 };
 
-/** Create a new polar coordinate in radians from the given
-    rectangular coordinate.  The rectangular coordinate vector must be
-    of unit length.  */
+/**
+ * Create a new polar coordinate in radians from the given rectangular
+ * coordinate.  The rectangular coordinate vector must be of unit
+ * length.
+ * @param srcPoint
+ */
 Point3D.toPolarPoint = function(srcPoint) {
   var polarPt = new PolarPoint();
   polarPt.lat = Math.asin(srcPoint.z);
@@ -201,14 +263,19 @@ Point3D.toPolarPoint = function(srcPoint) {
   return polarPt;
 };
 
-/** Method wrapper to static function.  */
+/**
+ * Method wrapper to static function.
+ */
 Point3D.prototype.toPolarPoint = function() {
   return Point3D.toPolarPoint(this);
 };
 
-/** Similar to {@linkcode Point3D.toPolarPoint}, but the polar axis is
-    the Y axis and longitude zero is aligned with the positive Z
-    axis.  */
+/**
+ * Similar to {@linkcode Point3D.toPolarPoint}, but the polar axis is
+ * the Y axis and longitude zero is aligned with the positive Z
+ * axis.
+ * @param srcPoint
+ */
 Point3D.toYPolarPoint = function(srcPoint) {
   var polarPt = new PolarPoint();
   polarPt.lat = Math.asin(srcPoint.y);
@@ -216,7 +283,9 @@ Point3D.toYPolarPoint = function(srcPoint) {
   return polarPt;
 };
 
-/** Method wrapper to static function.  */
+/**
+ * Method wrapper to static function.
+ */
 Point3D.prototype.toYPolarPoint = function() {
   return Point3D.toYPolarPoint(this);
 };

@@ -51,7 +51,7 @@ RenderLayer.prototype.loadData = function() {
  * Setup the viewport and projection of a render layer.
  * @abstract
  *
- * @param {Abstract Point} center - The point in the content
+ * @param {AbstractPoint} center - The point in the content
  * coordinate space that should appear at the center of the viewport.
  * @param {integer} width - The width of the rendering viewport in
  * pixels.

@@ -1,0 +1,601 @@
+These notes are even more scratch style notes.
+
+SVG export and animation helpers
+
+----------------------------------------
+
+Unix: CentOS: How do you disable gnome-ssh-askpass for command-line use?
+
+unset SSH_ASKPASS
+
+http://kartzontech.blogspot.com/2011/04/how-to-disable-gnome-ssh-askpass.html
+
+Nice automation script, try this one out:
+
+cd ~/EddyWebViewer
+git archive master | ssh mako0042@flute.cs.umn.edu \
+  'rm -rf .www/EddyWebViewer
+   mkdir  .www/EddyWebViewer
+   cd     .www/EddyWebViewer
+   tar -x
+   chmod -R o+r .
+   chmod o+x `find . -type d`'
+
+----------------------------------------
+
+Off topic:
+
+http://blog.stackoverflow.com/2014/05/podcast-59-hes-one-of-those-science-ists/?cb=1
+
+Well, maybe sites like Wikipedia and Stack Overflow need to take a
+more pedagogical approach with new users, with special existing users
+to give them the time and patience that they need.
+
+https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Functions_and_function_scope/Strict_mode?redirectlocale=en-US&redirectslug=JavaScript%2FReference%2FFunctions_and_function_scope%2FStrict_mode
+
+----------------------------------------
+
+Code base plans
+
+Alright, let's break up the renderer and implement it:
+
+Almost finished, parts left TODO
+
+* UI input interception
+
+* 2D rendering
+
+* clipGeometry()
+
+* getClipBounds()
+
+* inverseZRot(x, y) -> { x, y }
+
+* rotateX, rotateY, rotateZ
+
+* Wireframe render
+
+Data I/O:
+
+* Request data
+
+* Write data
+
+* Format detection
+
+* Format handlers
+
+--Avoid complicated OOP, this can really slow down compilers
+and static implementations.  Try to stick to fast-style coding
+when possible.
+
+2D version: only one frontbuffer.  Bit-block images verbatim.
+
+Highlight selected eddy.
+
+Start rendering 1/4 down from top of screen, continue to bottom,
+finish top 1/4.
+
+Unit testing: JsUnit, QUnit
+
+Discovery, design, component implementation/testing, composition.
+
+Delete this when the code has been written and documented via
+jsdoc.
+
+Need to have table of acronyms and abbreviations
+
+----------------------------------------
+
+About box
+
+If you are having problems with the web viewer, check if your browser
+meets the minimum requirements and passes the browser CSS and Event
+test suite and the JavaScript language test suite.  (Reference
+renderings at 96 DPI.)  If it is possible to workaround a bug or
+issue, send a patch to us and we will include it in the web viewer.
+
+----------------------------------------
+
+Questions answered.
+
+Need two modes in the Eddy Web Viewer.
+
+1. Watch tracks from day to day, see the tracks alpha fade in and fade
+   out.  Follow an eddy, see how it changes until it vanishes.
+   Boundary, track.
+
+2. Visualize how the boundaries of the eddies change.
+
+3. Click on an eddy, select it, get information, follow.
+
+4. Focus in on a region, change color scale.
+
+5. Advanced rendering attributes such as swirling eddies and hatches
+   scale, probably not as important.
+
+6. Like a database query, filter the eddies that are
+   displayed.
+
+7. Preferred format: whatever works fastest in the viewer.
+
+8. Speed is critical.  Performance matters, monitor bandwidth
+   requirements and limitations.
+
+9. Web hosting?  Maybe move to Amazon Web Services, we'll figure that
+   out later.
+
+10. I'll need pointer locking and the "calibrate, please!" screen
+    needs to be removed.
+
+Important!  SSH data directory:
+  /project/expeditions/eddies_project_data/web_viewer
+
+keifenhe
+
+Woodrow Keifenheim
+
+Maybe I'll have to write a script from my CS account that remote
+logins to.
+
+So two modes: one to show eddies in motion, another to see eddies
+static, then click on an eddy to get more information.  The first mode
+is critical in importance, the second mode, not so much.
+
+----------
+
+Need to check quirksmode compatibility tables for mobile devices.
+
+GLSL shaders?  Only for big machines.
+
+http://earthobservatory.nasa.gov/Features/BlueMarble/?src=ve
+
+Would streaming video allow SSH animations?
+
+http://willus.com/author/streaming2.shtml
+
+Here's how to track pinch events:
+
+http://stackoverflow.com/questions/11183174/simplest-way-to-detect-a-pinch
+https://developer.apple.com/library/safari/documentation/UserExperience/Reference/GestureEventClassReference/GestureEvent/GestureEvent.html
+
+This is also useful:
+
+http://quirksmode.org/dom/events/resize_mobile.html
+
+----------
+
+Performance
+
+Important root of a tree of performance oriented links:
+
+http://stackoverflow.com/questions/1246408/use-of-javascript-array-new-arrayn-declaration
+
+Right, function calls are actually slow, if using aligned native data
+is an option.
+
+Great!  This will dramatically help me with performance-oriented
+programming in this project: fast trigonometry:
+
+http://jacksondunstan.com/articles/1190
+http://en.wikipedia.org/wiki/Haxe
+
+Static variables incur significant overhead over local variables.
+
+Copying variables is cheap in JavaScript.
+
+Performance, performance...
+
+http://stackoverflow.com/questions/18221571/haxe-compiled-code-peformance
+
+Haxe might not be the best solution after all for compiling to
+C++/C.  However, it will provide very good optimization features for
+JavaScript programming, in addition to the Google Closure tools.
+
+http://www.html5rocks.com/en/tutorials/canvas/performance/
+
+So now what do I need to do?
+
+1. Implement a simple JavaScript code inliner.
+
+2. Set up a build process.
+
+3. Create the kd-tree and quadtree implementations.
+
+4. Get the C++ side working.
+
+5. Get the data to a place for testing.
+
+6. Finish the code modularization.
+
+7. Use the cross-browser shim for requestAnimationFrame.
+
+Slow canvas rendering?  Problem solved:
+
+https://code.google.com/p/chromium/issues/detail?id=170021
+
+Solution: break up a large texture into several small textures, each
+no larger than 4096x4096 in size.  Paint each tile individually, then
+use those as you need to.
+
+http://stackoverflow.com/questions/12405471/why-does-drawimage-perform-slightly-noticeably-better-than-createpattern-in
+
+Performance, performance...
+
+http://www.webreference.com/programming/javascript/jkm3/index.html
+
+Okay, let's try getting some performance data of my own.
+
+Do function calls really slow things down?  No, unless the function is
+block nested.  For some math functions, a lookup table function that
+you provide may be faster, but that's only because the math functions
+may not be implemented using fast math themselves.
+
+Are global variables really slower than local variables?  No.
+However, if I scale up the program to have a more crowded global
+namespace, then this might actually be true.
+
+Is property access really slower than direct local variable access?
+No, but there are some exceptions.  In particular, you should not
+access any properties that don't correspond to a real JavaScript
+property, such as is the case for a function's arguments array.  It is
+also probably a good idea to avoid using properties at the condition
+check of a loop.
+
+What about buffering?  I'll have to experiment with that, but luckily
+it will be easy for my code to be written to make such experimentation
+easy.
+
+So where do the real slowdowns happen?  Excess assignment.  Be sure to
+economize on assignment operations.
+
+In conclusion, best software development practices for structuring
+large scale software should be able to scale well in JavaScript, even
+on outdated interpreters.
+
+Closure scoped variable performance?
+
+http://stackoverflow.com/questions/9248963/javascript-why-the-access-to-closure-variable-might-be-slow
+
+----------------------------------------
+
+Here's they way to get rid of screen coordinate calibration screens:
+just make sure there is no vertical scrollbar, and use the clientLeft
+and clientTop properties.
+
+http://stackoverflow.com/questions/2337795/screen-coordinates-of-a-element-via-javascript
+
+http://www.quirksmode.org/dom/w3c_cssom.html#windowview
+
+----------------------------------------
+
+Here's how to draw graticule:
+
+First, start out simple.  Looking at a globe equator-on-center,
+parallels are straight lines and longitudinal lines are ellipses.
+This can be drawn with ease.  Then, looking at the globe
+pole-on-center, parallels are concentric circles around the pole, and
+longitudinal lines are straight lines intersecting at the pole.
+
+The next trick is to figure out how to render the graticule
+orthograpically at positions in between these extremes.  When tilting
+the globe from equator to pole, the 2D distance between the north and
+south pole decrease from the pole separation to zero, exactly by the
+cos() function for computing rotations.  Each circle, even when
+deformed, always has its center at the core of the Earth, even in all
+possible 2D orthographic projections.  Also, looking at the
+longitudinal circles when tilting the globe without any rotation
+around the pole, the maximum x extent of every longitudinal circle is
+always the same.
+
+* Parellels get stretched around the center from being a straight line
+  equator on to being a circle pole-on.
+
+* The x-width of parallels and longitudinal lines never changes.
+
+* Longitudinal lines get progresively squashed when rotating.
+
+* Totally squashed longitudinal lines are sheared up to the edge of
+  the outer boundary circle of the globe when looking pole on.
+
+Now the only trick is to compute the shear factor of the longitudinal
+lines such that the correct effect will be achieved.
+
+First compute the intended Z-axis transfer amount to the Y-axis.  This
+will give you a length.  Shear factors operate by multiplying an X
+coordinate by a shear factor and adding it to the Y coordinate.  So if
+you know the X extend of a coordinate and you want a shear factor to
+assign that X coordinate exactly a Y coordinate, the shear factor is
+the target Y amount divided by the current X amount.  So here are the
+equations.
+
+The next challenge is to draw only the "front" lines of the graticule.
+Again, this starts with simple observations.  Looking at a globe
+equator-on, there is.
+
+Great advice on getting ellipses to render with constant line width:
+
+http://stackoverflow.com/questions/2172798/how-to-draw-an-oval-in-html5-canvas
+
+Clipping does not need to be performed manually, since it will be done
+by the underlying canvas implementation as needed.
+
+This leaves things up to tree lookup.
+
+Drawing clipped polygons.  For each polygon, first determine which
+clock-winding direction corresponds to the closed polygon.  Then use
+clock-winding rule to determine interior of polygon.  Once the
+interior of the polygon has been found, draw with the two points just
+off the screen and add vertices for each screen coordinate located
+within the polygon.
+
+Drawing other projections:
+
+1. Initialize bitmap backbuffers via unprojection tracing from the
+   target buffer pixels.
+
+2. While rendering any features, transform the point by the current
+   projection.
+
+Always store relatively large render caches as tiled image buffers, up
+to a maximum size.  Must keep this small in order to preserve
+compatibility with older browsers.
+
+Want to link zoom factor and field of view?  Here's how.
+
+Calculate the radius of the projected sphere.  Field of view.
+
+Map orthographic to perspective.
+
+1. Computer disp_rad.
+
+2. Raytrace a point of disp_rad out to the plane.
+
+3. You'll get something with a radius too large.
+
+Try working backwards.
+
+1. Raytrace the edge of the globe.
+
+2. You'll get a screen position and therefore the scale.
+
+x / (r + d) = x_pix / f
+
+Wait, but there are two ways of doing this!
+
+At orthographic edge: Best for small fields of view entire Earth
+visible.
+At visible edge: less surprises at high zoom levels.
+
+So I need to be able to choose between the two.
+
+Detecting browser capabilities...
+[if canvas is found]
+Benchmarking rendering performance...
+Benchmark complete.  Optimal rendering parameters selected.
+Downloading initial dataset...
+Download complete.
+
+Pre-load an image?  Just use JavaScript and HTML 5 image loading
+like so?
+
+http://www.htmlgoodies.com/tutorials/web_graphics/article.php/3480001
+
+Great!  Image flipping, pre-render and then flip at high speed.
+
+http://www.htmlgoodies.com/tutorials/web_graphics/article.php/3479941
+
+Want to make a link open in a different window?
+
+Use <a href="..." target="resource window"></a> as one method.
+
+----------
+
+HTML validity checklist:
+
+* Verify void tags end with " />"
+
+* Run all documents through the CSS and markup validators.
+
+* Verify all inline scripts have polyglot wrapping markers.
+
+* Verify all documents use IE6 CSS fallbacks.
+
+* Verify all CSS layouts have IE6 CSS fallback scripts.
+
+* Do not use the SVG loading image by default.
+
+* Preload GUI icon images.
+
+* Check that all the "alt" tags have reasonable text.  Either use
+  brackets or periods to delimit the end of identifiers.
+
+* Check all webpages in Lynx and w3m.
+
+JavaScript checklist:
+
+* Keep the identifiers in camelCase.
+
+* Parse text fields more gracefully.
+
+* Always perform error checking whenever applicable.
+
+* Use parseInt() to parse user input numbers.
+
+* Add "use strict" to all production code and test.
+
+* Avoid over-object-orientation and try to test code quickly after it
+  is written.
+
+* Benchmark the memory consumption of having a certain number of
+  JavaScript objects around, gauge "stack" variables and garbage
+  collector leftover waste.
+
+* Check for "~~" and replace with "0|".
+
+* Verify that all HTML Canvas operations are structured so as to be
+  supported on all conforming browsers.
+
+* Always use parentheses with typeof operator?
+
+* Always use document.x() and window.x() rather than the global
+  namespace name.
+
+----------
+
+Build the packed quadtrees:
+
+1. Sort all the coordinates.
+2. Scan through the coordinates in order.
+3. Keep track of coordinate spacing.
+4. When large batches of similarly spaced coordinates
+   are found, bundle them into a packed structure.  Pad out
+   any uneven space with interpolation.
+5. Build the kd-tree on the packed coordinates.
+6. Build linear interpolation reduction trees on top of the
+   kd-tree.
+7. Provide a server-side image generator to assist in sending
+   pregenerated images straight to the client for video display.
+
+It turns out that no sparse array magic will be needed on the SSH
+data.  Just process it identical to how it is done in Google Earth.
+
+----------
+
+Need new CSS GUI test suites:
+
+Box resize check
+
+Mouse wheel check
+
+CSS compatibility: Do not use periods in element IDs.
+
+Fast and efficient way to get the current time in milliseconds:
+
+if (!Date.now) {
+  Date.now = function now() {
+    return new Date.getTime();
+  };
+}
+
+Date.now;
+
+https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/now
+
+----------------------------------------
+
+Efficiently encode the Sea Surface Height
+
+Up to eight digits after the decimal point.
+Up to three digits before the decimal point.
+
+96% +- 31.999999
+
+1 11111 111111111111111111
+
+31.00005
+
+// Run through each number.
+// If it exceeds +- 32, then clamp it to the maximum.
+// Or set it to NaN (-32).  Need a good way to encode this with JPEG.
+// Shift left by 2^18.
+// Convert to integer for fixed point.
+// Write three low order bytes, one at a time, into target byte order.
+// Write out image.
+// Send it through JPEG compressor.
+// Separate PNG compressed info map.
+
+----------------------------------------
+
+Get an older version of Opera for compatibility testing:
+
+http://arc.opera.com/pub/opera/linux/754/final/en/i386/static/
+
+Great high performance JavaScript CSV parser:
+
+https://code.google.com/p/jquery-csv/
+
+----------------------------------------
+
+So what do I need to do in order to finish up the viewer?
+
+* Implement some render layers.  Do some testing.
+
+* Clean up the compatibility code.
+
+* Finish the slim GUI.
+
+Should center be a projection property?
+
+What is a projection property?
+
+Affline transformations have nothing to do with the projection.
+
+Questions to ask other Woodrow and James:
+
+* Data precision?  32-bit floating point SSH.  24-bit mantissa.
+  +/- 32 before the decimal, after the decimal.  JPEG
+  compression, video compression.
+
+* Resolution?  720x1440 for the current SSH data.
+
+* How do the smallest size eddy tracks compare with the SSH
+  resolution?
+
+* Browser testing?  Emulators of mobile devices.
+
+* Web hosting?  Where should the site officially reside?
+
+* JavaScript development in the labs.
+
+* Features vs. solidness of design.
+
+* What's with that computer next to this one that seems not to
+  work?
+
+Things to say:
+
+* Above average cross-browser compatibility and performance.
+  Great new slim GUI, cothreading...
+
+* Need to say /competitively exceed/.  Performance like jsperf
+  and Browserscope.  Not mediocre like D3.js.
+
+* C to JavaScript translator.
+
+* Visualization?  Highlight track datapoints how?
+
+* What about the other viewers people are using?  Hung's viewer too
+  slow?
+
+* In case the whole web app thing cannot deliver that great of
+  performance, we'll have a native backup.
+
+* Plus, I'll be using all of my best codebase tricks in the code.
+
+* License notices?
+
+* Draw a crosshair at the center?
+
+Things for me to do:
+
+* I need to be make sure I implement multiple rendering mechanisms.
+
+* It seems that loading the large JSON data is okay.  That means
+  that I should be able to safely move onto building the kd-trees.
+
+* Number of required experiments in rendering mechanisms:
+
+* Tracks: full loading single image (composite image tiles) render,
+  partial loading via XMLHttpRequest seeking, caching, w/wo kd-tree.
+
+* SSH:  single load single render, reduction tiles.
+
+* Best way to specify which code paths to use?  Just use class
+  properties, maybe possibly use a setter function.
+
+* Consolidate compatibility code.
+
+* Multiple color schemes on the SSH RenderLayer.
+
+* Interlaced raytracer.

@@ -21,12 +21,30 @@ Tracks.constructor = Tracks;
 Tracks.prototype.setCacheLimits = function(dataCache, renderCache) {
 };
 
-Tracks.prototype.loadData = function() {
-};
+Tracks.prototype.loadData = (function() {
+  "use strict";
+
+  function startExec() {
+  }
+
+  function contExec() {
+  }
+
+  return new Cothread(startExec, contExec);
+})();
 
 Tracks.prototype.setViewport = function(center, width, height, projection) {
   RenderLayer.call(center, width, height, projection);
 };
 
-Tracks.prototype.render() = function() {
-};
+Tracks.prototype.render = (function() {
+  "use strict";
+
+  function startExec() {
+  }
+
+  function contExec() {
+  }
+
+  return new Cothread(startExec, contExec);
+})();

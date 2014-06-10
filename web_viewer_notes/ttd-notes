@@ -533,11 +533,13 @@ Affline transformations have nothing to do with the projection.
 
 Questions to ask Woodrow and James:
 
-* Data precision?  32-bit floating point SSH.  24-bit mantissa.
-  +/- 32 before the decimal, after the decimal.  JPEG
-  compression, video compression.
+* Data precision?  32-bit floating point SSH.  24-bit fixed point.
+  +/- 32 before the decimal, after the decimal.  JPEG compression,
+  video compression.
 
 * Resolution?  720x1440 for the current SSH data.
+
+* Any seasonal variations observed with the eddies?
 
 * How do the smallest size eddy tracks compare with the SSH
   resolution?

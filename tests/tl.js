@@ -2,6 +2,25 @@
 
 import "../src/trackslayer";
 
+function execTime2() {
+  var status = TracksLayer.render.continueCT();
+  if (status.returnType == CothreadStatus.FINISHED)
+    return;
+  return browserTime2();
+}
+
+function browserTime2() {
+  return setTimeout(execTime2, 0);
+}
+
+function setup2() {
+  document.documentElement.children[1].appendChild(TracksLayer.frontBuf);
+  TracksLayer.setViewport(null, 1440, 720, null);
+  TracksLayer.render.timeout = 20;
+  if (TracksLayer.render.start().returnType != CothreadStatus.FINISHED)
+    return browserTime2();
+}
+
 function execTime() {
   var status = TracksLayer.loadData.continueCT();
   if (status.preemptCode != TracksLayer.PROC_DATA) {
@@ -16,7 +35,9 @@ function execTime() {
     resultElmt.innerHTML = "Result: " + TracksLayer.tracksData.length +
       " tracks";
     document.documentElement.children[1].appendChild(resultElmt);
-    return;
+
+    // Next move on to testing the progressive renderer.
+    return setTimeout(setup2, 80);
   }
   return browserTime();
 }
@@ -40,6 +61,6 @@ function setup() {
   document.documentElement.children[1].appendChild(progElmt);
 
   TracksLayer.loadData.timeout = 20;
-  if (TracksLayer.loadData.start() != CothreadStatus.FINISHED)
+  if (TracksLayer.loadData.start().returnType != CothreadStatus.FINISHED)
     return browserTime();
 }

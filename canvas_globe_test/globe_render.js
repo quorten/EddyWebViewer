@@ -104,6 +104,9 @@ function processDates() {
         ajaxDebug.innerHTML = httpRequest.responseText; */
 
       dateList = httpRequest.responseText.split("\n");
+      /* Remove the last element created from the newline at the end
+         of the file.  */
+      dateList.pop();
 
       var i;
       for (i = 0; i < dateList.length; i++) {

@@ -436,7 +436,7 @@ JavaScript checklist:
 * Verify that all HTML Canvas operations are structured so as to be
   supported on all conforming browsers.
 
-* Always use parentheses with typeof operator?
+* Always use parentheses with typeof operator?  `delete' operator too?
 
 * Always use document.x() and window.x() rather than the global
   namespace name.
@@ -537,12 +537,25 @@ Questions to ask Woodrow and James:
   +/- 32 before the decimal, after the decimal.  JPEG compression,
   video compression.
 
-* Resolution?  720x1440 for the current SSH data.
+* Do you want your SSH pixels nice and square or do you prefer
+  bilinear interpolation smoothing?
 
-* Any seasonal variations observed with the eddies?
+* Resolution?  720x1440 for the current SSH data.
 
 * How do the smallest size eddy tracks compare with the SSH
   resolution?
+
+* Do you want the dates to appear hyphenless in the GUI?
+
+* The main cause of slowness in track rendering appears to be
+  differences in how efficient browsers are when being commanded to
+  draw a line on the canvas.  One way to stabilize performance across
+  browsers is to do all line rasterization in JavaScript and use
+  putImageData(), as is being done with the raytracing renderers.
+  Question which I already know the answer to: How do you draw a line
+  without dividing to compute the slope?
+
+* Any seasonal variations observed with the eddies?
 
 * Browser testing?  Emulators of mobile devices.
 
@@ -555,7 +568,7 @@ Questions to ask Woodrow and James:
 
 * Web hosting?  Where should the site officially reside?
 
-* JavaScript development in the labs.
+* JavaScript development in the labs: node.js
 
 * Features vs. solidness of design.
 

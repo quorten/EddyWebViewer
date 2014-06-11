@@ -1,6 +1,7 @@
 /* Abstract class for a render layer.  */
 
 import "cothread";
+import "projector";
 
 /**
  * Abstract class for a render layer.  A derived class must be created
@@ -64,6 +65,10 @@ RenderLayer.NEED_DATA = 1;
  * pixels.
  * @param {integer} height - The height of the rendering viewport in
  * pixels.
+ * @param {Number} aspectXY - X/Y aspect ratio.  This parameter is
+ * used to scale the Y axis to preserve the indicated aspect ratio for
+ * the normalized coordinates [-1..1].  The normalized Y coordinate is
+ * then scaled to be in terms of the actual height of the viewport.
  * @param {Projector} projector - The projector to use for rendering
  * the content into the viewport.
  *
@@ -76,7 +81,7 @@ RenderLayer.NEED_DATA = 1;
  *    data that needs to be loaded.
  */
 RenderLayer.prototype.setViewport =
-  function(center, width, height, projector) {
+  function(center, width, height, aspectXY, projector) {
   throw new Error("Must be implemented by a subclass!");
 };
 

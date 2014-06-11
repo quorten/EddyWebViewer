@@ -562,6 +562,8 @@ Questions to ask Woodrow and James:
 
 * Browser testing?  Emulators of mobile devices.
 
+* What did Hung mean by "slow"?
+
 * NOT using SVG.  SVG DOM performance is said to be very poor when
   working with a large number of nodes.  This will especially be true
   if each eddy DOM object has an event listener attached to it.
@@ -628,3 +630,19 @@ Things for me to do:
 HTTP 1.1 Specification for XMLHttpRequest headers:
 
 http://www.w3.org/Protocols/rfc2616/rfc2616.html
+
+Answers:
+
+* License notices: just open-source, like MIT license.  Make sure to
+  say your name that you made it, though.
+
+* Web hosting: Look on your own, check out Amazon Web Services, Google
+  App Engine, see what works the best from home.  Then maybe go into
+  to ring they have downstairs and go through MSI, the point is to
+  find out what works best from home.
+
+* Node.js installed on MSI?  Go ask help.msi.umn.edu, cc both James
+  and Kumar, tell them you're working on this open-source project,
+  make sure everything is cc on they're behalf so that that can
+  intervene and answer for your.  We're the largest user of MSI so
+  they will be friendly.

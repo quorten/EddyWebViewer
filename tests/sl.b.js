@@ -1,128 +1,15 @@
 
 
-/* This JavaScript file just includes all JavaScript source files so
-   that JSDoc3 can process the files without complaining about
-   "import" statements.  */
+/* Test the TracksLayer module.  */
 
 
 
-/* A simple trigonometric lookup table implementation.
-
-The MIT License
-
-Copyright (C) 2011 Jackson Dunstan
-Rewritten to JavaScript and modified by Andrew Makousky.
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
-*/
-
-/**
- *   Make the look up table
- *   @constructor
- *   @param {function} mathFunc - Math function to call to generate
- *   stored values. Must be valid on [0,range).
- *   @param {uint} numDigits - Number of digits places of precision
- *   @param {Number} range - Maximum unique value of function. Must be
- *   greater than zero. Typically set to (2 * Math.PI).
- *   @throws Error If mathFunc is null or invalid on [0,range)
- */
-var TrigLUT = function(mathFunc, numDigits, range) {
-  /** Table of trig function values */
-  this.table = [];
-
-  /** 10^decimals of precision */
-  this.pow = Math.pow(10, numDigits);
-  var pow = this.pow;
-
-  /** Maximum unique value of function */
-  this.range = range;
-
-  var round = 1.0 / pow;
-  var len = 1 + this.range * pow;
-  var table = this.table = [];
-
-  var theta = 0;
-  for (var i = 0; i < len; ++i) {
-    table.push(mathFunc(theta));
-    theta += round;
-  }
-};
-
-/** 2 * PI, the number of radians in a circle */
-TrigLUT.TWO_PI = 2.0 * Math.PI;
-
-/**
- *   Look up the value of the given number of radians
- *   @param {Number} radians - Radians to look up the value of
- *   @returns The value of the given number of radians
- */
-TrigLUT.prototype.val = function(radians) {
-  return radians >= 0 ?
-    this.table[~~((radians % this.range) * this.pow)] :
-    this.table[~~((this.range + radians % this.range) * this.pow)];
-};
-
-/**
- *   Look up the value of the given number of radians
- *   @param {Number} radians - Radians to look up the value of. Must
- *   be positive.
- *   @returns The value of the given number of radians
- *   @throws RangeError If radians is not positive
- */
-TrigLUT.prototype.valPositive = function(radians) {
-  return this.table[~~((radians % this.range) * this.pow)];
-};
-
-/**
- *   Look up the value of the given number of radians
- *   @param {Number} radians - Radians to look up the value of. Must
- *   be on (-2pi,2pi).
- *   @returns The value of the given number of radians
- *   @throws RangeError If radians is not on (-2pi,2pi)
- */
-TrigLUT.prototype.valNormalized = function(radians) {
-  return radians >= 0 ?
-    this.table[~~(radians * this.pow)] :
-    this.table[~~((this.range + radians) * this.pow)];
-};
-
-/**
- *   Look up the value of the given number of radians
- *   @param {Number} radians - Radians to look up the value of. Must
- *   be on [0,2pi).
- *   @returns The value of the given number of radians
- *   @throws RangeError If radians is not on [0,2pi)
- */
-TrigLUT.prototype.valNormalizedPositive = function(radians) {
-  return this.table[~~(radians * this.pow)];
-};
+/* Render layer for display of the Sea Surface Height (SSH).  */
 
 
-/* Ocean Eddies Web Viewer namespace definition.  */
 
-var oev;
-if (!oev)
-  oev = {};
-else if (typeof oev != "object") {
-  throw new Error("Namespace conflict: oev already exists " +
-    "and is not an object.");
-}
+/* Abstract class for a render layer.  */
+
 
 
 /* JavaScript base class for cothreaded procedures.  */
@@ -328,11 +215,6 @@ CothreadStatus.PREEMPTED = 1;
  * Corresponds to 100%.
  */
 CothreadStatus.MAX_PERCENT = 32767;
-
-
-/* Abstract class for a render layer.  */
-
-
 
 
 /* Projection methods.  */
@@ -924,252 +806,6 @@ RenderLayer.prototype.render = function() {
   throw new Error("Must be implemented by a subclass!");
 };
 
-
-
-/* Render layer for display of the eddy tracks layer.  */
-
-
-
-TracksLayer = new RenderLayer();
-TracksLayer.IOWAIT = 1;
-TracksLayer.PROC_DATA = 2;
-
-TracksLayer.setCacheLimits = function(dataCache, renderCache) {
-};
-
-/**
- * Cothreaded data loading function.  The cothreaded function takes no
- * parameters and returns `true' on success, `false' on failure.
- *
- * The CothreadStatus preemptCode may be one of the following values:
- *
- * * TracksLayer.IOWAIT --- The cothread is waiting for an
- *   XMLHttpRequest to finish.  For optimal performance, the
- *   controller should not explicitly call continueCT(), since the
- *   asynchronous calling will be handled by the browser during data
- *   loading.  When the data is finished being loaded, this cothread
- *   will explicitly yield control to the controller.
- *
- * * TracksLayer.PROC_DATA --- The cothread has been preempted when it was
- *   processing data rather than waiting for data.
- */
-TracksLayer.loadData = (function() {
-  "use strict";
-
-  function alertContents() {
-    var httpRequest = TracksLayer.loadData.httpRequest;
-    if (!httpRequest)
-      return;
-    switch (httpRequest.readyState) {
-    case 4: // DONE
-      if (httpRequest.status == 200) {
- // Call the main loop to continue cothread execution.
- return execTime();
-      } else {
- throw new Error("There was a problem with the HTTP request.");
-      }
-      break;
-    case 3: // LOADING
-      /* NOTE: In some browsers, doing this can dramatically reduce
-	 download speed, so we avoid it.  In the future, we should
-	 only do it after a timeout of two seconds.  */
-      // Call the main loop to update the download status.
-      // return execTime();
-      break;
-    case 2: // HEADERS_RECEIVED
-      TracksLayer.loadData.reqLen = httpRequest.getResponseHeader("Content-Length");
-      break;
-    }
-  }
-
-  function startExec() {
-    var url = "../data/tracks/acyc_bu_tracks.json";
-    var httpRequest;
-
-    if (window.XMLHttpRequest)
-      httpRequest = new XMLHttpRequest();
-    else if (window.ActiveXObject) {
-      try {
- httpRequest = new ActiveXObject("Msxml2.XMLHTTP");
-      }
-      catch (e) {
- try {
-   httpRequest = new ActiveXObject("Microsoft.XMLHTTP");
- }
- catch (e) {}
-      }
-    }
-
-    if (!httpRequest) {
-      throw new Error("Could not load the data!");
-    }
-
-    httpRequest.onreadystatechange = alertContents;
-    httpRequest.open("GET", url, true);
-    // httpRequest.setRequestHeader("Range", "bytes=0-500");
-    httpRequest.send();
-    this.reqLen = 0;
-    this.readyDataProcess = false;
-
-    this.httpRequest = httpRequest;
-  }
-
-  /** This function primarily retrieves the current loading status of
-      the XMLHttpRequest.  */
-  function contExec() {
-    var httpRequest = this.httpRequest;
-    var reqLen = this.reqLen;
-
-    if (!httpRequest) {
-      this.status.returnType = CothreadStatus.FINISHED;
-      this.status.preemptCode = 0;
-      return this.status;
-    } else if (httpRequest.readyState != 4) {
-      this.status.returnType = CothreadStatus.PREEMPTED;
-      this.status.preemptCode = TracksLayer.IOWAIT;
-      if (reqLen) {
- this.status.percent = httpRequest.responseText.length *
-   CothreadStatus.MAX_PERCENT / reqLen;
-      } else
- this.status.percent = 0;
-      return this.status;
-    }
-    // (httpRequest.readyState == 4)
-
-    // JSON parsing is slow: Return here and come back later.
-    if (!this.readyDataProcess) {
-      this.readyDataProcess = true;
-      this.status.returnType = CothreadStatus.PREEMPTED;
-      this.status.preemptCode = TracksLayer.PROC_DATA;
-      return this.status;
-    }
-
-    this.status.percent = CothreadStatus.MAX_PERCENT;
-
-    // Process the data here.
-
-    TracksLayer.tracksData = JSON.parse(httpRequest.responseText);
-    httpRequest.onreadystatechange = null;
-    this.httpRequest = null;
-
-    this.status.returnType = CothreadStatus.FINISHED;
-    this.status.preemptCode = 0;
-
-    return this.status;
-  }
-
-  return new Cothread(startExec, contExec);
-})();
-
-TracksLayer.setViewport = function(center, width, height,
-       aspectXY, projector) {
-  // RenderLayer.call(center, width, height, projection);
-  this.frontBuf.width = width;
-  this.frontBuf.height = height;
-
-  this.aspectXY = aspectXY;
-  this.center = center;
-  this.projector = projector;
-
-  return RenderLayer.READY;
-};
-
-var backbufScale = 1;
-var minTrackLen = 0, maxTrackLen = -1;
-var numericDates = [];
-var dateIndex = 0;
-var inv_180 = 1 / 180, inv_360 = 1 / 360;
-
-TracksLayer.render = (function() {
-  "use strict";
-
-  function startExec() {
-    var frontBuf = TracksLayer.frontBuf;
-    var edc = frontBuf.getContext("2d");
-    this.edc = edc;
-
-    edc.clearRect(0, 0, frontBuf.width, frontBuf.height);
-    edc.lineWidth = backbufScale;
-    edc.strokeStyle = "#800080";
-    edc.lineJoin = "round";
-
-    this.i = 0;
-  }
-
-  function contExec() {
-    var edc = this.edc;
-    var i = this.i;
-
-    /* Data format: [list of tracks]
-       track: [ list of eddies ]
-       eddy: [ latitude, longitude, date_index, eddy_index ]
-     */
-    var tracksData = TracksLayer.tracksData;
-    var numTracks = tracksData.length;
-    var frontBuf_width = TracksLayer.frontBuf.width;
-    var frontBuf_height = TracksLayer.frontBuf.height;
-    var aspectXY = TracksLayer.aspectXY;
-    // var projector = TracksLayer.projector;
-    var projector_project = TracksLayer.projector.project;
-
-    var lDate_now = Date.now;
-
-    var lastTime = lDate_now();
-    var timeout = this.timeout;
-    for (; lDate_now() - lastTime < timeout && i < numTracks; i++) {
-      if (minTrackLen > 0 || maxTrackLen != -1) {
- // Determine the length of the eddy in weeks.
- var numEddies = tracksData[i].length;
- var firstDateIdx = tracksData[i][0][2];
- var lastDateIdx = tracksData[i][numEddies-1][2];
- var trackLen = numericDates[lastDateIdx] - numericDates[firstDateIdx];
-
- if (trackLen < minTrackLen)
-   continue;
- if (maxTrackLen != -1 && trackLen > maxTrackLen)
-   continue;
-      }
-
-      edc.beginPath();
-      // var lat = tracksData[i][0][0];
-      // var lon = tracksData[i][0][1];
-      // var mapX = (lon + 180) * inv_360 * frontBuf_width;
-      // var mapY = (90 - lat) * inv_180 * frontBuf_heightY;
-      var polCoord = { lat: tracksData[i][0][0], lon: tracksData[i][0][1] };
-      var mapCoord = projector_project(polCoord);
-      edc.moveTo((mapCoord.x + 1) * 0.5 * frontBuf_width,
-   (-mapCoord.y * aspectXY + 1) * 0.5 * frontBuf_height);
-      for (var j = 1; j < tracksData[i].length; j++) {
- // lat = tracksData[i][j][0];
- // lon = tracksData[i][j][1];
- // mapX = (lon + 180) * inv_360 * frontBuf_width;
- // mapY = (90 - lat) * inv_180 * frontBuf_height;
- polCoord = { lat: tracksData[i][j][0], lon: tracksData[i][j][1] };
- mapCoord = projector_project(polCoord);
- edc.lineTo((mapCoord.x + 1) * 0.5 * frontBuf_width,
-     (-mapCoord.y * aspectXY + 1) * 0.5 * frontBuf_height);
- if (tracksData[i][j][2] == dateIndex)
-   edc.arc(mapX, mapY, 2 * backbufScale, 0, 2 * Math.PI, false);
-      }
-      edc.stroke();
-    }
-
-    this.setExitStatus(i < numTracks);
-    this.status.preemptCode = 0;
-    this.status.percent = i * CothreadStatus.MAX_PERCENT / numTracks;
-
-    this.i = i;
-    return this.status;
-  }
-
-  return new Cothread(startExec, contExec);
-})();
-
-
-/* Render layer for display of the Sea Surface Height (SSH).  */
-
-
-
 SSHLayer = new RenderLayer();
 SSHLayer.IOWAIT = 1;
 SSHLayer.PROC_DATA = 2;
@@ -1373,7 +1009,7 @@ SSHLayer.render = (function() {
     var frontBuf_height = SSHLayer.frontBuf.height;
     var aspectXY = SSHLayer.aspectXY;
     // var projector = SSHLayer.projector;
-    var projector_unproject = SSHLayer.projector.project;
+    var projector_unproject = SSHLayer.projector.unproject;
 
     var lDate_now = Date.now;
 
@@ -1382,22 +1018,46 @@ SSHLayer.render = (function() {
 
     for (; lDate_now() - lastTime < timeout && y < frontBuf_height; y++) {
       for (; lDate_now() - lastTime < timeout && x < frontBuf_width; x++) {
- var mapCoord = { x: (x / frontBuf_width) * 2 - 1,
-    y: -((y / frontBuf_height) * 2 - 1) / aspectXY };
+ var mapCoord = { "x": (x / frontBuf_width) * 2 - 1,
+    "y": -((y / frontBuf_height) * 2 - 1) / aspectXY };
+ mapCoord.x = (x / frontBuf_width) * 2 - 1;
+ mapCoord.y = -((y / frontBuf_height) * 2 - 1) / aspectXY;
  var polCoord = projector_unproject(mapCoord);
  if (!isNaN(polCoord.lat) && !isNaN(polCoord.lon) &&
      polCoord.lat > -90 && polCoord.lat < 90 &&
      polCoord.lon > -180 && polCoord.lon < 180) {
-   var latIdx = ~~(-(polCoord.lat + 90));
-   var lonIdx = ~~(polCoord.lon + 180);
-   var value = ~~sshData[latIdx][lonIdx];
-   destImg.data[destIdx++] = value;
-   destImg.data[destIdx++] = value;
-   destImg.data[destIdx++] = value;
+   var latIdx = ~~((polCoord.lat + 90) / 180 * sshData.length);
+   var lonIdx = ~~((polCoord.lon + 180) / 360 * sshData[latIdx].length);
+   var value = sshData[latIdx][lonIdx] / 32;
+   if (value > 1) value = 1;
+   if (value < -1) value = -1;
+   value = (value + 1) / 2;
+
+   var grad = [ [ 0x00, 0x00, 0x7f ],
+         [ 0x00, 0x00, 0xff ],
+         [ 0x00, 0x7f, 0xff ],
+         [ 0x00, 0xff, 0xff ],
+         [ 0x7f, 0xff, 0x7f ],
+         [ 0xff, 0xff, 0x00 ],
+         [ 0xff, 0x7f, 0x00 ],
+         [ 0xff, 0x00, 0x00 ],
+         [ 0x7f, 0x00, 0x00 ] ];
+
+   var index = ~~(value * 8);
+   var ix2 = index + 1;
+   if (ix2 > 8) ix2 = 8;
+   var interpol = (value * 8) % 1;
+
+   destImg.data[destIdx++] = ((1 - interpol) * grad[index][0] +
+         interpol * grad[ix2][0]);
+   destImg.data[destIdx++] = ((1 - interpol) * grad[index][1] +
+         interpol * grad[ix2][1]);
+   destImg.data[destIdx++] = ((1 - interpol) * grad[index][2] +
+         interpol * grad[ix2][2]);
    destImg.data[destIdx++] = 255;
  } else {
-   destImg.data[destIdx++] = ~~(x / frontbuf_width * 255);
-   destImg.data[destIdx++] = ~~(y / frontbuf_height * 255);
+   destImg.data[destIdx++] = ~~(Math.abs(polCoord.lon / 180) * 255);
+   destImg.data[destIdx++] = ~~(Math.abs(polCoord.lat / 180) * 255);
    destImg.data[destIdx++] = 0;
    destImg.data[destIdx++] = 255;
  }
@@ -1419,3 +1079,101 @@ SSHLayer.render = (function() {
 
   return new Cothread(startExec, contExec);
 })();
+
+function execTime2() {
+  var status = SSHLayer.render.continueCT();
+  document.getElementById("rendProgElmt").innerHTML = [ "Render: ",
+    (status.percent * 100 / CothreadStatus.MAX_PERCENT).toFixed(2), "%" ].
+    join("");
+  if (status.returnType == CothreadStatus.FINISHED) {
+    var rendTimeElmt = document.getElementById("rendTimeElmt");
+    var totalTime = (Date.now() - rendStartTime) / 1000;
+    rendTimeElmt.innerHTML = "Total render time: " +
+      totalTime.toFixed(3) + " seconds";
+    return;
+  }
+  return browserTime2();
+}
+
+function browserTime2() {
+  return setTimeout(execTime2, 0);
+}
+
+var rendStartTime;
+
+function setup2() {
+  var rendProgElmt = document.createElement("p");
+  rendProgElmt.id = "rendProgElmt";
+  rendProgElmt.innerHTML = "Starting render...";
+  var rendTimeElmt = document.createElement("p");
+  rendTimeElmt.id = "rendTimeElmt";
+  rendTimeElmt.innerHTML = "Calculating total render time...";
+  rendStartTime = Date.now();
+
+  document.documentElement.children[1].appendChild(rendProgElmt);
+  document.documentElement.children[1].appendChild(rendTimeElmt);
+  document.documentElement.children[1].appendChild(SSHLayer.frontBuf);
+
+  var width = 1000, height = 500;
+  SSHLayer.setViewport(null, width, height, width / height,
+     EquirectMapProjector);
+  SSHLayer.render.timeout = 20;
+  if (SSHLayer.render.start().returnType != CothreadStatus.FINISHED)
+    return browserTime2();
+}
+
+function execTime() {
+  var status = SSHLayer.loadData.continueCT();
+  if (status.preemptCode != SSHLayer.PROC_DATA) {
+    document.getElementById("progElmt").innerHTML = [ "Download: ",
+      (status.percent * 100 / CothreadStatus.MAX_PERCENT).toFixed(2), "%"].
+      join("");
+  } else
+    document.getElementById("progElmt").innerHTML = "Parsing JSON, please wait...";
+
+  if (status.returnType == CothreadStatus.FINISHED) {
+    var resultElmt = document.createElement("p");
+    resultElmt.id = "resultElmt";
+    resultElmt.innerHTML = "Result: " + SSHLayer.sshData.length +
+      " rows";
+    document.documentElement.children[1].appendChild(resultElmt);
+
+    // Next move on to testing the progressive renderer.
+    return setTimeout(setup2, 80);
+  }
+  if (status.preemptCode == SSHLayer.IOWAIT)
+    return;
+  return browserTime();
+}
+
+function browserTime() {
+  /* Note: If a cothread should use all available processing time yet
+     still let the browser stay responsive, this timeout should be set
+     to zero.  Otherwise, any value larger than zero can be used to
+     throttle a task to use only a fraction of available processing
+     time.  In some cases, such as during synchronous JSON parsing by
+     the browser, you may need to set this value to greater than zero
+     for the browser to remain responsive just before the point when
+     the browser becomes unresponsive, so that you can put an
+     notification on the screen before the onset of
+     unresponsiveness.  */
+  return setTimeout(execTime, 80);
+}
+
+function setup() {
+  /* Append a progress counter element to the document body, assuming
+     that the <body> element is the second child of the
+     documentElement.  */
+  var progElmt = document.createElement("p");
+  progElmt.id = "progElmt";
+  progElmt.innerHTML = "Please wait...";
+  document.documentElement.children[1].appendChild(progElmt);
+
+  SSHLayer.loadData.timeout = 20;
+  var status = SSHLayer.loadData.start();
+  if (status.returnType != CothreadStatus.FINISHED) {
+    if (status.preemptCode == SSHLayer.IOWAIT)
+      return;
+    return browserTime();
+  }
+}

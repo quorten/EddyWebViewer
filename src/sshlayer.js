@@ -13,8 +13,35 @@ Process the data into an image
 Done
 
  */
+/* Note: This algorithm needs a newline at the end of the file.  It
+   also does not handle files with non-Unix line endings.  */
+function csvParse(csvText) {
+  var tgtArray = [];
+  var i = 0;
+  var rowEnd;
 
-TracksLayer.setCacheLimits = function(dataCache, renderCache) {
+  while ((rowEnd = csvText.indexOf('\n', i)) != -1) {
+    var taEnd = tgtArray.push([]) - 1;
+    var commaIdx;
+
+    while ((commaIdx = csvText.indexOf(',', i)) < rowEnd &&
+	   commaIdx != -1) {
+      tgtArray[taEnd].push(csvText.substring(i, commaIdx));
+      i = commaIdx + 1
+    }
+
+    if (csvText[rowEnd-1] != ',') {
+      // Parse the last entry in the row.
+      tgtArray[taEnd].push(csvText.substring(i, rowEnd))
+    }
+    i = rowEnd + 1
+  }
+
+  return tgtArray;
+}
+
+
+SSHLayer.setCacheLimits = function(dataCache, renderCache) {
 };
 
 /**
@@ -22,11 +49,11 @@ TracksLayer.setCacheLimits = function(dataCache, renderCache) {
  * loading of one SSH frame at initialization and the cothread loop
  * only tells whether the image has been fully loaded or not.
  */
-TracksLayer.loadData = (function() {
+SSHLayer.loadData = (function() {
   "use strict";
 
   function alertContents() {
-    var httpRequest = TracksLayer.loadData.httpRequest;
+    var httpRequest = SSHLayer.loadData.httpRequest;
     if (!httpRequest)
       return;
     switch (httpRequest.readyState) {
@@ -46,13 +73,13 @@ TracksLayer.loadData = (function() {
       // return execTime();
       break;
     case 2: // HEADERS_RECEIVED
-      TracksLayer.loadData.reqLen = httpRequest.getResponseHeader("Content-Length");
+      SSHLayer.loadData.reqLen = httpRequest.getResponseHeader("Content-Length");
       break;
     }
   }
 
   function startExec() {
-    var url = "../data/tracks/acyc_bu_tracks.json";
+    var url = "../data/SSH/ssh_19930303.dat";
     var httpRequest;
 
     if (window.XMLHttpRequest)
@@ -95,7 +122,7 @@ TracksLayer.loadData = (function() {
       return this.status;
     } else if (httpRequest.readyState != 4) {
       this.status.returnType = CothreadStatus.PREEMPTED;
-      this.status.preemptCode = TracksLayer.IOWAIT;
+      this.status.preemptCode = SSHLayer.IOWAIT;
       if (reqLen) {
 	this.status.percent = httpRequest.responseText.length * 
 	  CothreadStatus.MAX_PERCENT / reqLen;
@@ -109,7 +136,7 @@ TracksLayer.loadData = (function() {
     if (!this.readyDataProcess) {
       this.readyDataProcess = true;
       this.status.returnType = CothreadStatus.PREEMPTED;
-      this.status.preemptCode = TracksLayer.PROC_DATA;
+      this.status.preemptCode = SSHLayer.PROC_DATA;
       return this.status;
     }
 
@@ -117,7 +144,7 @@ TracksLayer.loadData = (function() {
 
     // Process the data here.
 
-    TracksLayer.tracksData = JSON.parse(httpRequest.responseText);
+    SSHLayer.sshData = csvParse(httpRequest.responseText);
     httpRequest.onreadystatechange = null;
     this.httpRequest = null;
 
@@ -130,11 +157,12 @@ TracksLayer.loadData = (function() {
   return new Cothread(startExec, contExec);
 })();
 
-TracksLayer.setViewport = function(center, width, height,
+SSHLayer.setViewport = function(center, width, height,
 				   aspectXY, projector) {
   // RenderLayer.call(center, width, height, projection);
   this.frontBuf.width = width;
   this.frontBuf.height = height;
+  this.aspectXY = aspectXY;
 
   this.center = center;
   this.projector = projector;
@@ -148,84 +176,100 @@ var numericDates = [];
 var dateIndex = 0;
 var inv_180 = 1 / 180, inv_360 = 1 / 360;
 
-TracksLayer.render = (function() {
+SSHLayer.render = (function() {
   "use strict";
 
   function startExec() {
-    var frontBuf = TracksLayer.frontBuf;
-    var edc = frontBuf.getContext("2d");
-    this.edc = edc;
+    var frontBuf = SSHLayer.frontBuf;
+    var ctx = frontBuf.getContext("2d");
+    this.ctx = ctx;
+    var destImg = ctx.createImageData(frontBuf.width, frontBuf.height);
+    this.destImg = destImg;
+    this.destIdx = 0;
 
-    edc.clearRect(0, 0, frontBuf.width, frontBuf.height);
-    edc.lineWidth = backbufScale;
-    edc.strokeStyle = "#800080";
-    edc.lineJoin = "round";
+    ctx.clearRect(0, 0, frontBuf.width, frontBuf.height);
 
-    this.i = 0;
+    this.x = 0;
+    this.y = 0;
   }
 
   function contExec() {
-    var edc = this.edc;
-    var i = this.i;
+    var ctx = this.ctx;
+    var destImg = this.destImg;
+    var destIdx = this.destIdx;
+    var x = this.x;
+    var y = this.y;
 
-    /* Data format: [list of tracks]
-       track: [ list of eddies ]
-       eddy: [ latitude, longitude, date_index, eddy_index ]
-     */
-    var tracksData = TracksLayer.tracksData;
-    var numTracks = tracksData.length;
-    var frontBuf_width = TracksLayer.frontBuf.width;
-    var frontBuf_height = TracksLayer.frontBuf.height;
-    // var projector = TracksLayer.projector;
-    var projector_project = TracksLayer.projector.project;
+    var sshData = SSHLayer.sshData;
+    var frontBuf_width = SSHLayer.frontBuf.width;
+    var frontBuf_height = SSHLayer.frontBuf.height;
+    var aspectXY = SSHLayer.aspectXY;
+    // var projector = SSHLayer.projector;
+    var projector_unproject = SSHLayer.projector.unproject;
 
     var lDate_now = Date.now;
 
     var lastTime = lDate_now();
     var timeout = this.timeout;
-    for (; lDate_now() - lastTime < timeout && i < numTracks; i++) {
-      if (minTrackLen > 0 || maxTrackLen != -1) {
-	// Determine the length of the eddy in weeks.
-	var numEddies = tracksData[i].length;
-	var firstDateIdx = tracksData[i][0][2];
-	var lastDateIdx = tracksData[i][numEddies-1][2];
-	var trackLen = numericDates[lastDateIdx] - numericDates[firstDateIdx];
 
-	if (trackLen < minTrackLen)
-	  continue;
-	if (maxTrackLen != -1 && trackLen > maxTrackLen)
-	  continue;
-      }
+    for (; lDate_now() - lastTime < timeout && y < frontBuf_height; y++) {
+      for (; lDate_now() - lastTime < timeout && x < frontBuf_width; x++) {
+	var mapCoord = { "x": (x / frontBuf_width) * 2 - 1,
+			 "y": -((y / frontBuf_height) * 2 - 1) / aspectXY };
+	mapCoord.x = (x / frontBuf_width) * 2 - 1;
+	mapCoord.y = -((y / frontBuf_height) * 2 - 1) / aspectXY;
+	var polCoord = projector_unproject(mapCoord);
+	if (!isNaN(polCoord.lat) && !isNaN(polCoord.lon) &&
+	    polCoord.lat > -90 && polCoord.lat < 90 &&
+	    polCoord.lon > -180 && polCoord.lon < 180) {
+	  var latIdx = ~~((polCoord.lat + 90) / 180 * sshData.length);
+	  var lonIdx = ~~((polCoord.lon + 180) / 360 * sshData[latIdx].length);
+	  var value = sshData[latIdx][lonIdx] / 32;
+	  if (value > 1) value = 1;
+	  if (value < -1) value = -1;
+	  value = (value + 1) / 2;
 
-      edc.beginPath();
-      // var lat = tracksData[i][0][0];
-      // var lon = tracksData[i][0][1];
-      // var mapX = (lon + 180) * inv_360 * frontBuf_width;
-      // var mapY = (90 - lat) * inv_180 * frontBuf_height;
-      var polCoord = { lat: tracksData[i][0][0], lon: tracksData[i][0][1] };
-      var mapCoord = projector_project(polCoord);
-      edc.moveTo((mapCoord.x + 1) * 0.5 * frontBuf_width,
-		 (-mapCoord.y + 1) * 0.5 * frontBuf_height);
-      for (var j = 1; j < tracksData[i].length; j++) {
-	// lat = tracksData[i][j][0];
-	// lon = tracksData[i][j][1];
-	// mapX = (lon + 180) * inv_360 * frontBuf_width;
-	// mapY = (90 - lat) * inv_180 * frontBuf_height;
-	polCoord = { lat: tracksData[i][j][0], lon: tracksData[i][j][1] };
-	mapCoord = projector_project(polCoord);
-	edc.lineTo((mapCoord.x + 1) * 0.5 * frontBuf_width,
-		   (-mapCoord.y + 1) * 0.5 * frontBuf_height);
-	if (tracksData[i][j][2] == dateIndex)
-	  edc.arc(mapX, mapY, 2 * backbufScale, 0, 2 * Math.PI, false);
+	  var grad = [ [ 0x00, 0x00, 0x7f ],
+		       [ 0x00, 0x00, 0xff ],
+		       [ 0x00, 0x7f, 0xff ],
+		       [ 0x00, 0xff, 0xff ],
+		       [ 0x7f, 0xff, 0x7f ],
+		       [ 0xff, 0xff, 0x00 ],
+		       [ 0xff, 0x7f, 0x00 ],
+		       [ 0xff, 0x00, 0x00 ],
+		       [ 0x7f, 0x00, 0x00 ] ];
+
+	  var index = ~~(value * 8);
+	  var ix2 = index + 1;
+	  if (ix2 > 8) ix2 = 8;
+	  var interpol = (value * 8) % 1;
+
+	  destImg.data[destIdx++] = ((1 - interpol) * grad[index][0] +
+				     interpol * grad[ix2][0]);
+	  destImg.data[destIdx++] = ((1 - interpol) * grad[index][1] +
+				     interpol * grad[ix2][1]);
+	  destImg.data[destIdx++] = ((1 - interpol) * grad[index][2] +
+				     interpol * grad[ix2][2]);
+	  destImg.data[destIdx++] = 255;
+	} else {
+	  destImg.data[destIdx++] = ~~(Math.abs(polCoord.lon / 180) * 255);
+	  destImg.data[destIdx++] = ~~(Math.abs(polCoord.lat / 180) * 255);
+	  destImg.data[destIdx++] = 0;
+	  destImg.data[destIdx++] = 255;
+	}
       }
-      edc.stroke();
+      if (x >= frontBuf_width)
+	x = 0;
     }
 
-    this.setExitStatus(i < numTracks);
+    this.setExitStatus(y < frontBuf_height);
+    ctx.putImageData(destImg, 0, 0);
     this.status.preemptCode = 0;
-    this.status.percent = i * CothreadStatus.MAX_PERCENT / numTracks;
+    this.status.percent = y * CothreadStatus.MAX_PERCENT / frontBuf_height;
 
-    this.i = i;
+    this.destIdx = destIdx;
+    this.x = x;
+    this.y = y;
     return this.status;
   }
 

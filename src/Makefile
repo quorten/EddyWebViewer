@@ -1,10 +1,11 @@
 CPP = cpp
 cjs_dir = ../libs/cjs
 SOURCES = triglut.js oevns.js oevmath.js cothread.js renderlayer.js \
-	projector.js trackslayer.js doc.js
+	projector.js trackslayer.js sshlayer.js doc.js
 BUNDLES = bundle.js docbundle.js
 
-all: docs
+# all: docs
+all: docbundle.js
 
 include $(cjs_dir)/cjs.mak
 

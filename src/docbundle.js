@@ -1373,7 +1373,7 @@ SSHLayer.render = (function() {
     var frontBuf_height = SSHLayer.frontBuf.height;
     var aspectXY = SSHLayer.aspectXY;
     // var projector = SSHLayer.projector;
-    var projector_unproject = SSHLayer.projector.project;
+    var projector_unproject = SSHLayer.projector.unproject;
 
     var lDate_now = Date.now;
 
@@ -1382,22 +1382,46 @@ SSHLayer.render = (function() {
 
     for (; lDate_now() - lastTime < timeout && y < frontBuf_height; y++) {
       for (; lDate_now() - lastTime < timeout && x < frontBuf_width; x++) {
- var mapCoord = { x: (x / frontBuf_width) * 2 - 1,
-    y: -((y / frontBuf_height) * 2 - 1) / aspectXY };
+ var mapCoord = { "x": (x / frontBuf_width) * 2 - 1,
+    "y": -((y / frontBuf_height) * 2 - 1) / aspectXY };
+ mapCoord.x = (x / frontBuf_width) * 2 - 1;
+ mapCoord.y = -((y / frontBuf_height) * 2 - 1) / aspectXY;
  var polCoord = projector_unproject(mapCoord);
  if (!isNaN(polCoord.lat) && !isNaN(polCoord.lon) &&
      polCoord.lat > -90 && polCoord.lat < 90 &&
      polCoord.lon > -180 && polCoord.lon < 180) {
-   var latIdx = ~~(-(polCoord.lat + 90));
-   var lonIdx = ~~(polCoord.lon + 180);
-   var value = ~~sshData[latIdx][lonIdx];
-   destImg.data[destIdx++] = value;
-   destImg.data[destIdx++] = value;
-   destImg.data[destIdx++] = value;
+   var latIdx = ~~((polCoord.lat + 90) / 180 * sshData.length);
+   var lonIdx = ~~((polCoord.lon + 180) / 360 * sshData[latIdx].length);
+   var value = sshData[latIdx][lonIdx] / 32;
+   if (value > 1) value = 1;
+   if (value < -1) value = -1;
+   value = (-value + 1) / 2;
+
+   var grad = [ [ 0x00, 0x00, 0x7f ],
+         [ 0x00, 0x00, 0xff ],
+         [ 0x00, 0x7f, 0xff ],
+         [ 0x00, 0xff, 0xff ],
+         [ 0x7f, 0xff, 0x7f ],
+         [ 0xff, 0xff, 0x00 ],
+         [ 0xff, 0x7f, 0x00 ],
+         [ 0xff, 0x00, 0x00 ],
+         [ 0x7f, 0x00, 0x00 ] ];
+
+   var index = ~~(value * 8);
+   var ix2 = index + 1;
+   if (ix2 > 8) ix2 = 8;
+   var interpol = (value * 8) % 1;
+
+   destImg.data[destIdx++] = ((1 - interpol) * grad[index][0] +
+         interpol * grad[ix2][0]);
+   destImg.data[destIdx++] = ((1 - interpol) * grad[index][1] +
+         interpol * grad[ix2][1]);
+   destImg.data[destIdx++] = ((1 - interpol) * grad[index][2] +
+         interpol * grad[ix2][2]);
    destImg.data[destIdx++] = 255;
  } else {
-   destImg.data[destIdx++] = ~~(x / frontbuf_width * 255);
-   destImg.data[destIdx++] = ~~(y / frontbuf_height * 255);
+   destImg.data[destIdx++] = ~~(Math.abs(polCoord.lon / 180) * 255);
+   destImg.data[destIdx++] = ~~(Math.abs(polCoord.lat / 180) * 255);
    destImg.data[destIdx++] = 0;
    destImg.data[destIdx++] = 255;
  }

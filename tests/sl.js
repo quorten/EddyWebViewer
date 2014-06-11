@@ -39,7 +39,7 @@ function setup2() {
 
   var width = 1000, height = 500;
   SSHLayer.setViewport(null, width, height, width / height,
-			  EquirectMapProjector);
+			  RobinsonMapProjector);
   SSHLayer.render.timeout = 20;
   if (SSHLayer.render.start().returnType != CothreadStatus.FINISHED)
     return browserTime2();
@@ -52,7 +52,7 @@ function execTime() {
       (status.percent * 100 / CothreadStatus.MAX_PERCENT).toFixed(2), "%"].
       join("");
   } else
-    document.getElementById("progElmt").innerHTML = "Parsing JSON, please wait...";
+    document.getElementById("progElmt").innerHTML = "Parsing CSV, please wait...";
 
   if (status.returnType == CothreadStatus.FINISHED) {
     var resultElmt = document.createElement("p");

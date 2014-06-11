@@ -545,6 +545,9 @@ Questions to ask Woodrow and James:
 * How do the smallest size eddy tracks compare with the SSH
   resolution?
 
+* The Sea Surface Height data measures from the international date
+  line, not the prime meridian?
+
 * Do you want the dates to appear hyphenless in the GUI?
 
 * The main cause of slowness in track rendering appears to be

@@ -163,7 +163,7 @@ RobinsonMapProjector.unproject = function(mapCoord) {
   else
     interpol = ((pdfe - table[tbIdx1][1]) /
 		(table[tbIdx2][1] - table[tbIdx1][1]));
-  var plen = table[tbIdx1][0] * (1 - interpol) * table[tbIdx2][0] * interpol;
+  var plen = table[tbIdx1][0] * (1 - interpol) + table[tbIdx2][0] * interpol;
   var polCoord = {};
   polCoord.lat = 5 * (tbIdx1 + interpol);
   if (mapCoord.y < 0)

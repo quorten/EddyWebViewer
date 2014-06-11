@@ -203,7 +203,10 @@ SSHLayer.render = (function() {
     var sshData = SSHLayer.sshData;
     var frontBuf_width = SSHLayer.frontBuf.width;
     var frontBuf_height = SSHLayer.frontBuf.height;
+    var src_width = sshData[0].length;
+    var src_height = sshData.length;
     var aspectXY = SSHLayer.aspectXY;
+    var inv_aspectXY = 1 / aspectXY;
     // var projector = SSHLayer.projector;
     var projector_unproject = SSHLayer.projector.unproject;
 
@@ -212,19 +215,22 @@ SSHLayer.render = (function() {
     var lastTime = lDate_now();
     var timeout = this.timeout;
 
-    for (; lDate_now() - lastTime < timeout && y < frontBuf_height; y++) {
-      for (; lDate_now() - lastTime < timeout && x < frontBuf_width; x++) {
+    while (y < frontBuf_height) {
+      while (x < frontBuf_width) {
 	var mapCoord = { "x": (x / frontBuf_width) * 2 - 1,
-			 "y": -((y / frontBuf_height) * 2 - 1) / aspectXY };
-	mapCoord.x = (x / frontBuf_width) * 2 - 1;
-	mapCoord.y = -((y / frontBuf_height) * 2 - 1) / aspectXY;
+			 "y": -((y / frontBuf_height) * 2 - 1) * inv_aspectXY };
 	var polCoord = projector_unproject(mapCoord);
+	var value = NaN;
 	if (!isNaN(polCoord.lat) && !isNaN(polCoord.lon) &&
 	    polCoord.lat > -90 && polCoord.lat < 90 &&
 	    polCoord.lon > -180 && polCoord.lon < 180) {
-	  var latIdx = ~~((polCoord.lat + 90) / 180 * sshData.length);
-	  var lonIdx = ~~((polCoord.lon + 180) / 360 * sshData[latIdx].length);
-	  var value = sshData[latIdx][lonIdx] / 32;
+	  /* SSH strangeness: The SSH data measures from the international
+	     date line, not the prime meridian?  */
+	  var latIdx = ~~((polCoord.lat + 90) / 180 * src_height);
+	  var lonIdx = ~~((((polCoord.lon + 180 + 180) / 360) % 1) * src_width);
+	  value = sshData[latIdx][lonIdx] / 32;
+	}
+	if (!isNaN(value)) {
 	  if (value > 1) value = 1;
 	  if (value < -1) value = -1;
 	  value = (value + 1) / 2;
@@ -251,15 +257,28 @@ SSHLayer.render = (function() {
 	  destImg.data[destIdx++] = ((1 - interpol) * grad[index][2] +
 				     interpol * grad[ix2][2]);
 	  destImg.data[destIdx++] = 255;
+
+	  /* value *= 255;
+	  destImg.data[destIdx++] = value;
+	  destImg.data[destIdx++] = value;
+	  destImg.data[destIdx++] = value;
+	  destImg.data[destIdx++] = 255; */
 	} else {
-	  destImg.data[destIdx++] = ~~(Math.abs(polCoord.lon / 180) * 255);
-	  destImg.data[destIdx++] = ~~(Math.abs(polCoord.lat / 180) * 255);
 	  destImg.data[destIdx++] = 0;
-	  destImg.data[destIdx++] = 255;
+	  destImg.data[destIdx++] = 0;
+	  destImg.data[destIdx++] = 0;
+	  destImg.data[destIdx++] = 0;
 	}
+	x++;
+	if (lDate_now() - lastTime >= timeout)
+	  break;
       }
-      if (x >= frontBuf_width)
+      if (x >= frontBuf_width) {
 	x = 0;
+	y++;
+      }
+      if (lDate_now() - lastTime >= timeout)
+	break;
     }
 
     this.setExitStatus(y < frontBuf_height);

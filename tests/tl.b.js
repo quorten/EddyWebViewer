@@ -8,104 +8,8 @@
 
 
 
-/**
- * Abstract class for a render layer.  A derived class must be created
- * that has methods that do something useful.
- * @constructor
- */
-var RenderLayer = function() {
-  /**
-   * RenderLayer front buffer (HTML Canvas), used for storing
-   * completed renders.  This can either be manually composited into
-   * another Canvas or inserted into the document for automatic
-   * compositing of render layers.
-   * @readonly
-   */
-  this.frontBuf = document.createElement("canvas");
-  this.frontBuf.innerHTML = "Sorry, your browser doesn't support the " +
-    "&lt;canvas&gt; element.";
-};
+/* Abstract class for a render layer.  */
 
-/**
- * Set the limits of this rendering engine's internal caches.
- * Internal caches are very implementation-specific, but they can be
- * generalized to the two parameters that this function accepts.
- *
- * For trivial rendering units, the data cache and render cache will
- * be identical.
- * @abstract
- *
- * @param {integer} dataCache - Data loaded from an external source,
- * measured in implementation-specific entities.
- *
- * @param {integer} renderCache - Maximum size of prerendered images,
- * measured in pixels.
- */
-RenderLayer.prototype.setCacheLimits = function(dataCache, renderCache) {
-  throw new Error("Must be implemented by a subclass!");
-};
-
-/**
- * Load any pending data resources that must be loaded.  This function
- * is cothreaded so that a controlling function can provide
- * responsiveness.
- * @abstract
- *
- * @returns the cothread status of the data load operation.
- */
-RenderLayer.prototype.loadData = function() {
-  throw new Error("Must be implemented by a subclass!");
-};
-
-RenderLayer.READY = 0;
-RenderLayer.NEED_DATA = 1;
-
-/**
- * Setup the viewport and projection of a render layer.
- * @abstract
- *
- * @param {AbstractPoint} center - The point in the content
- * coordinate space that should appear at the center of the viewport.
- * @param {integer} width - The width of the rendering viewport in
- * pixels.
- * @param {integer} height - The height of the rendering viewport in
- * pixels.
- * @param {Projector} projection - The projection to use for rendering
- * the content into the viewport.
- *
- * @returns One of the following constants:
- *
- *  * RenderLayer.READY --- Changing the viewport was successful and a
- *    render may immediately proceed.
- *
- *  * RenderLayer.NEED_DATA --- The new viewport requires additional
- *    data that needs to be loaded.
- */
-RenderLayer.prototype.setViewport =
-  function(center, width, height, projection) {
-  throw new Error("Must be implemented by a subclass!");
-};
-
-RenderLayer.FRAME_AVAIL = 0;
-RenderLayer.NO_DISP_FRAME = 1;
-
-/**
- * Cothreaded rendering routine.
- * @abstract
- *
- * @returns The cothread status of the data load operation.  When the
- * cothread gets preempted before the rendering task is finished, the
- * CothreadStatus preemptCode is one of the following values:
- *
- *  * RenderLayer.FRAME_AVAIL --- A partial frame has been rendered
- *    that is suitable for display.
- *
- *  * RenderLayer.NO_DISP_FRAME --- The partial frame is not suitable
- *    for display.
- */
-RenderLayer.prototype.render = function() {
-  throw new Error("Must be implemented by a subclass!");
-};
 
 
 /* JavaScript base class for cothreaded procedures.  */
@@ -312,6 +216,592 @@ CothreadStatus.PREEMPTED = 1;
  */
 CothreadStatus.MAX_PERCENT = 32767;
 
+/**
+ * Abstract class for a render layer.  A derived class must be created
+ * that has methods that do something useful.
+ * @constructor
+ */
+var RenderLayer = function() {
+  /**
+   * RenderLayer front buffer (HTML Canvas), used for storing
+   * completed renders.  This can either be manually composited into
+   * another Canvas or inserted into the document for automatic
+   * compositing of render layers.
+   * @readonly
+   */
+  this.frontBuf = document.createElement("canvas");
+  this.frontBuf.innerHTML = "Sorry, your browser doesn't support the " +
+    "&lt;canvas&gt; element.";
+};
+
+/**
+ * Set the limits of this rendering engine's internal caches.
+ * Internal caches are very implementation-specific, but they can be
+ * generalized to the two parameters that this function accepts.
+ *
+ * For trivial rendering units, the data cache and render cache will
+ * be identical.
+ * @abstract
+ *
+ * @param {integer} dataCache - Data loaded from an external source,
+ * measured in implementation-specific entities.
+ *
+ * @param {integer} renderCache - Maximum size of prerendered images,
+ * measured in pixels.
+ */
+RenderLayer.prototype.setCacheLimits = function(dataCache, renderCache) {
+  throw new Error("Must be implemented by a subclass!");
+};
+
+/**
+ * Load any pending data resources that must be loaded.  This function
+ * is cothreaded so that a controlling function can provide
+ * responsiveness.
+ * @abstract
+ *
+ * @returns the cothread status of the data load operation.
+ */
+RenderLayer.prototype.loadData = function() {
+  throw new Error("Must be implemented by a subclass!");
+};
+
+RenderLayer.READY = 0;
+RenderLayer.NEED_DATA = 1;
+
+/**
+ * Setup the viewport and projection of a render layer.
+ * @abstract
+ *
+ * @param {AbstractPoint} center - The point in the content
+ * coordinate space that should appear at the center of the viewport.
+ * @param {integer} width - The width of the rendering viewport in
+ * pixels.
+ * @param {integer} height - The height of the rendering viewport in
+ * pixels.
+ * @param {Projector} projector - The projector to use for rendering
+ * the content into the viewport.
+ *
+ * @returns One of the following constants:
+ *
+ *  * RenderLayer.READY --- Changing the viewport was successful and a
+ *    render may immediately proceed.
+ *
+ *  * RenderLayer.NEED_DATA --- The new viewport requires additional
+ *    data that needs to be loaded.
+ */
+RenderLayer.prototype.setViewport =
+  function(center, width, height, projector) {
+  throw new Error("Must be implemented by a subclass!");
+};
+
+RenderLayer.FRAME_AVAIL = 0;
+RenderLayer.NO_DISP_FRAME = 1;
+
+/**
+ * Cothreaded rendering routine.
+ * @abstract
+ *
+ * @returns The cothread status of the data load operation.  When the
+ * cothread gets preempted before the rendering task is finished, the
+ * CothreadStatus preemptCode is one of the following values:
+ *
+ *  * RenderLayer.FRAME_AVAIL --- A partial frame has been rendered
+ *    that is suitable for display.
+ *
+ *  * RenderLayer.NO_DISP_FRAME --- The partial frame is not suitable
+ *    for display.
+ */
+RenderLayer.prototype.render = function() {
+  throw new Error("Must be implemented by a subclass!");
+};
+
+
+/* Projection methods.  */
+
+
+
+/* Mathematical definitions of the Ocean Eddies Web Viewer.  */
+
+/** Degrees to radians conversion constant.  */
+var DEG2RAD = Math.PI / 180;
+
+/** Radians to degrees conversion constant.  */
+var RAD2DEG = 180 / Math.PI;
+
+/**
+ * Polar coordinate point.
+ * @constructor
+ * @param {Number} lat - latitude
+ * @param {Number} lon - longitude
+ */
+var PolarPoint = function(lat, lon) {
+  if (typeof lat != "undefined") {
+    this.lat = lat;
+    this.lon = lon;
+  }
+};
+
+/**
+ * Normalize the polar coordinate measured in degrees so that the
+ * latitude is within -90 and 90 and the longitude is within -180 and
+ * 180.
+ * @param polarPt
+ */
+PolarPoint.degNormalize = function(polarPt) {
+  polarPt.lat %= 180;
+  polarPt.lon %= 360;
+  if (polarPt.lat < -90) polarPt.lat += 180;
+  if (polarPt.lat > 90) polarPt.lat -= 180;
+  if (polarPt.lon < -180) polarPt.lon += 360;
+  if (polarPt.lon >= 180) polarPt.lon -= 180;
+};
+
+/**
+ * Method wrapper to static function.
+ */
+PolarPoint.prototype.degNormalize = function() {
+  return PolarPoint.degNormalize(this);
+};
+
+/**
+ * Create a new rectangular coordinate vector of unit length from a
+ * given polar coordinate.  The polar coordinate must be in radians.
+ * The positive pole is aligned with the positive Z axis, and
+ * longitude zero points in the direction of the positive X axis.
+ * @param polarPt
+ */
+PolarPoint.toPoint3D = function(polarPt) {
+  var destPoint = new Point3D();
+  destPoint.x = Math.cos(polarPt.lon);
+  destPoint.y = Math.sin(polarPt.lon);
+  destPoint.z = Math.sin(polarPt.lat);
+  return destPoint;
+};
+
+/**
+ * Method wrapper to static function.
+ */
+PolarPoint.prototype.toPoint3D = function() {
+  return PolarPoint.toPoint3D(this);
+};
+
+/**
+ * 2D rectangular coordinates point.
+ * @constructor
+ * @param x
+ * @param y
+ */
+var Point2D = function(x, y) {
+  if (typeof x != "undefined") {
+    this.x = x;
+    this.y = y;
+  }
+};
+
+/**
+ * Return a new point vector of unit length.
+ * @param srcPoint
+ */
+Point2D.normalize = function(srcPoint) {
+  var len = Math.sqrt(srcPoint.x * srcPoint.x +
+        srcPoint.y * srcPoint.y);
+  var destPoint = new Point2D();
+  destPoint.x = srcPoint.x / len;
+  destPoint.y = srcPoint.y / len;
+  return destPoint;
+};
+
+/**
+ * Method wrapper to static function.
+ */
+Point2D.prototype.normalize = function() {
+  return Point2D.normalize(this);
+};
+
+/**
+ * 3D rectangular coordinates point.
+ * @constructor
+ * @param x
+ * @param y
+ * @param z
+ */
+var Point3D = function(x, y, z) {
+  if (typeof x != "undefined") {
+    this.x = x;
+    this.y = y;
+    this.z = z;
+  }
+};
+
+/**
+ * Return a new copy of an existing point.
+ */
+Point3D.prototype.copy = function() {
+  return new Point3D(this.x, this.y, this.z);
+};
+
+/**
+ * Scale the point around the origin.
+ * @param srcPoint
+ * @param scaleFactor
+ */
+Point3D.scale = function(srcPoint, scaleFactor) {
+  srcPoint.x *= scaleFactor;
+  srcPoint.y *= scaleFactor;
+  srcPoint.z *= scaleFactor;
+};
+
+/**
+ * Method wrapper to static function.
+ * @param scaleFactor
+ */
+Point3D.prototype.scale = function(scaleFactor) {
+  return Point3D.scale(this, scaleFactor);
+};
+
+/**
+ * Translate the point by the vector of another point.
+ * @param srcPoint
+ * @param vectorPt
+ */
+Point3D.translate = function(srcPoint, vectorPt) {
+  srcPoint.x += vectorPt.x;
+  srcPoint.y += vectorPt.y;
+  srcPoint.z += vectorPt.z;
+};
+
+/**
+ * Method wrapper to static function.
+ * @param vectorPt
+ */
+Point3D.prototype.translate = function(vectorPt) {
+  return Point3D.translate(this, vectorPt);
+};
+
+/**
+ * Return a new point rotated around the X axis by the angle given in
+ * radians.
+ * @param srcPoint
+ * @param angle
+ */
+Point3D.rotateX = function(srcPoint, angle) {
+  var cosAngle = Math.cos(angle);
+  var sinAngle = Math.sin(angle);
+  var rotPoint = new Point3D();
+  rotPoint.x = srcPoint.x;
+  rotPoint.y = cosAngle * srcPoint.y - sinAngle * srcPoint.z;
+  rotPoint.z = sinAngle * srcPoint.y + cosAngle * srcPoint.z;
+  return rotPoint;
+};
+
+/**
+ * Method wrapper to static function.
+ * @param angle
+ */
+Point3D.prototype.rotateX = function(angle) {
+  return Point3D.rotateX(this, angle);
+};
+
+/**
+ * Return a new point rotated around the Y axis by the angle given in
+ * radians.
+ * @param srcPoint
+ * @param angle
+ */
+Point3D.rotateY = function(srcPoint, angle) {
+  var cosAngle = Math.cos(angle);
+  var sinAngle = Math.sin(angle);
+  var rotPoint = new Point3D();
+  rotPoint.x = cosAngle * srcPoint.x - sinAngle * srcPoint.z;
+  rotPoint.y = srcPoint.y;
+  rotPoint.z = sinAngle * srcPoint.x + cosAngle * srcPoint.z;
+  return rotPoint;
+};
+
+/**
+ * Method wrapper to static function.
+ * @param angle
+ */
+Point3D.prototype.rotateY = function(angle) {
+  return Point3D.rotateY(this, angle);
+};
+
+/**
+ * Return a new point rotated around the Z axis by the angle given in
+ * radians.
+ * @param srcPoint
+ * @param angle
+ */
+Point3D.rotateZ = function(srcPoint, angle) {
+  var cosAngle = Math.cos(angle);
+  var sinAngle = Math.sin(angle);
+  var rotPoint = new Point3D();
+  rotPoint.x = cosAngle * srcPoint.x - sinAngle * srcPoint.y;
+  rotPoint.y = sinAngle * srcPoint.x + cosAngle * srcPoint.y;
+  rotPoint.z = srcPoint.z;
+  return rotPoint;
+};
+
+/**
+ * Method wrapper to static function.
+ * @param angle
+ */
+Point3D.prototype.rotateZ = function(angle) {
+  return Point3D.rotateZ(this, angle);
+};
+
+/**
+ * Return a new point vector of unit length.
+ * @param srcPoint
+ */
+Point3D.normalize = function(srcPoint) {
+  var len = Math.sqrt(srcPoint.x * srcPoint.x +
+        srcPoint.y * srcPoint.y +
+        srcPoint.z * srcPoint.z);
+  var destPoint = new Point3D();
+  destPoint.x = srcPoint.x / len;
+  destPoint.y = srcPoint.y / len;
+  destPoint.z = srcPoint.z / len;a
+  return destPoint;
+};
+
+/**
+ * Method wrapper to static function.
+ */
+Point3D.prototype.normalize = function() {
+  return Point3D.normalize(this);
+};
+
+/**
+ * Create a new polar coordinate in radians from the given rectangular
+ * coordinate.  The rectangular coordinate vector must be of unit
+ * length.
+ * @param srcPoint
+ */
+Point3D.toPolarPoint = function(srcPoint) {
+  var polarPt = new PolarPoint();
+  polarPt.lat = Math.asin(srcPoint.z);
+  polarPt.lon = Math.atan2(srcPoint.y, srcPoint.x);
+  return polarPt;
+};
+
+/**
+ * Method wrapper to static function.
+ */
+Point3D.prototype.toPolarPoint = function() {
+  return Point3D.toPolarPoint(this);
+};
+
+/**
+ * Similar to {@linkcode Point3D.toPolarPoint}, but the polar axis is
+ * the Y axis and longitude zero is aligned with the positive Z
+ * axis.
+ * @param srcPoint
+ */
+Point3D.toYPolarPoint = function(srcPoint) {
+  var polarPt = new PolarPoint();
+  polarPt.lat = Math.asin(srcPoint.y);
+  polarPt.lon = Math.atan2(srcPoint.x, srcPoint.z);
+  return polarPt;
+};
+
+/**
+ * Method wrapper to static function.
+ */
+Point3D.prototype.toYPolarPoint = function() {
+  return Point3D.toYPolarPoint(this);
+};
+
+/**
+ * Abstract projector class.
+ * @constructor
+ */
+var Projector = function() {
+};
+
+/**
+ * Abstract projection function.  See a derived class for details.
+ * @abstract
+ */
+Projector.prototype.project = function() {
+  throw new Error("Must be implemented by a subclass!");
+};
+
+/**
+ * Abstract inverse projection function.  See a derived class for
+ * details.
+ * @abstract
+ */
+Projector.prototype.unproject = function() {
+  throw new Error("Must be implemented by a subclass!");
+};
+
+/**
+ * Base class for 2D map projections.  This is an abstract class that
+ * specifies the calling convention.  Use one of the concrete classes
+ * for the actual projection.
+ * @constructor
+ */
+var MapProjector = function() {
+};
+
+MapProjector.prototype = new Projector();
+MapProjector.constructor = MapProjector;
+
+/**
+ * Project a latitude-longitude polar coordinate in degrees to a map
+ * coordinate for the current projection.  The coordinates must be
+ * normalized before this function call.
+ * @abstract
+ *
+ * @param {PolarPoint} polCoord - The latitude-longitude polar
+ * coordinate to project.
+ *
+ * @returns {Point2D} relative map coordinates [-1..1] for both X and
+ * Y, specifying where the projected point should appear on the map.
+ * Quadrant I is in the upper right hand corner.  If the map
+ * projection is non-square, then the maximum relative coordinates of
+ * the shorter axis will not reach +/- 1.
+ */
+MapProjector.prototype.project = function(polCoord) {
+  throw new Error("Must be implemented by a subclass!");
+};
+
+/**
+ * Convert a projected map coordinate to a latitude-longitude polar
+ * coordinate.  The coordinates must be normalized before this
+ * function call.  Quadrant I is in the upper right hand corner.
+ * @abstract
+ */
+MapProjector.prototype.unproject = function(mapCoord) {
+  throw new Error("Must be implemented by a subclass!");
+};
+
+/** Equirectangular map projector.  */
+var EquirectMapProjector = new MapProjector();
+
+EquirectMapProjector.project = function(polCoord) {
+  var mapCoord = {};
+  mapCoord.y = polCoord.lat / 180;
+  mapCoord.x = polCoord.lon / 180;
+  return mapCoord;
+};
+
+EquirectMapProjector.unproject = function(mapCoord) {
+  var polCoord = {};
+  polCoord.lat = mapCoord.y * 180;
+  polCoord.lon = mapCoord.x * 180;
+  return polCoord;
+};
+
+/** Mercator map projector.  */
+var MercatorMapProjector = new MapProjector();
+
+MercatorMapProjector.project = function(polCoord) {
+  var r = 1; // Radius
+  var mapCoord = {};
+  mapCoord.y = (r * Math.log(Math.tan(Math.PI / 4 +
+          DEG2RAD * polCoord.lat / 2))) / Math.PI;
+  mapCoord.x = polCoord.lon / 180;
+  return mapCoord;
+};
+
+MercatorMapProjector.unproject = function(mapCoord) {
+  var r = 1; // Radius
+  var polCoord = {};
+  polCoord.lat = 2 * Math.atan(Math.exp(y * Math.PI / r)) - Math.PI / 2;
+  polCoord.lon = mapCoord.x * 180;
+  return polCoord;
+};
+
+/** Robinson map projector.  */
+RobinsonMapProjector = new MapProjector();
+
+RobinsonMapProjector.table = [
+//  PLEN    PDFE         LAT
+  [ 1.0000, 0.0000 ], // 00
+  [ 0.9986, 0.0620 ], // 05
+  [ 0.9954, 0.1240 ], // 10
+  [ 0.9900, 0.1860 ], // 15
+  [ 0.9822, 0.2480 ], // 20
+  [ 0.9730, 0.3100 ], // 25
+  [ 0.9600, 0.3720 ], // 30
+  [ 0.9427, 0.4340 ], // 35
+  [ 0.9216, 0.4958 ], // 40
+  [ 0.8962, 0.5571 ], // 45
+  [ 0.8679, 0.6176 ], // 50
+  [ 0.8350, 0.6769 ], // 55
+  [ 0.7986, 0.7346 ], // 60
+  [ 0.7597, 0.7903 ], // 65
+  [ 0.7186, 0.8435 ], // 70
+  [ 0.6732, 0.8936 ], // 75
+  [ 0.6213, 0.9394 ], // 80
+  [ 0.5722, 0.9761 ], // 85
+  [ 0.5322, 1.0000 ] // 90
+];
+
+RobinsonMapProjector.project = function(polCoord) {
+  var table = RobinsonMapProjector.table;
+  var alat = Math.abs(polCoord.lat);
+  var tbIdx1 = ~~Math.floor(alat / 5);
+  var tbIdx2 = ~~Math.ceil(alat / 5);
+  var interpol = (alat % 5) / 5;
+  var plen = (((1 - interpol) * table[tbIdx1][0]) +
+       (interpol * table[tbIdx2][0]));
+  var pdfe = (((1 - interpol) * table[tbIdx1][1]) +
+       (interpol * table[tbIdx2][1]));
+  var mapCoord = {};
+  mapCoord.x = polCoord.lon * plen / 180;
+  mapCoord.y = pdfe * 0.5072;
+  if (polCoord.lat < 0)
+    mapCoord.y = -mapCoord.y;
+  return mapCoord;
+};
+
+RobinsonMapProjector.unproject = function(mapCoord) {
+  var table = RobinsonMapProjector.table;
+  var pdfe = Math.abs(mapCoord.y) / 0.5072;
+  if (pdfe > 1)
+    return { lat: NaN, lon: NaN };
+  var approxIndex = ~~(pdfe * 18);
+  while (table[approxIndex][1] < pdfe) approxIndex++;
+  while (table[approxIndex][1] > pdfe) approxIndex--;
+  var tbIdx1 = approxIndex;
+  var tbIdx2 = approxIndex + 1;
+  var interpol = 0;
+  if (tbIdx2 > 18) tbIdx2 = 18;
+  else
+    interpol = ((pdfe - table[tbIdx1][1]) /
+  (table[tbIdx2][1] - table[tbIdx1][1]));
+  var plen = table[tbIdx1][0] * (1 - interpol) * table[tbIdx2][0] * interpol;
+  var polCoord = {};
+  polCoord.lat = 5 * (tbIdx1 + interpol);
+  if (mapCoord.y < 0)
+    polCoord.lat = -polCoord.lat;
+  polCoord.lon = mapCoord.x / plen * 180;
+  if (polCoord.lon < -180 || polCoord.lon > 180)
+    return { lat: NaN, lon: NaN };
+  return polCoord;
+};
+
+/** Winkel tripel map projection (not usable).  */
+W3MapProjector = new MapProjector();
+
+W3MapProjector.project = function(polCoord) {
+  var mapCoord = {};
+  var a = Math.acos(Math.cos(polCoord.lat) * Math.cos(polCoord.lon / 2));
+  var sinc_a = Math.sin(a) / a;
+  mapCoord.y = 1 / 2 * (polCoord.lat + Math.sin(polCoord.lat) / sinc_a);
+  mapCoord.x = 1 / 2 * (polCoord.lon * Math.cos(polCoord.lat) +
+   2 * Math.cos(polCoord.lat) * sin(polCoord.lon / 2) /
+   sinc_a);
+  return mapCoord;
+};
+
+W3MapProjector.unproject = function(mapCoord) {
+  // Complicated reverse projection
+};
+
 /*
 
 What data is needed for the tracks rendering class?
@@ -336,8 +826,11 @@ TracksLayer.setCacheLimits = function(dataCache, renderCache) {
  *
  * The CothreadStatus preemptCode may be one of the following values:
  *
- * * TracksLayer.IOWAIT --- The cothread is waiting for an XMLHttpRequest
- *   to finish.  When the data is finished being loaded, this cothread
+ * * TracksLayer.IOWAIT --- The cothread is waiting for an
+ *   XMLHttpRequest to finish.  For optimal performance, the
+ *   controller should not explicitly call continueCT(), since the
+ *   asynchronous calling will be handled by the browser during data
+ *   loading.  When the data is finished being loaded, this cothread
  *   will explicitly yield control to the controller.
  *
  * * TracksLayer.PROC_DATA --- The cothread has been preempted when it was
@@ -353,7 +846,7 @@ TracksLayer.loadData = (function() {
     if (httpRequest.readyState == 4) {
       if (httpRequest.status == 200) {
  // Call the main loop to continue cothread execution.
- return;
+ return execTime();
       } else {
  throw new Error("There was a problem with the HTTP request.");
       }
@@ -441,13 +934,13 @@ TracksLayer.loadData = (function() {
   return new Cothread(startExec, contExec);
 })();
 
-TracksLayer.setViewport = function(center, width, height, projection) {
+TracksLayer.setViewport = function(center, width, height, projector) {
   // RenderLayer.call(center, width, height, projection);
-  this.frontBuf.width = 1440; // width;
-  this.frontBuf.height = 720; // height;
+  this.frontBuf.width = width;
+  this.frontBuf.height = height;
 
   this.center = center;
-  this.projection = projection;
+  this.projector = projector;
 
   return RenderLayer.READY;
 };
@@ -486,6 +979,8 @@ TracksLayer.render = (function() {
     var numTracks = tracksData.length;
     var frontBuf_width = TracksLayer.frontBuf.width;
     var frontBuf_height = TracksLayer.frontBuf.height;
+    // var projector = TracksLayer.projector;
+    var projector_project = TracksLayer.projector.project;
 
     var lDate_now = Date.now;
 
@@ -506,17 +1001,23 @@ TracksLayer.render = (function() {
       }
 
       edc.beginPath();
-      var lat = tracksData[i][0][0];
-      var lon = tracksData[i][0][1];
-      var mapX = (lon + 180) * inv_360 * frontBuf_width;
-      var mapY = (90 - lat) * inv_180 * frontBuf_height;
-      edc.moveTo(mapX, mapY);
+      // var lat = tracksData[i][0][0];
+      // var lon = tracksData[i][0][1];
+      // var mapX = (lon + 180) * inv_360 * frontBuf_width;
+      // var mapY = (90 - lat) * inv_180 * frontBuf_height;
+      var polCoord = { lat: tracksData[i][0][0], lon: tracksData[i][0][1] };
+      var mapCoord = projector_project(polCoord);
+      edc.moveTo((mapCoord.x + 1) * 0.5 * frontBuf_width,
+   (-mapCoord.y + 1) * 0.5 * frontBuf_height);
       for (var j = 1; j < tracksData[i].length; j++) {
- lat = tracksData[i][j][0];
- lon = tracksData[i][j][1];
- mapX = (lon + 180) * inv_360 * frontBuf_width;
- mapY = (90 - lat) * inv_180 * frontBuf_height;
- edc.lineTo(mapX, mapY);
+ // lat = tracksData[i][j][0];
+ // lon = tracksData[i][j][1];
+ // mapX = (lon + 180) * inv_360 * frontBuf_width;
+ // mapY = (90 - lat) * inv_180 * frontBuf_height;
+ polCoord = { lat: tracksData[i][j][0], lon: tracksData[i][j][1] };
+ mapCoord = projector_project(polCoord);
+ edc.lineTo((mapCoord.x + 1) * 0.5 * frontBuf_width,
+     (-mapCoord.y + 1) * 0.5 * frontBuf_height);
  if (tracksData[i][j][2] == dateIndex)
    edc.arc(mapX, mapY, 2 * backbufScale, 0, 2 * Math.PI, false);
       }
@@ -542,12 +1043,12 @@ function execTime2() {
 }
 
 function browserTime2() {
-  return setTimeout(execTime2, 80);
+  return setTimeout(execTime2, 0);
 }
 
 function setup2() {
   document.documentElement.children[1].appendChild(TracksLayer.frontBuf);
-  TracksLayer.setViewport(null, 1440, 720, null);
+  TracksLayer.setViewport(null, 1000, 1000, RobinsonMapProjector);
   TracksLayer.render.timeout = 20;
   if (TracksLayer.render.start().returnType != CothreadStatus.FINISHED)
     return browserTime2();
@@ -571,6 +1072,8 @@ function execTime() {
     // Next move on to testing the progressive renderer.
     return setTimeout(setup2, 80);
   }
+  if (status.preemptCode == TracksLayer.IOWAIT)
+    return;
   return browserTime();
 }
 
@@ -579,7 +1082,12 @@ function browserTime() {
      still let the browser stay responsive, this timeout should be set
      to zero.  Otherwise, any value larger than zero can be used to
      throttle a task to use only a fraction of available processing
-     time.  */
+     time.  In some cases, such as during synchronous JSON parsing by
+     the browser, you may need to set this value to greater than zero
+     for the browser to remain responsive just before the point when
+     the browser becomes unresponsive, so that you can put an
+     notification on the screen before the onset of
+     unresponsiveness.  */
   return setTimeout(execTime, 80);
 }
 
@@ -593,6 +1101,10 @@ function setup() {
   document.documentElement.children[1].appendChild(progElmt);
 
   TracksLayer.loadData.timeout = 20;
-  if (TracksLayer.loadData.start().returnType != CothreadStatus.FINISHED)
+  var status = TracksLayer.loadData.start();
+  if (status.returnType != CothreadStatus.FINISHED) {
+    if (status.preemptCode == TracksLayer.IOWAIT)
+      return;
     return browserTime();
+  }
 }

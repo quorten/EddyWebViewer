@@ -2,6 +2,7 @@ CPP = cpp
 cjs_dir = ../libs/cjs
 SOURCES = cttest.js tl.js
 BUNDLES = cttest.b.js tl.b.js
+CPATH = ../src
 
 all: $(BUNDLES)
 

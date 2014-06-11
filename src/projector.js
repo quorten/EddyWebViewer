@@ -49,8 +49,9 @@ MapProjector.constructor = MapProjector;
  *
  * @returns {Point2D} relative map coordinates [-1..1] for both X and
  * Y, specifying where the projected point should appear on the map.
- * If the map projection is non-square, then the maximum relative
- * coordinates of the shorter axis will not reach +/- 1.
+ * Quadrant I is in the upper right hand corner.  If the map
+ * projection is non-square, then the maximum relative coordinates of
+ * the shorter axis will not reach +/- 1.
  */
 MapProjector.prototype.project = function(polCoord) {
   throw new Error("Must be implemented by a subclass!");
@@ -59,7 +60,7 @@ MapProjector.prototype.project = function(polCoord) {
 /**
  * Convert a projected map coordinate to a latitude-longitude polar
  * coordinate.  The coordinates must be normalized before this
- * function call.
+ * function call.  Quadrant I is in the upper right hand corner.
  * @abstract
  */
 MapProjector.prototype.unproject = function(mapCoord) {
@@ -71,14 +72,14 @@ var EquirectMapProjector = new MapProjector();
 
 EquirectMapProjector.project = function(polCoord) {
   var mapCoord = {};
-  mapCoord.y = polCoord.lat / 90;
+  mapCoord.y = polCoord.lat / 180;
   mapCoord.x = polCoord.lon / 180;
   return mapCoord;
 };
 
 EquirectMapProjector.unproject = function(mapCoord) {
   var polCoord = {};
-  polCoord.lat = mapCoord.y * 90;
+  polCoord.lat = mapCoord.y * 180;
   polCoord.lon = mapCoord.x * 180;
   return polCoord;
 };
@@ -89,8 +90,8 @@ var MercatorMapProjector = new MapProjector();
 MercatorMapProjector.project = function(polCoord) {
   var r = 1; // Radius
   var mapCoord = {};
-  mapCoord.y = r * Math.log(Math.tan(Math.PI / 4 +
-				     DEG2RAD * polCoord.lat / 2));
+  mapCoord.y = (r * Math.log(Math.tan(Math.PI / 4 +
+				      DEG2RAD * polCoord.lat / 2))) / Math.PI;
   mapCoord.x = polCoord.lon / 180;
   return mapCoord;
 };
@@ -98,7 +99,7 @@ MercatorMapProjector.project = function(polCoord) {
 MercatorMapProjector.unproject = function(mapCoord) {
   var r = 1; // Radius
   var polCoord = {};
-  polCoord.lat = 2 * Math.atan(Math.exp(y / r)) - Math.PI / 2;
+  polCoord.lat = 2 * Math.atan(Math.exp(y * Math.PI / r)) - Math.PI / 2;
   polCoord.lon = mapCoord.x * 180;
   return polCoord;
 };
@@ -134,11 +135,11 @@ RobinsonMapProjector.project = function(polCoord) {
   var alat = Math.abs(polCoord.lat);
   var tbIdx1 = ~~Math.floor(alat / 5);
   var tbIdx2 = ~~Math.ceil(alat / 5);
-  var interpol = alat % 5;
-  var plen = ((interpol * table[tbIdx1][0]) +
-	      ((1 - interpol) * table[tbIdx2][0])) / 2;
-  var pdfe = ((interpol * table[tbIdx1][1]) +
-	      ((1 - interpol) * table[tbIdx2][1])) / 2;
+  var interpol = (alat % 5) / 5;
+  var plen = (((1 - interpol) * table[tbIdx1][0]) +
+	      (interpol * table[tbIdx2][0]));
+  var pdfe = (((1 - interpol) * table[tbIdx1][1]) +
+	      (interpol * table[tbIdx2][1]));
   var mapCoord = {};
   mapCoord.x = polCoord.lon * plen / 180;
   mapCoord.y = pdfe * 0.5072;
@@ -150,20 +151,26 @@ RobinsonMapProjector.project = function(polCoord) {
 RobinsonMapProjector.unproject = function(mapCoord) {
   var table = RobinsonMapProjector.table;
   var pdfe = Math.abs(mapCoord.y) / 0.5072;
-  if (pdfe < 0 || pdfe > 1)
+  if (pdfe > 1)
     return { lat: NaN, lon: NaN };
   var approxIndex = ~~(pdfe * 18);
   while (table[approxIndex][1] < pdfe) approxIndex++;
   while (table[approxIndex][1] > pdfe) approxIndex--;
   var tbIdx1 = approxIndex;
   var tbIdx2 = approxIndex + 1;
+  var interpol = 0;
   if (tbIdx2 > 18) tbIdx2 = 18;
-  var interpol = ((pdfe - table[tbIdx1][1]) /
-		  (table[tbIdx2][1] - table[tbIdx1][1]));
-  var plen = table[tbIdx2][0] * (1 - interpol) + table[tbIdx1][0] * interpol;
+  else
+    interpol = ((pdfe - table[tbIdx1][1]) /
+		(table[tbIdx2][1] - table[tbIdx1][1]));
+  var plen = table[tbIdx1][0] * (1 - interpol) * table[tbIdx2][0] * interpol;
   var polCoord = {};
   polCoord.lat = 5 * (tbIdx1 + interpol);
+  if (mapCoord.y < 0)
+    polCoord.lat = -polCoord.lat;
   polCoord.lon = mapCoord.x / plen * 180;
+  if (polCoord.lon < -180 || polCoord.lon > 180)
+    return { lat: NaN, lon: NaN };
   return polCoord;
 };
 

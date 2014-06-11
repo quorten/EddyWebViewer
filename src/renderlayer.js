@@ -1,3 +1,7 @@
+/* Abstract class for a render layer.  */
+
+import "cothread";
+
 /**
  * Abstract class for a render layer.  A derived class must be created
  * that has methods that do something useful.
@@ -60,7 +64,7 @@ RenderLayer.NEED_DATA = 1;
  * pixels.
  * @param {integer} height - The height of the rendering viewport in
  * pixels.
- * @param {Projector} projection - The projection to use for rendering
+ * @param {Projector} projector - The projector to use for rendering
  * the content into the viewport.
  *
  * @returns One of the following constants:
@@ -72,7 +76,7 @@ RenderLayer.NEED_DATA = 1;
  *    data that needs to be loaded.
  */
 RenderLayer.prototype.setViewport =
-  function(center, width, height, projection) {
+  function(center, width, height, projector) {
   throw new Error("Must be implemented by a subclass!");
 };
 

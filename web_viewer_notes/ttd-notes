@@ -546,6 +546,13 @@ Questions to ask Woodrow and James:
 
 * Browser testing?  Emulators of mobile devices.
 
+* NOT using SVG.  SVG DOM performance is said to be very poor when
+  working with a large number of nodes.  This will especially be true
+  if each eddy DOM object has an event listener attached to it.
+  Memory leaks could also become a problem.  However, I haven't tested
+  with SVG on this many datapoints, so I don't have specific evidence
+  for these assertions yet.
+
 * Web hosting?  Where should the site officially reside?
 
 * JavaScript development in the labs.

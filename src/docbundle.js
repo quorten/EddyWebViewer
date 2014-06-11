@@ -330,6 +330,10 @@ CothreadStatus.PREEMPTED = 1;
 CothreadStatus.MAX_PERCENT = 32767;
 
 
+/* Abstract class for a render layer.  */
+
+
+
 /**
  * Abstract class for a render layer.  A derived class must be created
  * that has methods that do something useful.
@@ -392,7 +396,7 @@ RenderLayer.NEED_DATA = 1;
  * pixels.
  * @param {integer} height - The height of the rendering viewport in
  * pixels.
- * @param {Projector} projection - The projection to use for rendering
+ * @param {Projector} projector - The projector to use for rendering
  * the content into the viewport.
  *
  * @returns One of the following constants:
@@ -404,7 +408,7 @@ RenderLayer.NEED_DATA = 1;
  *    data that needs to be loaded.
  */
 RenderLayer.prototype.setViewport =
-  function(center, width, height, projection) {
+  function(center, width, height, projector) {
   throw new Error("Must be implemented by a subclass!");
 };
 
@@ -773,8 +777,9 @@ MapProjector.constructor = MapProjector;
  *
  * @returns {Point2D} relative map coordinates [-1..1] for both X and
  * Y, specifying where the projected point should appear on the map.
- * If the map projection is non-square, then the maximum relative
- * coordinates of the shorter axis will not reach +/- 1.
+ * Quadrant I is in the upper right hand corner.  If the map
+ * projection is non-square, then the maximum relative coordinates of
+ * the shorter axis will not reach +/- 1.
  */
 MapProjector.prototype.project = function(polCoord) {
   throw new Error("Must be implemented by a subclass!");
@@ -783,7 +788,7 @@ MapProjector.prototype.project = function(polCoord) {
 /**
  * Convert a projected map coordinate to a latitude-longitude polar
  * coordinate.  The coordinates must be normalized before this
- * function call.
+ * function call.  Quadrant I is in the upper right hand corner.
  * @abstract
  */
 MapProjector.prototype.unproject = function(mapCoord) {
@@ -795,14 +800,14 @@ var EquirectMapProjector = new MapProjector();
 
 EquirectMapProjector.project = function(polCoord) {
   var mapCoord = {};
-  mapCoord.y = polCoord.lat / 90;
+  mapCoord.y = polCoord.lat / 180;
   mapCoord.x = polCoord.lon / 180;
   return mapCoord;
 };
 
 EquirectMapProjector.unproject = function(mapCoord) {
   var polCoord = {};
-  polCoord.lat = mapCoord.y * 90;
+  polCoord.lat = mapCoord.y * 180;
   polCoord.lon = mapCoord.x * 180;
   return polCoord;
 };
@@ -813,8 +818,8 @@ var MercatorMapProjector = new MapProjector();
 MercatorMapProjector.project = function(polCoord) {
   var r = 1; // Radius
   var mapCoord = {};
-  mapCoord.y = r * Math.log(Math.tan(Math.PI / 4 +
-         DEG2RAD * polCoord.lat / 2));
+  mapCoord.y = (r * Math.log(Math.tan(Math.PI / 4 +
+          DEG2RAD * polCoord.lat / 2))) / Math.PI;
   mapCoord.x = polCoord.lon / 180;
   return mapCoord;
 };
@@ -822,7 +827,7 @@ MercatorMapProjector.project = function(polCoord) {
 MercatorMapProjector.unproject = function(mapCoord) {
   var r = 1; // Radius
   var polCoord = {};
-  polCoord.lat = 2 * Math.atan(Math.exp(y / r)) - Math.PI / 2;
+  polCoord.lat = 2 * Math.atan(Math.exp(y * Math.PI / r)) - Math.PI / 2;
   polCoord.lon = mapCoord.x * 180;
   return polCoord;
 };
@@ -858,11 +863,11 @@ RobinsonMapProjector.project = function(polCoord) {
   var alat = Math.abs(polCoord.lat);
   var tbIdx1 = ~~Math.floor(alat / 5);
   var tbIdx2 = ~~Math.ceil(alat / 5);
-  var interpol = alat % 5;
-  var plen = ((interpol * table[tbIdx1][0]) +
-       ((1 - interpol) * table[tbIdx2][0])) / 2;
-  var pdfe = ((interpol * table[tbIdx1][1]) +
-       ((1 - interpol) * table[tbIdx2][1])) / 2;
+  var interpol = (alat % 5) / 5;
+  var plen = (((1 - interpol) * table[tbIdx1][0]) +
+       (interpol * table[tbIdx2][0]));
+  var pdfe = (((1 - interpol) * table[tbIdx1][1]) +
+       (interpol * table[tbIdx2][1]));
   var mapCoord = {};
   mapCoord.x = polCoord.lon * plen / 180;
   mapCoord.y = pdfe * 0.5072;
@@ -874,20 +879,26 @@ RobinsonMapProjector.project = function(polCoord) {
 RobinsonMapProjector.unproject = function(mapCoord) {
   var table = RobinsonMapProjector.table;
   var pdfe = Math.abs(mapCoord.y) / 0.5072;
-  if (pdfe < 0 || pdfe > 1)
+  if (pdfe > 1)
     return { lat: NaN, lon: NaN };
   var approxIndex = ~~(pdfe * 18);
   while (table[approxIndex][1] < pdfe) approxIndex++;
   while (table[approxIndex][1] > pdfe) approxIndex--;
   var tbIdx1 = approxIndex;
   var tbIdx2 = approxIndex + 1;
+  var interpol = 0;
   if (tbIdx2 > 18) tbIdx2 = 18;
-  var interpol = ((pdfe - table[tbIdx1][1]) /
-    (table[tbIdx2][1] - table[tbIdx1][1]));
-  var plen = table[tbIdx2][0] * (1 - interpol) + table[tbIdx1][0] * interpol;
+  else
+    interpol = ((pdfe - table[tbIdx1][1]) /
+  (table[tbIdx2][1] - table[tbIdx1][1]));
+  var plen = table[tbIdx1][0] * (1 - interpol) * table[tbIdx2][0] * interpol;
   var polCoord = {};
   polCoord.lat = 5 * (tbIdx1 + interpol);
+  if (mapCoord.y < 0)
+    polCoord.lat = -polCoord.lat;
   polCoord.lon = mapCoord.x / plen * 180;
+  if (polCoord.lon < -180 || polCoord.lon > 180)
+    return { lat: NaN, lon: NaN };
   return polCoord;
 };
 
@@ -911,6 +922,8 @@ W3MapProjector.unproject = function(mapCoord) {
 
 
 /* Render layer for display of the eddy tracks layer.  */
+
+
 
 
 /*
@@ -937,8 +950,11 @@ TracksLayer.setCacheLimits = function(dataCache, renderCache) {
  *
  * The CothreadStatus preemptCode may be one of the following values:
  *
- * * TracksLayer.IOWAIT --- The cothread is waiting for an XMLHttpRequest
- *   to finish.  When the data is finished being loaded, this cothread
+ * * TracksLayer.IOWAIT --- The cothread is waiting for an
+ *   XMLHttpRequest to finish.  For optimal performance, the
+ *   controller should not explicitly call continueCT(), since the
+ *   asynchronous calling will be handled by the browser during data
+ *   loading.  When the data is finished being loaded, this cothread
  *   will explicitly yield control to the controller.
  *
  * * TracksLayer.PROC_DATA --- The cothread has been preempted when it was
@@ -954,7 +970,7 @@ TracksLayer.loadData = (function() {
     if (httpRequest.readyState == 4) {
       if (httpRequest.status == 200) {
  // Call the main loop to continue cothread execution.
- return;
+ return execTime();
       } else {
  throw new Error("There was a problem with the HTTP request.");
       }
@@ -1042,13 +1058,13 @@ TracksLayer.loadData = (function() {
   return new Cothread(startExec, contExec);
 })();
 
-TracksLayer.setViewport = function(center, width, height, projection) {
+TracksLayer.setViewport = function(center, width, height, projector) {
   // RenderLayer.call(center, width, height, projection);
-  this.frontBuf.width = 1440; // width;
-  this.frontBuf.height = 720; // height;
+  this.frontBuf.width = width;
+  this.frontBuf.height = height;
 
   this.center = center;
-  this.projection = projection;
+  this.projector = projector;
 
   return RenderLayer.READY;
 };
@@ -1087,6 +1103,8 @@ TracksLayer.render = (function() {
     var numTracks = tracksData.length;
     var frontBuf_width = TracksLayer.frontBuf.width;
     var frontBuf_height = TracksLayer.frontBuf.height;
+    // var projector = TracksLayer.projector;
+    var projector_project = TracksLayer.projector.project;
 
     var lDate_now = Date.now;
 
@@ -1107,17 +1125,23 @@ TracksLayer.render = (function() {
       }
 
       edc.beginPath();
-      var lat = tracksData[i][0][0];
-      var lon = tracksData[i][0][1];
-      var mapX = (lon + 180) * inv_360 * frontBuf_width;
-      var mapY = (90 - lat) * inv_180 * frontBuf_height;
-      edc.moveTo(mapX, mapY);
+      // var lat = tracksData[i][0][0];
+      // var lon = tracksData[i][0][1];
+      // var mapX = (lon + 180) * inv_360 * frontBuf_width;
+      // var mapY = (90 - lat) * inv_180 * frontBuf_height;
+      var polCoord = { lat: tracksData[i][0][0], lon: tracksData[i][0][1] };
+      var mapCoord = projector_project(polCoord);
+      edc.moveTo((mapCoord.x + 1) * 0.5 * frontBuf_width,
+   (-mapCoord.y + 1) * 0.5 * frontBuf_height);
       for (var j = 1; j < tracksData[i].length; j++) {
- lat = tracksData[i][j][0];
- lon = tracksData[i][j][1];
- mapX = (lon + 180) * inv_360 * frontBuf_width;
- mapY = (90 - lat) * inv_180 * frontBuf_height;
- edc.lineTo(mapX, mapY);
+ // lat = tracksData[i][j][0];
+ // lon = tracksData[i][j][1];
+ // mapX = (lon + 180) * inv_360 * frontBuf_width;
+ // mapY = (90 - lat) * inv_180 * frontBuf_height;
+ polCoord = { lat: tracksData[i][j][0], lon: tracksData[i][j][1] };
+ mapCoord = projector_project(polCoord);
+ edc.lineTo((mapCoord.x + 1) * 0.5 * frontBuf_width,
+     (-mapCoord.y + 1) * 0.5 * frontBuf_height);
  if (tracksData[i][j][2] == dateIndex)
    edc.arc(mapX, mapY, 2 * backbufScale, 0, 2 * Math.PI, false);
       }

@@ -633,16 +633,61 @@ http://www.w3.org/Protocols/rfc2616/rfc2616.html
 
 Answers:
 
+* Format of the dates: with/without dashes/hyphens, either way,
+  whatever looks better.
+
+* SSH at international date line: yes, you may need to shift so that
+  it looks more interesting to other people.
+
 * License notices: just open-source, like MIT license.  Make sure to
   say your name that you made it, though.
 
 * Web hosting: Look on your own, check out Amazon Web Services, Google
   App Engine, see what works the best from home.  Then maybe go into
   to ring they have downstairs and go through MSI, the point is to
-  find out what works best from home.
+  find out what works best from home.  On your own, try to look for
+  what works well from home.  Like you're making a proposal.
+
+* SSH resolution?  Will probably stay at 1440x720 for the whole
+  project.  Not entirely necessary, an experienced person would be
+  able to look at it and just tell if that's an eddy or not.
+
+* JPEG compression?  Shouldn't be an issue to limit down the precision
+  of the SSH datapoints.
+
+* Eddies that twist around across only a few pixels?  Maybe hide them
+  at the global scale, show them when you zoom in.
+
+* No seasonal variations observed with eddies, except that the
+  increasing size of the ice caps can limit the oceanspace available
+  to the eddies.
 
 * Node.js installed on MSI?  Go ask help.msi.umn.edu, cc both James
   and Kumar, tell them you're working on this open-source project,
   make sure everything is cc on they're behalf so that that can
   intervene and answer for your.  We're the largest user of MSI so
   they will be friendly.
+
+* We should try to get it to a state for other users to just get up
+  and on the software, and see what features may be useful.
+
+* Don't concentrate too much on the mobile, might not get the same
+  experience as on desktop.
+
+* The SSH data isn't entirely necessary.  Maybe don't need to load it
+  all.  So animation can be done with the tracks alone.
+
+To Woody:
+
+* Please store the length of the tracks within the tracks somehow.
+
+* Maybe the rendering engine should precompute and store the lengths.
+
+For me:
+
+* I need to allow generating information on the URL when the user
+  changes the projection, view, etc.
+
+* Need to alpha in/out on the tracks.
+
+* Only load the data when needed.

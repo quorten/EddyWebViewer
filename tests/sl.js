@@ -37,7 +37,7 @@ function setup2() {
   document.documentElement.children[1].appendChild(rendTimeElmt);
   document.documentElement.children[1].appendChild(SSHLayer.frontBuf);
 
-  var width = 1000, height = 500;
+  var width = 1440, height = 721;
   SSHLayer.setViewport(null, width, height, width / height,
 			  EquirectMapProjector);
   SSHLayer.render.timeout = 20;

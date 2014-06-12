@@ -256,24 +256,31 @@ SSHLayer.render = (function() {
 	    polCoord.lon > -180 && polCoord.lon < 180) */
 	  /* SSH strangeness: The SSH data measures from the international
 	     date line, not the prime meridian?  */
-	  var latIdx = ~~((((((-((y / frontBuf_height) * 2 - 1) * inv_aspectXY) * 180) + 90) / 180) % 1) * src_height);
-	  var lonIdx = ~~(((((((x / frontBuf_width) * 2 - 1) * 180) + 180 + 180) / 360) % 1) * src_width);
-	  var value = sshData[latIdx][lonIdx] / 32;
+	  // var latIdx = ~~((((((-((y / frontBuf_height) * 2 - 1) * inv_aspectXY) * 180) + 90) / 180) % 1) * src_height);
+	  // var lonIdx = ~~(((((((x / frontBuf_width) * 2 - 1) * 180) + 180 + 180) / 360) % 1) * src_width);
+	  // var value = sshData[latIdx][lonIdx] / 32;
 	  // var value = sshData[~~((((((-((y / frontBuf_height) * 2 - 1) * inv_aspectXY) * 180) + 90) / 180) % 1) * src_height)][~~(((((((x / frontBuf_width) * 2 - 1) * 180) + 180 + 180) / 360) % 1) * src_width)] / 32;
+	  var value = sshData[src_height-1-y][x] / 32;
+
+	  if (isNaN(value)) {
+	      destIdx += 4;
+	      x++;
+	      continue;
+	  }
 
 	  if (value > 1) value = 1;
 	  if (value < -1) value = -1;
-	  value = (~~((value + 1) / 2 * 255)) /* << 2 */;
+	  value = (~~((value + 1) / 2 * 255)) << 2;
 
-	  /* destImg.data[destIdx++] = colorTbl[value++];
 	  destImg.data[destIdx++] = colorTbl[value++];
 	  destImg.data[destIdx++] = colorTbl[value++];
-	  destImg.data[destIdx++] = colorTbl[value++]; */
+	  destImg.data[destIdx++] = colorTbl[value++];
+	  destImg.data[destIdx++] = colorTbl[value++];
 
+	  /* destImg.data[destIdx++] = value;
 	  destImg.data[destIdx++] = value;
 	  destImg.data[destIdx++] = value;
-	  destImg.data[destIdx++] = value;
-	  destImg.data[destIdx++] = value;
+	  destImg.data[destIdx++] = value; */
 	x++;
 	/* if (lDate_now() - lastTime >= timeout)
 	  break; */

@@ -716,3 +716,15 @@ For me:
 * Need to alpha in/out on the tracks.
 
 * Only load the data when needed.
+
+JPEG Quality levels to consider:
+
+... just use the default.  And don't even think about JPEG 2000.
+
+http://blog.codinghorror.com/beyond-jpeg/
+http://blogs.loc.gov/digitalpreservation/2013/01/is-jpeg-2000-a-preservation-risk/
+
+Need more consistent performance between Firefox and Chrome?  Use a
+JavaScript line rasterizer.
+
+http://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm

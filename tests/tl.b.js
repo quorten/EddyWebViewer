@@ -992,7 +992,7 @@ TracksLayer.render = (function() {
 
     var lastTime = lDate_now();
     var timeout = this.timeout;
-    for (; lDate_now() - lastTime < timeout && i < numTracks; i++) {
+    for (; i < numTracks; ) {
       if (minTrackLen > 0 || maxTrackLen != -1) {
  // Determine the length of the eddy in weeks.
  var numEddies = tracksData[i].length;
@@ -1011,23 +1011,30 @@ TracksLayer.render = (function() {
       // var lon = tracksData[i][0][1];
       // var mapX = (lon + 180) * inv_360 * frontBuf_width;
       // var mapY = (90 - lat) * inv_180 * frontBuf_heightY;
-      var polCoord = { lat: tracksData[i][0][0], lon: tracksData[i][0][1] };
-      var mapCoord = projector_project(polCoord);
-      edc.moveTo((mapCoord.x + 1) * 0.5 * frontBuf_width,
-   (-mapCoord.y * aspectXY + 1) * 0.5 * frontBuf_height);
+      // var polCoord = { lat: tracksData[i][0][0], lon: tracksData[i][0][1] };
+      // var mapCoord = projector_project(polCoord);
+      var mapCoord_x = tracksData[i][0][1] / 180;
+      var mapCoord_y = tracksData[i][0][0] / 180;
+      edc.moveTo((mapCoord_x + 1) * 0.5 * frontBuf_width,
+   (-mapCoord_y * aspectXY + 1) * 0.5 * frontBuf_height);
       for (var j = 1; j < tracksData[i].length; j++) {
  // lat = tracksData[i][j][0];
  // lon = tracksData[i][j][1];
  // mapX = (lon + 180) * inv_360 * frontBuf_width;
  // mapY = (90 - lat) * inv_180 * frontBuf_height;
- polCoord = { lat: tracksData[i][j][0], lon: tracksData[i][j][1] };
- mapCoord = projector_project(polCoord);
- edc.lineTo((mapCoord.x + 1) * 0.5 * frontBuf_width,
-     (-mapCoord.y * aspectXY + 1) * 0.5 * frontBuf_height);
+ // polCoord = { lat: tracksData[i][j][0], lon: tracksData[i][j][1] };
+ // mapCoord = projector_project(polCoord);
+ mapCoord_x = tracksData[i][j][1] / 180;
+ mapCoord_y = tracksData[i][j][0] / 180;
+ edc.lineTo((mapCoord_x + 1) * 0.5 * frontBuf_width,
+     (-mapCoord_y * aspectXY + 1) * 0.5 * frontBuf_height);
  if (tracksData[i][j][2] == dateIndex)
-   edc.arc(mapX, mapY, 2 * backbufScale, 0, 2 * Math.PI, false);
+   edc.arc(mapCoord_x, mapCoord_y, 2 * backbufScale, 0, 2 * Math.PI, false);
       }
       edc.stroke();
+      i++;
+      if (i % 1024 == 0 && lDate_now() - lastTime >= timeout)
+ break;
     }
 
     this.setExitStatus(i < numTracks);
@@ -1077,7 +1084,7 @@ function setup2() {
 
   var width = 1000, height = 500;
   TracksLayer.setViewport(null, width, height, width / height,
-     RobinsonMapProjector);
+     EquirectMapProjector);
   TracksLayer.render.timeout = 20;
   if (TracksLayer.render.start().returnType != CothreadStatus.FINISHED)
     return browserTime2();

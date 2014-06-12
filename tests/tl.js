@@ -39,7 +39,7 @@ function setup2() {
 
   var width = 1000, height = 500;
   TracksLayer.setViewport(null, width, height, width / height,
-			  RobinsonMapProjector);
+			  EquirectMapProjector);
   TracksLayer.render.timeout = 20;
   if (TracksLayer.render.start().returnType != CothreadStatus.FINISHED)
     return browserTime2();

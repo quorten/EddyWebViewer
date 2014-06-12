@@ -39,10 +39,10 @@ function setup2() {
 
   var width = 1000, height = 500;
   SSHLayer.setViewport(null, width, height, width / height,
-			  RobinsonMapProjector);
+			  EquirectMapProjector);
   SSHLayer.render.timeout = 20;
-  if (SSHLayer.render.start().returnType != CothreadStatus.FINISHED)
-    return browserTime2();
+  SSHLayer.render.start();
+  return browserTime2();
 }
 
 function execTime() {

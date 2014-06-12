@@ -231,6 +231,9 @@ block nested.  For some math functions, a lookup table function that
 you provide may be faster, but that's only because the math functions
 may not be implemented using fast math themselves.
 
+Table access and object member access are essentially identical in
+performance, at least in the simple cases.
+
 Are global variables really slower than local variables?  No.
 However, if I scale up the program to have a more crowded global
 namespace, then this might actually be true.
@@ -249,6 +252,14 @@ easy.
 So where do the real slowdowns happen?  Excess assignment.  Be sure to
 economize on assignment operations.
 
+Creation of dictionary objects is also very expensive.  For all
+practical purposes, creation of array objects is equally as expensive
+as creating a dictionary object.  In other words, don't create
+objects!  So this is why assigning values to an array is so slow!
+
+Moving variable declarations outside of a loop seems to have no effect
+on performance.
+
 In conclusion, best software development practices for structuring
 large scale software should be able to scale well in JavaScript, even
 on outdated interpreters.
@@ -256,6 +267,20 @@ on outdated interpreters.
 Closure scoped variable performance?
 
 http://stackoverflow.com/questions/9248963/javascript-why-the-access-to-closure-variable-might-be-slow
+
+http://developer.nokia.com/community/wiki/JavaScript_Performance_Best_Practices
+
+http://updates.html5rocks.com/2012/08/When-milliseconds-are-not-enough-performance-now
+http://ejohn.org/blog/accuracy-of-javascript-time/
+http://www.sitepoint.com/javascript-fast-string-concatenation/
+
+https://developer.yahoo.com/performance/rules.html
+
+Minimize HTTP requests.  That means stream data to the client from the
+server in kd-tree order for the eddy tracks, and likewise stream the
+SSH background as video data.
+
+http://www.ibm.com/developerworks/library/wa-aj-jsajaxperf/index.html
 
 ----------------------------------------
 

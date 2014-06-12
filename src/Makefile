@@ -13,7 +13,7 @@ include $(cjs_dir)/cjs.mak
 # 	$(cjs_dir)/hjssmash.sh $< -o $@
 
 docs: docbundle.js
-	../../jsdoc-master/jsdoc $^ ../README.md -u docs_in
+	../libs/jsdoc-master/jsdoc $^ ../README.md -u docs_in
 	rm -rf ../docs/jsdocs
 	mv out jsdocs
 	mv jsdocs ../docs/

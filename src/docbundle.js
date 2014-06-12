@@ -792,7 +792,7 @@ RobinsonMapProjector.unproject = function(mapCoord) {
   else
     interpol = ((pdfe - table[tbIdx1][1]) /
   (table[tbIdx2][1] - table[tbIdx1][1]));
-  var plen = table[tbIdx1][0] * (1 - interpol) * table[tbIdx2][0] * interpol;
+  var plen = table[tbIdx1][0] * (1 - interpol) + table[tbIdx2][0] * interpol;
   var polCoord = {};
   polCoord.lat = 5 * (tbIdx1 + interpol);
   if (mapCoord.y < 0)
@@ -1355,6 +1355,34 @@ SSHLayer.render = (function() {
     this.destImg = destImg;
     this.destIdx = 0;
 
+    // Generate the color table.
+    var grad = [ [ 0x00, 0x00, 0x7f ],
+   [ 0x00, 0x00, 0xff ],
+   [ 0x00, 0x7f, 0xff ],
+   [ 0x00, 0xff, 0xff ],
+   [ 0x7f, 0xff, 0x7f ],
+   [ 0xff, 0xff, 0x00 ],
+   [ 0xff, 0x7f, 0x00 ],
+   [ 0xff, 0x00, 0x00 ],
+   [ 0x7f, 0x00, 0x00 ] ];
+
+    var colorTbl = [];
+    for (var i = 0; i < 256; i++) {
+ var value = i / 256 * 8;
+ var index = ~~value;
+ var ix2 = index + 1;
+ if (ix2 > 8) ix2 = 8;
+ var interpol = value % 1;
+ colorTbl.push((1 - interpol) * grad[index][0] +
+        interpol * grad[ix2][0]);
+ colorTbl.push((1 - interpol) * grad[index][1] +
+        interpol * grad[ix2][1]);
+ colorTbl.push((1 - interpol) * grad[index][2] +
+        interpol * grad[ix2][2]);
+ colorTbl.push(255);
+    }
+    this.colorTbl = colorTbl;
+
     ctx.clearRect(0, 0, frontBuf.width, frontBuf.height);
 
     this.x = 0;
@@ -1367,11 +1395,16 @@ SSHLayer.render = (function() {
     var destIdx = this.destIdx;
     var x = this.x;
     var y = this.y;
+    var oldY = y;
+    var colorTbl = this.colorTbl;
 
     var sshData = SSHLayer.sshData;
     var frontBuf_width = SSHLayer.frontBuf.width;
     var frontBuf_height = SSHLayer.frontBuf.height;
+    var src_width = sshData[0].length;
+    var src_height = sshData.length;
     var aspectXY = SSHLayer.aspectXY;
+    var inv_aspectXY = 1 / aspectXY;
     // var projector = SSHLayer.projector;
     var projector_unproject = SSHLayer.projector.unproject;
 
@@ -1380,58 +1413,46 @@ SSHLayer.render = (function() {
     var lastTime = lDate_now();
     var timeout = this.timeout;
 
-    for (; lDate_now() - lastTime < timeout && y < frontBuf_height; y++) {
-      for (; lDate_now() - lastTime < timeout && x < frontBuf_width; x++) {
- var mapCoord = { "x": (x / frontBuf_width) * 2 - 1,
-    "y": -((y / frontBuf_height) * 2 - 1) / aspectXY };
- mapCoord.x = (x / frontBuf_width) * 2 - 1;
- mapCoord.y = -((y / frontBuf_height) * 2 - 1) / aspectXY;
- var polCoord = projector_unproject(mapCoord);
- if (!isNaN(polCoord.lat) && !isNaN(polCoord.lon) &&
-     polCoord.lat > -90 && polCoord.lat < 90 &&
-     polCoord.lon > -180 && polCoord.lon < 180) {
-   var latIdx = ~~((polCoord.lat + 90) / 180 * sshData.length);
-   var lonIdx = ~~((polCoord.lon + 180) / 360 * sshData[latIdx].length);
+    while (this.y < frontBuf_height) {
+      while (this.x < frontBuf_width) {
+ var mapCoord = { x: (x / frontBuf_width) * 2 - 1,
+    y: -((y / frontBuf_height) * 2 - 1) * inv_aspectXY };
+ // var polCoord = projector_unproject(mapCoord);
+ var polCoord = { lat: mapCoord.y * 180, lon: mapCoord.x * 180 };
+ /* if (!isNaN(polCoord.lat) && !isNaN(polCoord.lon) &&
+	    polCoord.lat > -90 && polCoord.lat < 90 &&
+	    polCoord.lon > -180 && polCoord.lon < 180) */
+   /* SSH strangeness: The SSH data measures from the international
+	     date line, not the prime meridian?  */
+   var latIdx = ~~((((((-((y / frontBuf_height) * 2 - 1) * inv_aspectXY) * 180) + 90) / 180) % 1) * src_height);
+   var lonIdx = ~~(((((((x / frontBuf_width) * 2 - 1) * 180) + 180 + 180) / 360) % 1) * src_width);
    var value = sshData[latIdx][lonIdx] / 32;
+   // var value = sshData[~~((((((-((this.y / frontBuf_height) * 2 - 1) * inv_aspectXY) * 180) + 90) / 180) % 1) * src_height)][~~(((((((this.x / frontBuf_width) * 2 - 1) * 180) + 180 + 180) / 360) % 1) * src_width)] / 32;
+
    if (value > 1) value = 1;
    if (value < -1) value = -1;
-   value = (-value + 1) / 2;
+   value = (~~((value + 1) / 2 * 255)) /* << 2 */;
 
-   var grad = [ [ 0x00, 0x00, 0x7f ],
-         [ 0x00, 0x00, 0xff ],
-         [ 0x00, 0x7f, 0xff ],
-         [ 0x00, 0xff, 0xff ],
-         [ 0x7f, 0xff, 0x7f ],
-         [ 0xff, 0xff, 0x00 ],
-         [ 0xff, 0x7f, 0x00 ],
-         [ 0xff, 0x00, 0x00 ],
-         [ 0x7f, 0x00, 0x00 ] ];
-
-   var index = ~~(value * 8);
-   var ix2 = index + 1;
-   if (ix2 > 8) ix2 = 8;
-   var interpol = (value * 8) % 1;
-
-   destImg.data[destIdx++] = ((1 - interpol) * grad[index][0] +
-         interpol * grad[ix2][0]);
-   destImg.data[destIdx++] = ((1 - interpol) * grad[index][1] +
-         interpol * grad[ix2][1]);
-   destImg.data[destIdx++] = ((1 - interpol) * grad[index][2] +
-         interpol * grad[ix2][2]);
-   destImg.data[destIdx++] = 255;
- } else {
-   destImg.data[destIdx++] = ~~(Math.abs(polCoord.lon / 180) * 255);
-   destImg.data[destIdx++] = ~~(Math.abs(polCoord.lat / 180) * 255);
-   destImg.data[destIdx++] = 0;
-   destImg.data[destIdx++] = 255;
- }
+   destImg.data[destIdx++] = value;//colorTbl[value++];
+   destImg.data[destIdx++] = value;//colorTbl[value++];
+   destImg.data[destIdx++] = value;//colorTbl[value++];
+   destImg.data[destIdx++] = value;//colorTbl[value++];
+ this.x++;
+ /* if (lDate_now() - lastTime >= timeout)
+	  break; */
       }
-      if (x >= frontBuf_width)
- x = 0;
+      if (this.x >= frontBuf_width) {
+ this.x = 0;
+ this.y++;
+      }
+      if (this.y % 32 == 0 && lDate_now() - lastTime >= timeout)
+ break;
     }
 
+    y = this.y;
+    x = this.x;
     this.setExitStatus(y < frontBuf_height);
-    ctx.putImageData(destImg, 0, 0);
+    ctx.putImageData(destImg, 0, 0, 0, oldY, frontBuf_width, y - oldY);
     this.status.preemptCode = 0;
     this.status.percent = y * CothreadStatus.MAX_PERCENT / frontBuf_height;
 

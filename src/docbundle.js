@@ -1116,7 +1116,7 @@ TracksLayer.render = (function() {
 
     var lastTime = lDate_now();
     var timeout = this.timeout;
-    for (; lDate_now() - lastTime < timeout && i < numTracks; i++) {
+    for (; i < numTracks; ) {
       if (minTrackLen > 0 || maxTrackLen != -1) {
  // Determine the length of the eddy in weeks.
  var numEddies = tracksData[i].length;
@@ -1135,23 +1135,30 @@ TracksLayer.render = (function() {
       // var lon = tracksData[i][0][1];
       // var mapX = (lon + 180) * inv_360 * frontBuf_width;
       // var mapY = (90 - lat) * inv_180 * frontBuf_heightY;
-      var polCoord = { lat: tracksData[i][0][0], lon: tracksData[i][0][1] };
-      var mapCoord = projector_project(polCoord);
-      edc.moveTo((mapCoord.x + 1) * 0.5 * frontBuf_width,
-   (-mapCoord.y * aspectXY + 1) * 0.5 * frontBuf_height);
+      // var polCoord = { lat: tracksData[i][0][0], lon: tracksData[i][0][1] };
+      // var mapCoord = projector_project(polCoord);
+      var mapCoord_x = tracksData[i][0][1] / 180;
+      var mapCoord_y = tracksData[i][0][0] / 180;
+      edc.moveTo((mapCoord_x + 1) * 0.5 * frontBuf_width,
+   (-mapCoord_y * aspectXY + 1) * 0.5 * frontBuf_height);
       for (var j = 1; j < tracksData[i].length; j++) {
  // lat = tracksData[i][j][0];
  // lon = tracksData[i][j][1];
  // mapX = (lon + 180) * inv_360 * frontBuf_width;
  // mapY = (90 - lat) * inv_180 * frontBuf_height;
- polCoord = { lat: tracksData[i][j][0], lon: tracksData[i][j][1] };
- mapCoord = projector_project(polCoord);
- edc.lineTo((mapCoord.x + 1) * 0.5 * frontBuf_width,
-     (-mapCoord.y * aspectXY + 1) * 0.5 * frontBuf_height);
+ // polCoord = { lat: tracksData[i][j][0], lon: tracksData[i][j][1] };
+ // mapCoord = projector_project(polCoord);
+ mapCoord_x = tracksData[i][j][1] / 180;
+ mapCoord_y = tracksData[i][j][0] / 180;
+ edc.lineTo((mapCoord_x + 1) * 0.5 * frontBuf_width,
+     (-mapCoord_y * aspectXY + 1) * 0.5 * frontBuf_height);
  if (tracksData[i][j][2] == dateIndex)
-   edc.arc(mapX, mapY, 2 * backbufScale, 0, 2 * Math.PI, false);
+   edc.arc(mapCoord_x, mapCoord_y, 2 * backbufScale, 0, 2 * Math.PI, false);
       }
       edc.stroke();
+      i++;
+      if (i % 1024 == 0 && lDate_now() - lastTime >= timeout)
+ break;
     }
 
     this.setExitStatus(i < numTracks);
@@ -1246,21 +1253,27 @@ SSHLayer.loadData = (function() {
     }
   }
 
+  function imgLoaded() {
+    // Call the main loop to continue cothread execution.
+    SSHLayer.loadData.imgReady = true;
+    return execTime();
+  }
+
   function startExec() {
     var url = "../data/SSH/ssh_19930303.dat";
-    var httpRequest;
+    /* var httpRequest;
 
     if (window.XMLHttpRequest)
       httpRequest = new XMLHttpRequest();
     else if (window.ActiveXObject) {
       try {
- httpRequest = new ActiveXObject("Msxml2.XMLHTTP");
+	httpRequest = new ActiveXObject("Msxml2.XMLHTTP");
       }
       catch (e) {
- try {
-   httpRequest = new ActiveXObject("Microsoft.XMLHTTP");
- }
- catch (e) {}
+	try {
+	  httpRequest = new ActiveXObject("Microsoft.XMLHTTP");
+	}
+	catch (e) {}
       }
     }
 
@@ -1269,13 +1282,18 @@ SSHLayer.loadData = (function() {
     }
 
     httpRequest.onreadystatechange = alertContents;
-    httpRequest.open("GET", url, true);
+    httpRequest.open("GET", url, true); */
     // httpRequest.setRequestHeader("Range", "bytes=0-500");
-    httpRequest.send();
+    // httpRequest.send();
     this.reqLen = 0;
     this.readyDataProcess = false;
 
-    this.httpRequest = httpRequest;
+    this.tmpImg = new Image();
+    this.tmpImg.onload = imgLoaded;
+    this.tmpImg.src = "../pngssh/ssh_19921014.png";
+    this.imgReady = false;
+
+    // this.httpRequest = httpRequest;
   }
 
   /** This function primarily retrieves the current loading status of
@@ -1284,7 +1302,7 @@ SSHLayer.loadData = (function() {
     var httpRequest = this.httpRequest;
     var reqLen = this.reqLen;
 
-    if (!httpRequest) {
+    /* if (!httpRequest) {
       this.status.returnType = CothreadStatus.FINISHED;
       this.status.preemptCode = 0;
       return this.status;
@@ -1292,13 +1310,19 @@ SSHLayer.loadData = (function() {
       this.status.returnType = CothreadStatus.PREEMPTED;
       this.status.preemptCode = SSHLayer.IOWAIT;
       if (reqLen) {
- this.status.percent = httpRequest.responseText.length *
-   CothreadStatus.MAX_PERCENT / reqLen;
+	this.status.percent = httpRequest.responseText.length * 
+	  CothreadStatus.MAX_PERCENT / reqLen;
       } else
- this.status.percent = 0;
+	this.status.percent = 0;
+      return this.status;
+    } */
+    // (httpRequest.readyState == 4)
+
+    if (!this.imgReady) {
+      this.status.returnType = CothreadStatus.PREEMPTED;
+      this.status.preemptCode = SSHLayer.IOWAIT;
       return this.status;
     }
-    // (httpRequest.readyState == 4)
 
     // JSON parsing is slow: Return here and come back later.
     if (!this.readyDataProcess) {
@@ -1312,9 +1336,32 @@ SSHLayer.loadData = (function() {
 
     // Process the data here.
 
-    SSHLayer.sshData = csvParse(httpRequest.responseText);
-    httpRequest.onreadystatechange = null;
-    this.httpRequest = null;
+    /* Pull the pixels off of the image and fill them into the sshData
+       array as floating point numbers.  */
+    var tmpCanvas = document.createElement("canvas");
+    tmpCanvas.width = 1440 * 4;
+    tmpCanvas.height = 721;
+    var ctx = tmpCanvas.getContext("2d");
+    ctx.drawImage(this.tmpImg, 0, 0);
+    this.tmpImg = null;
+    var tmpImgData = ctx.getImageData(0, 0, tmpCanvas.width, tmpCanvas.height);
+    tmpCanvas = null; ctx = null;
+
+    // SSHLayer.sshData = new Float32Array(tmpImgData.data.buffer);
+
+    SSHLayer.sshData = new Float32Array(1440 * 721 * 4);
+    var bytePacker = new Uint8Array(SSHLayer.sshData);
+    var badCSize = 1440 * 4 * 721 * 4;
+    for (var i = 0, j = 0; i < badCSize; i += 16) {
+      bytePacker[j++] = tmpImgData.data[i+0];
+      bytePacker[j++] = tmpImgData.data[i+4];
+      bytePacker[j++] = tmpImgData.data[i+8];
+      bytePacker[j++] = tmpImgData.data[i+12];
+    }
+
+    // SSHLayer.sshData = csvParse(httpRequest.responseText);
+    // httpRequest.onreadystatechange = null;
+    // this.httpRequest = null;
 
     this.status.returnType = CothreadStatus.FINISHED;
     this.status.preemptCode = 0;
@@ -1401,8 +1448,8 @@ SSHLayer.render = (function() {
     var sshData = SSHLayer.sshData;
     var frontBuf_width = SSHLayer.frontBuf.width;
     var frontBuf_height = SSHLayer.frontBuf.height;
-    var src_width = sshData[0].length;
-    var src_height = sshData.length;
+    var src_width = 1440;//sshData[0].length;
+    var src_height = 721;//sshData.length;
     var aspectXY = SSHLayer.aspectXY;
     var inv_aspectXY = 1 / aspectXY;
     // var projector = SSHLayer.projector;
@@ -1413,44 +1460,55 @@ SSHLayer.render = (function() {
     var lastTime = lDate_now();
     var timeout = this.timeout;
 
-    while (this.y < frontBuf_height) {
-      while (this.x < frontBuf_width) {
- var mapCoord = { x: (x / frontBuf_width) * 2 - 1,
-    y: -((y / frontBuf_height) * 2 - 1) * inv_aspectXY };
+    while (y < frontBuf_height) {
+      while (x < frontBuf_width) {
+ // var mapCoord = { x: (x / frontBuf_width) * 2 - 1,
+ // y: -((y / frontBuf_height) * 2 - 1) * inv_aspectXY };
  // var polCoord = projector_unproject(mapCoord);
- var polCoord = { lat: mapCoord.y * 180, lon: mapCoord.x * 180 };
+ // var polCoord = { lat: mapCoord.y * 180, lon: mapCoord.x * 180  };
  /* if (!isNaN(polCoord.lat) && !isNaN(polCoord.lon) &&
 	    polCoord.lat > -90 && polCoord.lat < 90 &&
 	    polCoord.lon > -180 && polCoord.lon < 180) */
    /* SSH strangeness: The SSH data measures from the international
 	     date line, not the prime meridian?  */
-   var latIdx = ~~((((((-((y / frontBuf_height) * 2 - 1) * inv_aspectXY) * 180) + 90) / 180) % 1) * src_height);
-   var lonIdx = ~~(((((((x / frontBuf_width) * 2 - 1) * 180) + 180 + 180) / 360) % 1) * src_width);
-   var value = sshData[latIdx][lonIdx] / 32;
-   // var value = sshData[~~((((((-((this.y / frontBuf_height) * 2 - 1) * inv_aspectXY) * 180) + 90) / 180) % 1) * src_height)][~~(((((((this.x / frontBuf_width) * 2 - 1) * 180) + 180 + 180) / 360) % 1) * src_width)] / 32;
+   // var latIdx = ~~((((((-((y / frontBuf_height) * 2 - 1) * inv_aspectXY) * 180) + 90) / 180) % 1) * src_height);
+   // var lonIdx = ~~(((((((x / frontBuf_width) * 2 - 1) * 180) + 180 + 180) / 360) % 1) * src_width);
+   // var value = sshData[latIdx][lonIdx] / 32;
+   // var value = sshData[~~((((((-((y / frontBuf_height) * 2 - 1) * inv_aspectXY) * 180) + 90) / 180) % 1) * src_height)][~~(((((((x / frontBuf_width) * 2 - 1) * 180) + 180 + 180) / 360) % 1) * src_width)] / 32;
+ // var value = sshData[src_height-1-y][x] / 32;
+ var value = sshData[y*src_width+x] / 32;
+
+   if (isNaN(value)) {
+       destIdx += 4;
+       x++;
+       continue;
+   }
 
    if (value > 1) value = 1;
    if (value < -1) value = -1;
-   value = (~~((value + 1) / 2 * 255)) /* << 2 */;
+   value = (~~((value + 1) / 2 * 255)) << 2;
 
-   destImg.data[destIdx++] = value;//colorTbl[value++];
-   destImg.data[destIdx++] = value;//colorTbl[value++];
-   destImg.data[destIdx++] = value;//colorTbl[value++];
-   destImg.data[destIdx++] = value;//colorTbl[value++];
- this.x++;
+   destImg.data[destIdx++] = colorTbl[value++];
+   destImg.data[destIdx++] = colorTbl[value++];
+   destImg.data[destIdx++] = colorTbl[value++];
+   destImg.data[destIdx++] = colorTbl[value++];
+
+   /* destImg.data[destIdx++] = value;
+	  destImg.data[destIdx++] = value;
+	  destImg.data[destIdx++] = value;
+	  destImg.data[destIdx++] = value; */
+ x++;
  /* if (lDate_now() - lastTime >= timeout)
 	  break; */
       }
-      if (this.x >= frontBuf_width) {
- this.x = 0;
- this.y++;
+      if (x >= frontBuf_width) {
+ x = 0;
+ y++;
       }
-      if (this.y % 32 == 0 && lDate_now() - lastTime >= timeout)
+      if (y % 32 == 0 && lDate_now() - lastTime >= timeout)
  break;
     }
 
-    y = this.y;
-    x = this.x;
     this.setExitStatus(y < frontBuf_height);
     ctx.putImageData(destImg, 0, 0, 0, oldY, frontBuf_width, y - oldY);
     this.status.preemptCode = 0;

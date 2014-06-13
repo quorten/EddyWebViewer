@@ -78,10 +78,10 @@ finish top 1/4.
 
 Unit testing: JsUnit, QUnit
 
-Discovery, design, component implementation/testing, composition.
+(Avoid the above frameworks, they do not maintain faithful
+cross-browser compatibility.)
 
-Delete this when the code has been written and documented via
-jsdoc.
+Discovery, design, component implementation/testing, composition.
 
 Need to have table of acronyms and abbreviations
 
@@ -180,6 +180,10 @@ programming in this project: fast trigonometry:
 http://jacksondunstan.com/articles/1190
 http://en.wikipedia.org/wiki/Haxe
 
+Turns out that lookup table trigonometry was not as fast as I thought
+it would be.  It stabilizes performance when the browser's
+trigonometry does not provide conistent performance, though.
+
 Static variables incur significant overhead over local variables.
 
 Copying variables is cheap in JavaScript.
@@ -257,6 +261,8 @@ practical purposes, creation of array objects is equally as expensive
 as creating a dictionary object.  In other words, don't create
 objects!  So this is why assigning values to an array is so slow!
 
+Thus, avoid creating new objects via the new operator.
+
 Moving variable declarations outside of a loop seems to have no effect
 on performance.
 
@@ -278,7 +284,8 @@ https://developer.yahoo.com/performance/rules.html
 
 Minimize HTTP requests.  That means stream data to the client from the
 server in kd-tree order for the eddy tracks, and likewise stream the
-SSH background as video data.
+SSH background as video data.  Use one large tracks file that is
+random accessed like a memory mapped file.
 
 http://www.ibm.com/developerworks/library/wa-aj-jsajaxperf/index.html
 

@@ -1,4 +1,5 @@
-/* Convert a CSV file to a TGA file with the right data format.
+/* Convert a CSV file to a TGA file with the SSH values manipulated in
+   a certian way.
 
    Usage: PROGNAME <INPUT.dat >OUTPUT.tga
 
@@ -35,22 +36,40 @@ int main(int argc, char *argv[]) {
 	 point.  Two's complement negation is dropped in favor of a
 	 unsigned linear scale with the median value corresponding to
 	 zero.  */
-      int bad = 6; /* Bits After Decimal */
-      uint32_t out_val = ((uint32_t)(in_val * (1 << bad)) & 0x00ffffff);
+      int bad = 5; /* Bits After Decimal */
+      uint32_t out_val = (uint32_t)(in_val * (1 << bad));
+
+      /* I have to try out all the tricks: Simple grayscale encoding,
+	 multi-color channel encoding, unsigned integer adjustment,
+	 bit threshold display, smooth wrap on range exceed.
+	 Mirroring for bounceback boundary at zero level.  MATLAB jet
+	 color palette.  */
+
+      /* If the value of the least significant byte exceeds 255 and
+	 goes negative, make it wrap from 255 downward to zero rather
+	 than wrap directly to zero for visual smoothness.  */
+      if (out_val & 0x0100)
+	out_val = ~out_val;
 
       /* Convert to Gray code for better threshold visualization.  */
-      out_val = (out_val >> 1) ^ out_val;
+      /* out_val = (out_val >> 1) ^ out_val;
 
       if (out_val & 0x80)
 	out_val = 0xff;
       else
-	out_val = 0;
+	out_val = 0; */
+
+      /* Prepare out_val for grayscale display.  */
+
+      /* Shift value zero to be at the middle of the unsigned value
+	 range.  */
+      /* out_val = (out_val + 0x80) & 0xff; */
 
       /* Write out the three least significant bytes in network byte
 	 order.  */
       putchar(out_val); /* Blue */
       putchar(out_val); /* Green */
-      putchar(0); /* Red */
+      putchar(out_val); /* Red */
       getchar(); /* Ignore the delimeter that follows.  */
     }
   }

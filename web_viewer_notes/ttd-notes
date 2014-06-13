@@ -740,3 +740,7 @@ NOTE: You cannot store arbitrary data in a PNG 32-bit image since it
 will not be preserved due to premultiplied alpha.
 
 Provide control over manual/automatic sea surface height scaling.
+
+First thing to ask James next time:
+
+So how many other eddy viewers are there?

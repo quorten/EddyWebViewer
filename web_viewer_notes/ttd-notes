@@ -909,3 +909,129 @@ downloaded image?  Not so much.
 
 I should improve the library so that it includes fast single pass
 stream encoding.  Multiple loops incur extra overhead.
+
+----------------------------------------
+
+Can you check the loading progress of an image created via new
+Image()?  Not quite... sort of, but only with modern browsers.
+
+http://stackoverflow.com/questions/14218607/javascript-loading-progress-of-an-image
+
+----------------------------------------
+
+Need a coding scratch space?  Got one right here.
+
+Iterations to timeout algorithm:
+
+/* Dynamically determine a goal number of iterations to run in order to
+   reach the target timeout, based off of the number of iterations that
+   could be performed in the previous cothread duration.  */
+
+/* The main benefit of this cothreading mechanism is that it avoids
+   expensive calls to Date.now() during the inner loop.  */
+
+var timeout = this.timeout;
+var lastElapTime = this.lastElapTime;
+var lastNumIters = this.lastNumIters
+var numIters = lastNumIters * timeout / lastElapTime;
+var timeoutIter = this.i + numIters;
+
+lastTime = Date.now();
+
+for (; i < timeoutIter && condition; i++) {
+}
+
+lastElapTime = Date.now() - lastTime;
+lastNumIters = numIters;
+
+/* The above algorithm can also be nested within a loop that calls
+   Date.now() on every iteration.  */
+
+Buffering data:
+loadData() handles this.
+
+Cothread dispatcher:
+
+Note that it is possible to use an array of cothreads that still have
+work to do and only call those cothreads.  For simplicity, however,
+cothreads are a always called to continueCT() until there is no work
+left to do.  Only event handlers call start().
+
+cumStatus = CothreadStatus.FINISHED;
+renderReady = setViewport();
+addStatus = loadData.continueCT(maybeAddToBuffer);
+if (addStatus) cumStatus = addStatus;
+if (renderReady)
+  render.continueCT();
+
+if (cumStatus != CothreadStatus.FINISHED)
+  return setTimeout(browserTime);
+
+kd-tree or heap?  That is the question.
+
+Let's try looking at what can be done with a heap.
+
+I.  Time comes first.  You have to search the timeframe range before
+searching the spatial range.
+
+Advantage: Can download eddies at nearest timeframe first.  Then
+eddies are spatially downloaded across the globe within one time
+frame.
+
+Since the data is sorted, it can still be binary searched.  Thus, it
+can be approached similar to a kd-tree traversal.  Good, this will be
+interesting.  So this is a hybrid between a kd-tree and a sorted
+array.
+
+Not really too nice.  Then again, each eddy from a different timefrane
+needs to be shaded differently.
+
+Try this one out!  Can you use a global kd tree partition but locally
+sort points to appear in chronological order?  If so, then efficient
+time slicing should be possible without having to load all of the
+data.  So this is where chunking is needed, but I still don't quite
+get how to optimize this case.
+
+Yes, it is possible, but it is very non-trivial.  Start with an
+assumption.  A sorted array is a binary search tree.  Unfortunately,
+it does not have a regular heap structure.
+
+The idea is to just do a kd-tree traversal once for the 2d range and
+then reuse the kd-tree across multiple dates in iterated order.
+
+How about this way: build the big kd-tree dynamically, but load the
+data in chronological order.  Yes, that's what I was getting at.  If
+you know the number of data points, you know what the tree structure
+must be.
+
+The only way to do it your way would be to use "bogus points", or a
+selection of top-level kd-tree notes that absolutely must be
+downloaded.  That way, there is a high-level partition that is always
+consistent.  Going further down from here, disjoint trees can be
+searched individually, with significantly less points to search.
+Low-level trees can be merged for faster range searcing.
+
+Chrono download is still an issue.  Okay, here we go.  The data will
+be broken up into fixed size chunks of an octree.  Further 2D
+subdivision is handled via a kd-tree.  This means that multiple kd
+trees will be downloaded at runtime, and consolidation must happen at
+runtime.  What about removing decached data?  That requires kd-tree
+deconstruction.  In other words, if kd-tree construction and
+deconstruction becomes a bottleneck, then it should be skipped
+altogether.
+
+Okay, the decision is made.  No kd tree deconstruction.  Use a
+recursive quad-tree structure and time framing.  I've looked at the
+data myself and it only looks sparse over the land.  This can be
+handled easily though by marking entire high level boxes as empty.
+Points will be sorted in on a case-by-case basis.
+
+Yes, this means multiple tree traversals will have to be made.  Or, by
+only using a single quadtree structure, only one tree traversal needs
+to be made.
+
+Yet another great way to put together this web app.  I can use web
+workers to help with the threaded rendering process.  The catch: this
+web app won't benefit from web workers unless the browser also
+supports data transfers.  Otherwise, passing objects and data will be
+way too inefficient to be practical.

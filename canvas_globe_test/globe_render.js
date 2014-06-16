@@ -122,7 +122,7 @@ function processDates() {
       var dateSel = document.getElementById("gui.dateSel");
       if (dateSel) {
 	for (i = 0; i < dateList.length; i++) {
-	  dateSel.options[dateSel.options.length] = new Option(dateList[i]);
+	  dateSel.add(new Option(dateList[i]), null);
 	}
       }
     } else {

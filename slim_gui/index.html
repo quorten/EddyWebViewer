@@ -52,7 +52,17 @@
                  /* padding-left: 10px; padding-right: 10px; */ }
     .iconBtns { display: inline-block; height: 34px; vertical-align: bottom;
                 margin: 0px; margin-top: 1px; margin-bottom: 1px;
-                padding: 0px; }
+                padding: 0px;
+
+                /* Warning: The following styles used for CSS buttons
+                   may have browser compatibility issues.  */
+                -webkit-touch-callout: none;
+                -webkit-user-select: none;
+                -khtml-user-select: none;
+                -moz-user-select: none;
+                -ms-user-select: none;
+                /* user-select: none; */ /* Doesn't validate */
+                cursor: default; }
     .iconBtns img, .iconBtns .imgbtn { border-style: solid; border-width: 1px;
                      border-color: white; margin: 0px; padding: 0px;
                      vertical-align: bottom; }

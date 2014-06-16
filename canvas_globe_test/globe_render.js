@@ -132,7 +132,7 @@ function processDates() {
 }
 
 function finishStartup() {
-  if (httpRequest.readyState === 4) {
+  /* if (httpRequest.readyState === 4) {
     if (httpRequest.status === 200) {
 
       var ajaxDebug = document.getElementById("ajaxDebug");
@@ -140,14 +140,18 @@ function finishStartup() {
         ajaxDebug.innerHTML = httpRequest.responseText;
 
       eddyTracks = JSON.parse(httpRequest.responseText);
+      httpRequest = null;
+      while (eddyTracks.length > 2000)
+	eddyTracks.pop(); */
+  eddyTracks = [];
 
       renderEddyTracks();
       refreshOverlay();
       pointerTestInit();
-    } else {
+    /* } else {
       alert("There was a problem with the request.");
     }
-  }
+  } */
 }
 
 // NOTE: Verify if HTML 5 style image loading works with IE6.
@@ -193,9 +197,11 @@ function initOverlay() {
           // return;
         }
         httpRequest.onreadystatechange = finishStartup;
+	httpRequest = null;
+	return finishStartup();
         // httpRequest.open("GET", "../web_eddy_viewer_test/eddy_tracks.json", true);
-	httpRequest.open("GET", "../data/tracks/acyc_bu_tracks.json", true);
-        httpRequest.send();
+	// httpRequest.open("GET", "../data/tracks/acyc_bu_tracks.json", true);
+        // httpRequest.send();
       }
     }
     ssh_tex.src = "../web_eddy_viewer_test/test_grs2rgb.png";
@@ -311,16 +317,51 @@ function refreshOverlay() {
 
   ec.drawImage(eddy_imgbuf, 0, 0, earth_buffer.width, earth_buffer.height);
 
-  /* Draw a V that looks like a heart when projected onto a globe
-     to finish off.  */
-  /* ec.lineWidth = 20;
+  /* Draw a zig zag that will look similar to a circle crossing the
+     globe.  */
+  ec.lineWidth = 20;
   ec.strokeStyle = "#800000";
   ec.beginPath();
-  ec.moveTo(0, 0);
-  ec.lineTo(earth_buffer.width / 2, earth_buffer.height / 2);
-  ec.lineTo(earth_buffer.width, 0);
+  for (var i = 0; i <= 128; i++) {
+    /* var stepper = (i / 36 - 0.5) * 2;
+    var angle = 45 * DEG2RAD;
+    var y = Math.asin(stepper * Math.sin(angle));
+    var x = Math.asin(stepper * Math.cos(angle) / Math.cos(y)) *
+      RAD2DEG / 180;
+    y *= RAD2DEG / 90;
+    x = earth_buffer.width / 2 + x * earth_buffer.width / 2;
+    y = earth_buffer.height / 2 + y * earth_buffer.height / 2; */
+
+    /* var angle = 70 * DEG2RAD;
+    var y = (i / 36 - 0.5) * Math.PI / 2;
+    var x = Math.asin(Math.tan(y) / Math.tan(angle));
+    y = y * RAD2DEG / 180 * earth_buffer.height + earth_buffer.height / 2;
+    x = x * RAD2DEG / 360 * earth_buffer.width + earth_buffer.width / 2; */
+
+    var angle = 20 * DEG2RAD;
+    // 190 * DEG2RAD: Add a overdraw margin for good wraparound.
+    var x = (i / 128 - 0.5) * 370 * DEG2RAD;
+    var y = Math.atan2(Math.sin(x) * Math.sin(angle), Math.cos(angle));
+    x = x * RAD2DEG / 360 * earth_buffer.width + earth_buffer.width / 2;
+    y = y * RAD2DEG / 180 * earth_buffer.height + earth_buffer.height / 2;
+
+    if (isNaN(x) || !isFinite(x))
+      continue;
+
+    if (i == 0)
+      ec.moveTo(x, y);
+    else
+      ec.lineTo(x, y);
+  }
   ec.stroke();
-  ec.strokeStyle = "#00ff00"; */
+  /* ec.moveTo(earth_buffer.width * 0.25, earth_buffer.height / 4);
+  for (var i = 0; i <= 36; i++) {
+    ec.lineTo(earth_buffer.width * 0.25 + i / 36 * earth_buffer.width * 0.5,
+	      earth_buffer.height / 2 - Math.cos(i / 36 * Math.PI) *
+	      earth_buffer.height / 4);
+  }
+  ec.stroke(); */
+  ec.strokeStyle = "#00ff00";
 
   try {
     src_data = ec.getImageData(0, 0, earth_buffer.width,

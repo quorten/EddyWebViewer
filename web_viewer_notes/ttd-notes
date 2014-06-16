@@ -345,6 +345,130 @@ The next challenge is to draw only the "front" lines of the graticule.
 Again, this starts with simple observations.  Looking at a globe
 equator-on, there is.
 
+One challenge: How do you parameterize the sheared ellipses?  First
+for shearing a circle, it turns out that sheared circles are indeed
+ellipses, and the major axis of the sheared ellipse always runs
+through the diagonals of the corresponding bounding rectangle.  I
+don't know how to mathematically prove this.  I've only visually
+verified it in a drawing program, so you're going to have to just
+trust me on this one.
+
+But for sheared ellipses, this fact does not hold.  However, if we
+look at the problem in a different way, instead of squashing the
+longitude lines horizontally first and then shearing vertically, we
+could perform the transformations in the opposite order and still get
+the same result, provided that we calculate the shearing correctly
+with just a normal circle.  If so, we end up knowing the major axis of
+the sheared circle.  Then when we horizontally squash the ellipse,
+what we are essentially doing is changing the angle of any
+non-vertical axis through the ellipse by a factor that we know how to
+compute.  Thus, we can now successfully figure out what the angle of
+squashed major axis must be.  The lengths of the axes can be figured
+out trivially from knowledge at this problem solving step.
+
+How do you determine which parts of latitude lines are on the front
+and back of the sphere?  First determine if the entire latitude is on
+the front or back side of the sphere.  If it is on the back, don't
+render it.  This step is fairly easy.  The next step is to .
+
+Longitude lines?  You need to determine the intersection of the
+longitude line with the outline of the sphere.  The outline of the
+sphere is a great circle line.  How do you parameterize this at
+non-trivial rotations?
+
+Think about the trivial case of the raytracing algorithms for
+orthographic projection.  First you start with a screen coordinate.
+asin() on the Y coordinate determines the latitude.  The longitude
+depends on both the latitude and the X coordinate, since points on a
+longitude at higher and lower latitudes are pulled tigher into the
+north and south poles of the globe.  asin(x / cos(lat)) gives you the
+longitude.  A great circle line is essentially a form of a straight
+line on the globe.  When you view a great circle straight on in
+orthographic projection, the projected line is also straight.
+
+Thus, for starters, generate a great circle line by unprojecting a
+straight line drawn on top of an orthographic projection of a sphere.
+You will get an equation parametric to the projected line.  Remove the
+parameter to get an implicit equation.
+
+In the following equations, y = latitude, x = longitude.
+
+    // Used to sample a point on the line.
+    var stepper = (i / 36 - 0.5) * 2;
+    var angle = 45 * DEG2RAD; // Angle of the great circle line
+    var y = Math.asin(stepper * Math.sin(angle));
+    var x = Math.asin(stepper * Math.cos(angle) / Math.cos(y)) *
+      RAD2DEG / 180;
+
+sin(y) = stepper * sin(angle)
+stepper = sin(y) / sin(angle)
+define y to be a known latitude
+x = asin(sin(y) / sin(angle) * cos(angle) / cos(y))
+x = asin(sin(y) / tan(angle) / cos(y))
+x = asin(tan(y) / tan(angle))
+
+y = known latitude
+x = asin(tan(y) / tan(angle))
+sin(x) = tan(y) / tan(angle)
+
+More useful.  Most great circles cover all longitudes, but many great
+circles do not cover all latitudes.
+x = known longitude
+y = atan(sin(x) * tan(angle))
+tan(y) = sin(x) * tan(angle)
+
+It becomes numerically unstable near the poles, but you also don't
+need as much numeric stability near the poles, so it works out well.
+
+tan(y) = sin(x) * sin(angle) / cos(angle)
+y = atan2(sin(x) * sin(angle), cos(angle))
+
+Perfect!  When a line is steep longitude-wise, that means its almost a
+meridian, which means that it doesn't need as many samples on an
+equirectangular map since it it almost just a vertical line.  In
+between shallow and steep, a line gets a good number of samples.  The
+atan2() function allows absolute extreme vertical to also be handled
+gracefully, even with the same algorithm.  However, care will still
+have to be taken for correct wraparound drawing.  To shift the great
+circle pole away from the prime meridian, just add or subtract the
+desired longitude.
+
+Wait, not quite perfect.  How about use a parameterization along the
+distance of the great circle line instead?
+
+sin(y) / cos(y) = sin(x) * sin(angle) / cos(angle)
+sin(y) / sin(x) = cos(y) * sin(angle) / cos(angle)
+sin(y) / sin(x) = cos(y) / cos(angle) * sin(angle)
+sin(y) * sin(x) = cos(y) / cos(angle) * sin(angle)
+
+Those equations are elegant, but numerically instable.  Let's see if
+we can do better.
+
+x = asin(sin(y) / cos(y) * cos(angle) / sin(angle))
+x = asin(sin(y) / sin(angle) * cos(angle) / cos(y))
+x = asin(cos(angle) * sin(y) / (sin(angle) * cos(y)))
+
+sin(y) * cos(angle) = 1/2 * sin(y + angle) + sin(y - angle)
+sin(angle) * cos(y) = 1/2 * sin(y + angle) - sin(y - angle)
+
+cos(angle) * sin(y) / (sin(angle) * cos(y)) =
+  (sin(y + angle) + sin(y - angle)) / (sin(y + angle) - sin(y - angle))
+
+sin(x) = o / h
+
+o = sin(y + angle) + sin(y - angle)
+h = sin(y + angle) - sin(y - angle)
+a = sqrt(h^2 - o^2)
+
+Numerically stable?  Check which of o or a are greater than each
+other.  If steep, then invert and fix afterward.
+
+x = asin(cos(angle) * sin(y) / (sin(angle) * cos(y)))
+sin(x) = cos(angle) * sin(y) / (sin(angle) * cos(y))
+sin(angle) * sin(x) * cos(y) = cos(angle) * sin(y)
+
+----------------------------------------
+
 Great advice on getting ellipses to render with constant line width:
 
 http://stackoverflow.com/questions/2172798/how-to-draw-an-oval-in-html5-canvas
@@ -750,3 +874,38 @@ Want a nice, translucent background on a CSS element?
 http://robertnyman.com/2010/01/11/css-background-transparency-without-affecting-child-elements-through-rgba-and-filters/
 
 When finished, change all CSS measurements to metric, please!
+
+Wow!  Here's another way to include images inline:
+
+http://css-tricks.com/data-uris/
+http://css-tricks.com/32766/
+http://css-tricks.com/snippets/htaccess/active-gzip-compression/
+
+Unfortunately, IE 5-7 does not support this.
+
+If the user's browser doesn't support this, the data will have to be
+routed back to the user via the server.  Luckily, most people do not
+use browsers that are too old to have support, so this will not impose
+undue burden on the server.
+
+Great!  This is even better to finish things off:
+
+http://www.xarg.org/2010/03/generate-client-side-png-files-using-javascript/
+http://www.xarg.org/download/pnglib.js
+
+Plus, it's even reported to have faster per-pixel manipulation than
+HTML Canvas!  Execpt at large sizes...
+
+Take note: For better speed, use brower's base64encode:
+
+this.getBase64 = function() {
+return window.btoa(this.getDump());
+}
+
+Plus, this also has the added advantage of an efficient 8-bit image
+copying mechanism.  So you could generate an image 8-bit inline and
+work with that with this library.  But... read from an 8-bit
+downloaded image?  Not so much.
+
+I should improve the library so that it includes fast single pass
+stream encoding.  Multiple loops incur extra overhead.

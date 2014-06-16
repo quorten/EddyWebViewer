@@ -46,7 +46,7 @@ TracksLayer.loadData = (function() {
 	 download speed, so we avoid it.  In the future, we should
 	 only do it after a timeout of two seconds.  */
       // Call the main loop to update the download status.
-      // return execTime();
+      // return setTimeout(execTime, 0);
       break;
     case 2: // HEADERS_RECEIVED
       TracksLayer.loadData.reqLen = httpRequest.getResponseHeader("Content-Length");

@@ -1049,3 +1049,50 @@ http://www.sitepoint.com/forums/showthread.php?249148-IE-puts-extra-space-at-bot
 
 That will do it.  But wow, that sure is a strange way to do it, very
 non-CSS like in order to get the IE-style box model to work.
+
+NOTE: Object oriented code has a tendency to be slower.
+
+----------------------------------------
+
+Useful cross-browser links:
+
+http://www.cinsoft.net/mylib.html
+https://github.com/rassie/jessie
+http://michaux.ca/articles/feature-detection-state-of-the-art-browser-scripting
+http://www.fortybelow.ca/Projects/JavaScript/Utils/
+
+And for simulating colorblind vision:
+
+http://vischeck.com/
+
+----------------------------------------
+
+So how will I know "when I'm done"?  These are the few remaining
+criteria:
+
+* Implement the main loop.
+
+* Load the SSH data as encoded images or as a video element.
+
+* Progressively load the tracks data and tree traversal for potential
+  visibility rendering.
+
+* Full compatibility analysis.
+
+* Fully documented code.
+
+* Full developer documentation.
+
+* Complete user documentation.
+
+* Full and streamlined GUI.
+
+* Full site design.
+
+* 3D acceleration.
+
+* Clean codebase.
+
+* Smooth view transitions between multiple projections.
+
+* Test cases.

@@ -1005,13 +1005,38 @@ reasons.</p>
 <p>When a page has a vertical scrollbar, it can be impossible on some
 older browsers to determine where the mouse pointer is located.
 Without a vertical scrollbar, it is possible to determine the mouse
-pointer's location with a few capability checks.  See the following
-link for more information:</p>
+pointer's location with a few capability checks.</p>
 
-<p>Mission Impossible Mouse Coordinates:
-  <a href="http://evolt.org/node/23335/">
-    http://evolt.org/node/23335/</a>
-</p>
+<p>If there is <code>event.pageX</code> and <code>event.pageY</code>
+available, use them.  They will always refer to the same position on
+the HTML page independent of what the scroll bars are set to.</p>
+
+<p>The bare minimum that all but the oldest browsers supports
+is <code>event.clientX</code> and <code>event.clientY</code>.
+Sometimes this refers to the browser's "client area", the screen
+offset from the top-left of the area where the HTML page is rendered
+in, other times it refers to the offset from the top-left of the HTML
+document.  If there
+is <code>document.documentElement.scrollLeft</code>
+and <code>document.documentElement.scrollTop</code>
+(or <code>document.body.scrollLeft</code>
+and <code>document.body.scrollTop</code>) available, add those to the
+client position to get the page offset.  Otherwise, if the scrolling
+offset is not available, this may mean that this is one of the "minor"
+browsers (Opera, Konqueror, and iCab) that define the client
+coordinates to be relative to the document rather than relative to the
+window, so no scrolling offset needs to be added.  If there is a minor
+browser that contradicts this interpretation, then you will have to
+write browser detection code to handle that browser specially.</p>
+
+<p>If the page cannot scroll, then you are okay and can simply
+use <code>event.clientX</code> and <code>event.clientY</code>
+directly.</p>
+
+<p>See the following link for more information:</p>
+
+<p><a href="http://www.quirksmode.org/js/events_properties.html#position">
+    http://www.quirksmode.org/js/events_properties.html#position</a></p>
 
 <h4>Mouse Wheel Events</h4>
 
@@ -1025,8 +1050,13 @@ cross-browser compatibility function for handling wheel events.</p>
 
 <p>Many browsers do not support the <code>setCapture()</code> method.
 The solution to this problem is usually to set up an event handler on
-the <code>window</code> object instead, which the browser will
-automatically provide mouse capture for.</p>
+the <code>window</code> object instead, since the browser will
+automatically provide mouse capture when an event handler is connected
+to the <code>window</code> object.</p>
+
+<p>Unfortunately, the "<code>loosecapture</code>" event does not work
+in Firefox version 30, even though Firefox 30
+supports <code>setCapture()</code>.</p>
 
 <p><a href="http://news.qooxdoo.org/mouse-capturing">
   http://news.qooxdoo.org/mouse-capturing</a></p>

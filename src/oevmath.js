@@ -13,7 +13,7 @@ var RAD2DEG = 180 / Math.PI;
  * @param {Number} lon - longitude
  */
 var PolarPoint = function(lat, lon) {
-  if (typeof lat != "undefined") {
+  if (typeof(lat) != "undefined") {
     this.lat = lat;
     this.lon = lon;
   }
@@ -70,7 +70,7 @@ PolarPoint.prototype.toPoint3D = function() {
  * @param y
  */
 var Point2D = function(x, y) {
-  if (typeof x != "undefined") {
+  if (typeof(x) != "undefined") {
     this.x = x;
     this.y = y;
   }
@@ -104,7 +104,7 @@ Point2D.prototype.normalize = function() {
  * @param z
  */
 var Point3D = function(x, y, z) {
-  if (typeof x != "undefined") {
+  if (typeof(x) != "undefined") {
     this.x = x;
     this.y = y;
     this.z = z;

@@ -1035,3 +1035,17 @@ workers to help with the threaded rendering process.  The catch: this
 web app won't benefit from web workers unless the browser also
 supports data transfers.  Otherwise, passing objects and data will be
 way too inefficient to be practical.
+
+Things are looking good.  The HTML video element provides enough
+control over playback for me to just superimpose a video element for
+the SSH data.  In fact, I could retrieve all the data I need from a
+video element, both for <canvas> and WebGL rendering.
+
+Could this be the solution to the problem of Internet Explorer giving
+me extra space underneath the iconBtns?
+
+http://bonrouge.com/br.php?page=faq#img-gap
+http://www.sitepoint.com/forums/showthread.php?249148-IE-puts-extra-space-at-bottom-of-image-in-a-div
+
+That will do it.  But wow, that sure is a strange way to do it, very
+non-CSS like in order to get the IE-style box model to work.

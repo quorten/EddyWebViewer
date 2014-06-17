@@ -49,8 +49,13 @@
     #bottomBar { position: absolute; bottom: 0px; width: 100%;
                  text-align: center;
                  margin: 0px; padding: 0px; vertical-align: bottom;
+                 background-color: #333348;
                  /* padding-left: 10px; padding-right: 10px; */ }
-    .iconBtns { display: inline-block; height: 34px; vertical-align: bottom;
+    .iconBtns { display: inline-block; height: 34px;
+                /* Comment out for IE.  Still works okay on all other
+                   browsers.  Though this still means that this doesn't
+                   work on IE and I'll have to implement the solution.  */
+                /* vertical-align: bottom; */
                 margin: 0px; margin-top: 1px; margin-bottom: 1px;
                 padding: 0px;
 
@@ -95,7 +100,7 @@
                      padding: 0px; }
     .position-time input { width: 7em; text-align: center; }
     .position-time input#graticule { width: 4em; }
-    .spacer { display: inline-block; width: 10px; }
+    .spacer { display: inline-block; width: 10px; margin: 0px; padding: 0px; }
     label img { vertical-align: middle; }
 
     /* Note: Button highlight color is "#6a6a96".  */

@@ -3,7 +3,7 @@
 var oev;
 if (!oev)
   oev = {};
-else if (typeof oev != "object") {
+else if (typeof(oev) != "object") {
   throw new Error("Namespace conflict: oev already exists " +
 		  "and is not an object.");
 }

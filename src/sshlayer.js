@@ -1,45 +1,11 @@
 /* Render layer for display of the Sea Surface Height (SSH).  */
 
 import "renderlayer";
+import "csv";
 
 SSHLayer = new RenderLayer();
 SSHLayer.IOWAIT = 1;
 SSHLayer.PROC_DATA = 2;
-
-/*
-
-Load the data
-Process the data into an image
-Done
-
- */
-/* Note: This algorithm needs a newline at the end of the file.  It
-   also does not handle files with non-Unix line endings.  */
-function csvParse(csvText) {
-  var tgtArray = [];
-  var i = 0;
-  var rowEnd;
-
-  while ((rowEnd = csvText.indexOf('\n', i)) != -1) {
-    var taEnd = tgtArray.push([]) - 1;
-    var commaIdx;
-
-    while ((commaIdx = csvText.indexOf(',', i)) < rowEnd &&
-	   commaIdx != -1) {
-      tgtArray[taEnd].push(csvText.substring(i, commaIdx));
-      i = commaIdx + 1
-    }
-
-    if (csvText[rowEnd-1] != ',') {
-      // Parse the last entry in the row.
-      tgtArray[taEnd].push(csvText.substring(i, rowEnd))
-    }
-    i = rowEnd + 1
-  }
-
-  return tgtArray;
-}
-
 
 SSHLayer.setCacheLimits = function(dataCache, renderCache) {
 };
@@ -210,7 +176,7 @@ SSHLayer.loadData = (function() {
 })();
 
 SSHLayer.setViewport = function(center, width, height,
-				   aspectXY, projector) {
+				aspectXY, projector) {
   // RenderLayer.call(center, width, height, projection);
   this.frontBuf.width = width;
   this.frontBuf.height = height;

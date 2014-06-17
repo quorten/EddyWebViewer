@@ -180,8 +180,9 @@ function init() {
     sidebar.style.height = calcHeight + 'px';
     drawingContainer.style.height = sidebar.style.height;
 
+    // This breaks modern versions of IE.
     var ieRepImgs = getElementsByClassName('ieImgFix');
-    for (i = 0; i < ieRepImgs.length; i++) {
+    for (var i = 0; i < ieRepImgs.length; i++) {
       ieRepImgs[i].src = ieRepImgs[i].src.replace(/\.png$/, '.gif');
     }
   }
@@ -635,10 +636,13 @@ function setMouseDown(event) {
   buttonDown = event.button;
   if (typeof event.pageX != "undefined")
     { lastPoint.x = event.pageX; lastPoint.y = event.pageY; }
-  else
-    { lastPoint.x = event.clientX; lastPoint.y = event.clientY; }
-  // if (typeof event.scrollX != "undefined")
-  //   alert("Firefox wasn't supposed to implement that!");
+  else {
+    lastPoint.x = event.clientX; lastPoint.y = event.clientY;
+    if (typeof document.documentElement.scrollLeft != "undefined") {
+      lastPoint.x += document.documentElement.scrollLeft;
+      lastPoint.y += document.documentElement.scrollTop;
+    }
+  }
 
   /* If this is an old version of Internet Explorer, then check for
      the scrollX and scrollY properties, then add those to clientX and

@@ -1096,3 +1096,11 @@ criteria:
 * Smooth view transitions between multiple projections.
 
 * Test cases.
+
+* Fast, fast, fast!
+
+Additional features:
+
+* Native implementation
+
+* Web Workers

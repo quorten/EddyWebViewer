@@ -1,4 +1,21 @@
-/* Library of useful browser compatibility functions.  */
+/* Library of useful browser compatibility functions that can be
+   called within inner runtime code bodies without errors due to
+   missing features.
+
+   Some of these functions may rely on feature detections performed in
+   `detect.js' at startup.  */
+
+/********************************************************************/
+/* Browser Detection
+
+  BAD BAD BAD BAD BAD BAD BAD BAD BAD BAD BAD BAD BAD BAD BAD BAD BAD
+
+			   DO NOT USE THIS!
+
+Browser  detection  is  strongly  discouraged by  best  practices  for
+JavaScript  browser   programming.   Instead  of   performing  browser
+detection, you should  make a best effort to  use feature detection as
+much as is possible.  */
 
 /* Return Microsoft Internet Explorer (major) version number, or 0 for
    others.  This function works by finding the "MSIE " string and
@@ -25,7 +42,9 @@ function getMsieVersion() {
  * @param {MouseEvent} - The mouse event to check
  */
 function MousePos_checkRead(event) {
-  if (msieVersion <= 6 && msieVersion > 0)
+  // var oldMsie = msieVersion <= 6 && msieVersion > 0;
+  if (typeof(event.clientX) == "undefined" &&
+      typeof(window.event) != "undefined") // Probably old MSIE
     event = window.event;
   if (typeof(event.clientX) != "undefined" &&
       typeof(event.clientY) != "undefined")
@@ -63,8 +82,9 @@ function MousePos_setCalibPt(x, y) {
  * coordinates are stored in indexes 0 and 1 of this array.
  */
 function MousePos_get(out, event) {
-  var oldMsie = msieVersion <= 6 && msieVersion > 0;
-  if (oldMsie)
+  // var oldMsie = msieVersion <= 6 && msieVersion > 0;
+  if (typeof(event.clientX) == "undefined" &&
+      typeof(window.event) != "undefined") // Probably old MSIE
     event = window.event;
 
   if (!out) out = MousePos_getStorage;
@@ -200,6 +220,80 @@ function crossReleaseCapture() {
 }
 
 /********************************************************************/
+/* Screen Update Helpers */
+
+/* NOTE: Avoid assigning directly to the window object, this may not
+   work well on all browsers.  */
+function createRequestAnimationFrame() {
+  var lastTime = 0;
+  var vendors = ['webkit', 'moz'];
+  for(var x = 0; x < vendors.length && !window.requestAnimationFrame; ++x) {
+    window.requestAnimationFrame = window[vendors[x]+'RequestAnimationFrame'];
+    window.cancelAnimationFrame = window[vendors[x]+'CancelAnimationFrame'] ||
+      window[vendors[x]+'CancelRequestAnimationFrame'];
+  }
+
+  if (!window.requestAnimationFrame)
+    window.requestAnimationFrame = function(callback) {
+      // Just use a constant timeout.
+      return setTimeout(callback, 20);
+    };
+
+  /* The following is an alternative more complicated optimizing
+     timeout adjustment routine.  */
+    /* window.requestAnimationFrame = function(callback, element) {
+      var currTime = new Date().getTime();
+      var timeToCall = Math.max(0, 16 - (currTime - lastTime));
+      var id = window.setTimeout(
+	function() { callback(currTime + timeToCall); },
+				 timeToCall);
+      lastTime = currTime + timeToCall;
+      return id;
+    }; */
+
+  if (!window.cancelAnimationFrame) {
+    window.cancelAnimationFrame = function(id) {
+      clearTimeout(id);
+    };
+  }
+}
+
+/* The following functions help maintain smooth animation in Firefox.  */
+
+/**
+ * Try to allocate a new render job.  This will either preempt an
+ * existing job or deny rendering if preemption is disabled.  Returns
+ * true if the render job can proceed, false if rendering is denied.
+ *
+ * @param {function} rendQFunc - If the render job gets queued
+ * (denied from immediate execution), this is the function that will
+ * be called once the queue is empty.
+ */
+function allocRenderJob(rendQFunc) {
+  if (renderInProg) {
+    renderQueue = rendQFunc;
+    return false;
+  }
+  renderInProg = true;
+  requestAnimationFrame(freeRenderJob);
+  return true;
+}
+
+/**
+ * Free a render job from the queue.  This function should only be
+ * called from `allocRenderJob()` and never by any code that uses
+ * `allocRenderJob()`.
+ */
+function freeRenderJob() {
+  renderInProg = false;
+  if (renderQueue) {
+    var rendQFunc = renderQueue;
+    renderQueue = null;
+    return rendQFunc();
+  }
+}
+
+/********************************************************************/
 /* Global Variables */
 
 // Cached getMsieVersion()
@@ -212,3 +306,11 @@ var calibPt = null;
 var MousePos_getStorage = [];
 
 var addWheelListener = createAddWheelListener(window, document);
+
+// For allocRenderJob() and freeRenderJob()
+var renderInProg = false;
+// A render queue that can store up to one pending job.
+var renderQueue = null;
+
+/* Closure Invocation */
+createRequestAnimationFrame();

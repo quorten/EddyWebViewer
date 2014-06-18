@@ -119,7 +119,7 @@ TrigLUT.prototype.valNormalizedPositive = function(radians) {
 var oev;
 if (!oev)
   oev = {};
-else if (typeof oev != "object") {
+else if (typeof(oev) != "object") {
   throw new Error("Namespace conflict: oev already exists " +
     "and is not an object.");
 }
@@ -354,7 +354,7 @@ var RAD2DEG = 180 / Math.PI;
  * @param {Number} lon - longitude
  */
 var PolarPoint = function(lat, lon) {
-  if (typeof lat != "undefined") {
+  if (typeof(lat) != "undefined") {
     this.lat = lat;
     this.lon = lon;
   }
@@ -411,7 +411,7 @@ PolarPoint.prototype.toPoint3D = function() {
  * @param y
  */
 var Point2D = function(x, y) {
-  if (typeof x != "undefined") {
+  if (typeof(x) != "undefined") {
     this.x = x;
     this.y = y;
   }
@@ -445,7 +445,7 @@ Point2D.prototype.normalize = function() {
  * @param z
  */
 var Point3D = function(x, y, z) {
-  if (typeof x != "undefined") {
+  if (typeof(x) != "undefined") {
     this.x = x;
     this.y = y;
     this.z = z;
@@ -974,7 +974,7 @@ TracksLayer.loadData = (function() {
 	 download speed, so we avoid it.  In the future, we should
 	 only do it after a timeout of two seconds.  */
       // Call the main loop to update the download status.
-      // return execTime();
+      // return setTimeout(execTime, 0);
       break;
     case 2: // HEADERS_RECEIVED
       TracksLayer.loadData.reqLen = httpRequest.getResponseHeader("Content-Length");
@@ -1177,19 +1177,18 @@ TracksLayer.render = (function() {
 
 
 
-SSHLayer = new RenderLayer();
-SSHLayer.IOWAIT = 1;
-SSHLayer.PROC_DATA = 2;
 
-/*
+/* CSV parsing functions.  */
 
-Load the data
-Process the data into an image
-Done
-
+/**
+ * Parse some comma-separated value (CSV) text and return a JavaScript
+ * array of the contents.  Note that this algorithm needs a newline at
+ * the end of the file.  It also does not handle files with non-Unix
+ * line endings.
+ *
+ * @param {String} csvText - The text to parse.
+ * @returns Nested arrays of the parsed data.
  */
-/* Note: This algorithm needs a newline at the end of the file.  It
-   also does not handle files with non-Unix line endings.  */
 function csvParse(csvText) {
   var tgtArray = [];
   var i = 0;
@@ -1215,6 +1214,9 @@ function csvParse(csvText) {
   return tgtArray;
 }
 
+SSHLayer = new RenderLayer();
+SSHLayer.IOWAIT = 1;
+SSHLayer.PROC_DATA = 2;
 
 SSHLayer.setCacheLimits = function(dataCache, renderCache) {
 };
@@ -1345,18 +1347,30 @@ SSHLayer.loadData = (function() {
     ctx.drawImage(this.tmpImg, 0, 0);
     this.tmpImg = null;
     var tmpImgData = ctx.getImageData(0, 0, tmpCanvas.width, tmpCanvas.height);
+    // document.documentElement.children[1].appendChild(tmpCanvas);
     tmpCanvas = null; ctx = null;
 
-    // SSHLayer.sshData = new Float32Array(tmpImgData.data.buffer);
+    /* var iSz = 1440 * 721 * 4;
+    var sshData = new Float32Array(1440 * 721);
+    SSHLayer.sshData = sshData;
+    var ntohl = new DataView(tmpImgData.data.buffer);
+    for (var i = 0, j = 0; i < iSz; i += 4) {
+      sshData[j++] = ntohl.getFloat32(i, false);
+    } */
 
     SSHLayer.sshData = new Float32Array(1440 * 721 * 4);
-    var bytePacker = new Uint8Array(SSHLayer.sshData);
+    var sshData = SSHLayer.sshData;
+    var bytePacker = new Uint8Array(SSHLayer.sshData.buffer);
     var badCSize = 1440 * 4 * 721 * 4;
+    var ntohlBuf = new Uint8Array(4);
+    var ntohl = new DataView(ntohlBuf.buffer);
     for (var i = 0, j = 0; i < badCSize; i += 16) {
-      bytePacker[j++] = tmpImgData.data[i+0];
-      bytePacker[j++] = tmpImgData.data[i+4];
-      bytePacker[j++] = tmpImgData.data[i+8];
-      bytePacker[j++] = tmpImgData.data[i+12];
+      /* FIXME: Optimize loader.  */
+      ntohlBuf[0] = tmpImgData.data[i+0];
+      ntohlBuf[1] = tmpImgData.data[i+4];
+      ntohlBuf[2] = tmpImgData.data[i+8];
+      ntohlBuf[3] = tmpImgData.data[i+12];
+      sshData[j++] = ntohl.getFloat32(0, false);
     }
 
     // SSHLayer.sshData = csvParse(httpRequest.responseText);
@@ -1373,7 +1387,7 @@ SSHLayer.loadData = (function() {
 })();
 
 SSHLayer.setViewport = function(center, width, height,
-       aspectXY, projector) {
+    aspectXY, projector) {
   // RenderLayer.call(center, width, height, projection);
   this.frontBuf.width = width;
   this.frontBuf.height = height;
@@ -1522,3 +1536,322 @@ SSHLayer.render = (function() {
 
   return new Cothread(startExec, contExec);
 })();
+
+
+
+/* Library of useful browser compatibility functions that can be
+   called within inner runtime code bodies without errors due to
+   missing features.
+
+   Some of these functions may rely on feature detections performed in
+   `detect.js' at startup.  */
+
+/********************************************************************/
+/* Browser Detection
+
+  BAD BAD BAD BAD BAD BAD BAD BAD BAD BAD BAD BAD BAD BAD BAD BAD BAD
+
+			   DO NOT USE THIS!
+
+Browser  detection  is  strongly  discouraged by  best  practices  for
+JavaScript  browser   programming.   Instead  of   performing  browser
+detection, you should  make a best effort to  use feature detection as
+much as is possible.  */
+
+/* Return Microsoft Internet Explorer (major) version number, or 0 for
+   others.  This function works by finding the "MSIE " string and
+   extracting the version number following the space, up to the
+   semicolon.  */
+function getMsieVersion() {
+  var ua = window.navigator.userAgent;
+  var msie = ua.indexOf("MSIE ");
+
+  if (msie > 0)
+    return parseFloat(ua.substring(msie + 5, ua.indexOf(";", msie)));
+  return 0; // is a different browser
+}
+
+/********************************************************************/
+/* Mouse Pointer and Wheel Compatibility */
+
+/**
+ * Check if the browser meets the minimum requirements for reading the
+ * mouse pointer position.  `true` is returned on success, `false` on
+ * failure.  If this check is used, it should only be used once on the
+ * first mouse pointer event.
+ *
+ * @param {MouseEvent} - The mouse event to check
+ */
+function MousePos_checkRead(event) {
+  // var oldMsie = msieVersion <= 6 && msieVersion > 0;
+  if (typeof(event.clientX) == "undefined" &&
+      typeof(window.event) != "undefined") // Probably old MSIE
+    event = window.event;
+  if (typeof(event.clientX) != "undefined" &&
+      typeof(event.clientY) != "undefined")
+    return true;
+  return false;
+}
+
+/**
+ * Set the mouse position calibration point.
+ *
+ * In the event that you would rather opt-out of browser detects to
+ * read the position of the mouse pointer, this function sets a
+ * "calibration point" to the values of `x` and `y` passed to this
+ * function.  When `MousePos_get()` is called, it will read the mouse
+ * position from `event.clientX` and `event.clientY` and subtract the
+ * values of the calibration point from the position that has been
+ * read.
+ *
+ * @param {integer} x - The calibration point x coordinate
+ * @param {integer} y - The calibration point y coordinate
+ */
+function MousePos_setCalibPt(x, y) {
+  calibPt = [ x, y ];
+}
+
+/**
+ * Read the position of the mouse pointer in a cross-browser
+ * compatible way.
+ *
+ * @param {Array} out - Storage for output value.  If
+ * `null`, then static storage is used.
+ * @param {MouseEvent} event - The mouse event to use
+ *
+ * @returns an array describing the mouse position.  The X and Y
+ * coordinates are stored in indexes 0 and 1 of this array.
+ */
+function MousePos_get(out, event) {
+  // var oldMsie = msieVersion <= 6 && msieVersion > 0;
+  if (typeof(event.clientX) == "undefined" &&
+      typeof(window.event) != "undefined") // Probably old MSIE
+    event = window.event;
+
+  if (!out) out = MousePos_getStorage;
+
+  if (calibPt) {
+    out[0] = event.clientX - calibPt[0];
+    out[1] = event.clientY - calibPt[1];
+    return out;
+  }
+
+  if (typeof(event.pageX) != "undefined") {
+    out[0] = event.pageX;
+    out[1] = event.pageY;
+    return out;
+  }
+
+  out[0] = event.clientX + (document.documentElement.scrollLeft +
+       document.body.scrollLeft);
+  out[1] = event.clientY + (document.documentElement.scrollTop +
+       document.body.scrollTop);
+
+  return out;
+}
+
+/**
+ * Create a mouse wheel event listener in a cross-browser compatible
+ * way.  This function is only used to initialize the addWheelListener
+ * global variable.
+ *
+ * Example: addWheelListener(elem, function(e) {
+ *   console.log(e.deltaY); e.preventDefault(); } );
+ *
+ * @param {Window} window
+ * @param {Document} document
+ */
+function createAddWheelListener(window, document) {
+  var prefix = "", _addEventListener, onwheel, support;
+
+  // Detect the event model.
+  if (window.addEventListener) {
+    _addEventListener = "addEventListener";
+  } else {
+    _addEventListener = "attachEvent";
+    prefix = "on";
+  }
+
+  // Detect an available wheel event.
+  support = "onwheel" in
+    document.createElement("div") ? "wheel" : // Standardized
+    document.onmousewheel !== undefined ? "mousewheel" : // Webkit and IE
+    "DOMMouseScroll"; // Assume that remaining browsers are older Firefox
+
+  var addWheelListenerInternal = function(elem, callback, useCapture) {
+    subAddWheelListener(elem, support, callback, useCapture);
+
+    // Handle MozMousePixelScroll in older Firefox.
+    if(support == "DOMMouseScroll") {
+      subAddWheelListener(elem, "MozMousePixelScroll", callback, useCapture);
+    }
+  };
+
+  var subAddWheelListener = function(elem, eventName, callback, useCapture) {
+    elem[_addEventListener](prefix + eventName, support == "wheel" ?
+      callback : function(originalEvent) {
+ !originalEvent && (originalEvent = window.event);
+
+ // Create a normalized event object.
+ var event = {
+   // Keep a reference to the original event object.
+ originalEvent: originalEvent,
+ target: originalEvent.target || originalEvent.srcElement,
+ type: "wheel",
+ deltaMode: originalEvent.type == "MozMousePixelScroll" ? 0 : 1,
+ deltaX: 0,
+ delatZ: 0,
+ preventDefault: function() {
+     originalEvent.preventDefault ?
+     originalEvent.preventDefault() :
+     originalEvent.returnValue = false;
+   }
+ };
+
+ // Calculate deltaY (and deltaX) according to the event.
+ if (support == "mousewheel") {
+   event.deltaY = - 1/40 * originalEvent.wheelDelta;
+   // Webkit also supports wheelDeltaX.
+   originalEvent.wheelDeltaX && (event.deltaX = - 1/40 *
+     originalEvent.wheelDeltaX);
+ } else {
+   event.deltaY = originalEvent.detail;
+ }
+
+ // It's time to fire the callback.
+ return callback(event);
+
+      }, useCapture || false);
+  };
+
+  return addWheelListenerInternal;
+}
+
+/**
+ * Capture the mouse pointer in a way that is cross-browser
+ * compatible.  You must call crossReleaseCapture() when you no longer
+ * need a mouse capture.
+ *
+ * @param {Element} elmt - The element to set capture on
+ * @param {function} onMouseMove - The event handler for `onmousemove`
+ * @param {function} onMouseUp - The event handler for `onmouseup'
+ */
+function crossSetCapture(elmt, onMouseMove, onMouseUp) {
+  if (elmt.setCapture) {
+    elmt.onmousemove = onMouseMove;
+    elmt.onmouseup = onMouseUp;
+    elmt.setCapture();
+  } else {
+    window.onmousemove = onMouseMove;
+    window.onmouseup = onMouseUp;
+  }
+}
+
+/**
+ * Release a captured mouse pointer in a way that is cross-browser
+ * compatible.
+ */
+function crossReleaseCapture() {
+  if (document.releaseCapture)
+    document.releaseCapture();
+  else {
+    window.onmousemove = null;
+    window.onmouseup = null;
+  }
+}
+
+/********************************************************************/
+/* Screen Update Helpers */
+
+/* NOTE: Avoid assigning directly to the window object, this may not
+   work well on all browsers.  */
+function createRequestAnimationFrame() {
+  var lastTime = 0;
+  var vendors = ['webkit', 'moz'];
+  for(var x = 0; x < vendors.length && !window.requestAnimationFrame; ++x) {
+    window.requestAnimationFrame = window[vendors[x]+'RequestAnimationFrame'];
+    window.cancelAnimationFrame = window[vendors[x]+'CancelAnimationFrame'] ||
+      window[vendors[x]+'CancelRequestAnimationFrame'];
+  }
+
+  if (!window.requestAnimationFrame)
+    window.requestAnimationFrame = function(callback) {
+      // Just use a constant timeout.
+      return setTimeout(callback, 20);
+    };
+
+  /* The following is an alternative more complicated optimizing
+     timeout adjustment routine.  */
+    /* window.requestAnimationFrame = function(callback, element) {
+      var currTime = new Date().getTime();
+      var timeToCall = Math.max(0, 16 - (currTime - lastTime));
+      var id = window.setTimeout(
+	function() { callback(currTime + timeToCall); },
+				 timeToCall);
+      lastTime = currTime + timeToCall;
+      return id;
+    }; */
+
+  if (!window.cancelAnimationFrame) {
+    window.cancelAnimationFrame = function(id) {
+      clearTimeout(id);
+    };
+  }
+}
+
+/* The following functions help maintain smooth animation in Firefox.  */
+
+/**
+ * Try to allocate a new render job.  This will either preempt an
+ * existing job or deny rendering if preemption is disabled.  Returns
+ * true if the render job can proceed, false if rendering is denied.
+ *
+ * @param {function} rendQFunc - If the render job gets queued
+ * (denied from immediate execution), this is the function that will
+ * be called once the queue is empty.
+ */
+function allocRenderJob(rendQFunc) {
+  if (renderInProg) {
+    renderQueue = rendQFunc;
+    return false;
+  }
+  renderInProg = true;
+  requestAnimationFrame(freeRenderJob);
+  return true;
+}
+
+/**
+ * Free a render job from the queue.  This function should only be
+ * called from `allocRenderJob()` and never by any code that uses
+ * `allocRenderJob()`.
+ */
+function freeRenderJob() {
+  renderInProg = false;
+  if (renderQueue) {
+    var rendQFunc = renderQueue;
+    renderQueue = null;
+    return rendQFunc();
+  }
+}
+
+/********************************************************************/
+/* Global Variables */
+
+// Cached getMsieVersion()
+msieVersion = getMsieVersion();
+
+// Mouse Calibration Point
+var calibPt = null;
+
+// Static storage for MousePos_Get()
+var MousePos_getStorage = [];
+
+var addWheelListener = createAddWheelListener(window, document);
+
+// For allocRenderJob() and freeRenderJob()
+var renderInProg = false;
+// A render queue that can store up to one pending job.
+var renderQueue = null;
+
+/* Closure Invocation */
+createRequestAnimationFrame();

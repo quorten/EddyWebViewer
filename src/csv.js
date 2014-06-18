@@ -1,7 +1,14 @@
 /* CSV parsing functions.  */
 
-/* Note: This algorithm needs a newline at the end of the file.  It
-   also does not handle files with non-Unix line endings.  */
+/**
+ * Parse some comma-separated value (CSV) text and return a JavaScript
+ * array of the contents.  Note that this algorithm needs a newline at
+ * the end of the file.  It also does not handle files with non-Unix
+ * line endings.
+ *
+ * @param {String} csvText - The text to parse.
+ * @returns Nested arrays of the parsed data.
+ */
 function csvParse(csvText) {
   var tgtArray = [];
   var i = 0;
@@ -25,4 +32,4 @@ function csvParse(csvText) {
   }
 
   return tgtArray;
-};
+}

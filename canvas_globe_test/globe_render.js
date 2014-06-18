@@ -122,7 +122,13 @@ function processDates() {
       var dateSel = document.getElementById("gui.dateSel");
       if (dateSel) {
 	for (i = 0; i < dateList.length; i++) {
-	  dateSel.add(new Option(dateList[i]), null);
+	  var option = document.createElement("option");
+	  option.innerHTML = dateList[i];
+	  dateSel.appendChild(option);
+	  /* if (typeof(dateSel.add) == "function")
+	    dateSel.add(new Option(dateList[i]), null);
+	  else
+	    dateSel.appendChild(new Option(dateList[i])); */
 	}
       }
     } else {

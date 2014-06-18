@@ -24,3 +24,4 @@ docbundle.js: doc.hjs
 
 clean::
 	rm -f $(BUNDLES)
+	rm -rf ../docs/jsdocs

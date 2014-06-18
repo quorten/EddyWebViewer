@@ -4,8 +4,6 @@ import "renderlayer";
 import "ajaxloaders";
 
 TracksLayer = new RenderLayer();
-TracksLayer.IOWAIT = 1;
-TracksLayer.PROC_DATA = 2;
 
 TracksLayer.setCacheLimits = function(dataCache, renderCache) {
 };

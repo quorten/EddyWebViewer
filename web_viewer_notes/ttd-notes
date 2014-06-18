@@ -1108,3 +1108,6 @@ Additional features:
 Google site:
 
 https://sites.google.com/a/umn.edu/mako-eddy-web-viewer/
+
+Performance optimization: Go through my code and change all constants
+to #define and likewise for inline functions.

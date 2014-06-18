@@ -11,3 +11,4 @@ import "trackslayer";
 import "sshlayer";
 import "csv";
 import "compat";
+import "ajaxloaders";

@@ -88,7 +88,6 @@ var Cothread = function(startExec, contExec) {
   this.retVal = null;
 };
 
-
 /**
  * Set the exit status of a cothread based off of a condition.
  *

@@ -1070,6 +1070,12 @@ http://vischeck.com/
 So how will I know "when I'm done"?  These are the few remaining
 criteria:
 
+Pre-Genesis:
+
+* Solidify the TracksLayer and SSHLayer implementations.
+
+----
+
 * Implement the main loop.
 
 * Load the SSH data as encoded images or as a video element.

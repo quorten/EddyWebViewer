@@ -1,6 +1,7 @@
 /* Render layer for display of the eddy tracks layer.  */
 
 import "renderlayer";
+import "ajaxloaders";
 
 TracksLayer = new RenderLayer();
 TracksLayer.IOWAIT = 1;
@@ -11,7 +12,8 @@ TracksLayer.setCacheLimits = function(dataCache, renderCache) {
 
 /**
  * Cothreaded data loading function.  The cothreaded function takes no
- * parameters and returns `true' on success, `false' on failure.
+ * parameters.  See {@linkcode XHRLoader} for information on the
+ * return value.
  *
  * The CothreadStatus preemptCode may be one of the following values:
  *
@@ -25,113 +27,45 @@ TracksLayer.setCacheLimits = function(dataCache, renderCache) {
  * * TracksLayer.PROC_DATA --- The cothread has been preempted when it was
  *   processing data rather than waiting for data.
  */
-TracksLayer.loadData = (function() {
-  "use strict";
+TracksLayer.loadData = new XHRLoader("../data/tracks/acyc_bu_tracks.json",
+				     execTime);
 
-  function alertContents() {
-    var httpRequest = TracksLayer.loadData.httpRequest;
-    if (!httpRequest)
-      return;
-    switch (httpRequest.readyState) {
-    case 4: // DONE
-      if (httpRequest.status == 200) {
-	// Call the main loop to continue cothread execution.
-	return execTime();
-      } else {
-	throw new Error("There was a problem with the HTTP request.");
-      }
-      break;
-    case 3: // LOADING
-      /* NOTE: In some browsers, doing this can dramatically reduce
-	 download speed, so we avoid it.  In the future, we should
-	 only do it after a timeout of two seconds.  */
-      // Call the main loop to update the download status.
-      // return setTimeout(execTime, 0);
-      break;
-    case 2: // HEADERS_RECEIVED
-      TracksLayer.loadData.reqLen = httpRequest.getResponseHeader("Content-Length");
-      break;
+TracksLayer.loadData.procData = function(httpRequest) {
+  var doneProcData = false;
+  var procError = false;
+
+  // Program timed cothread loop here.
+  if (httpRequest.readyState == 4) {
+    try {
+      TracksLayer.tracksData = JSON.parse(httpRequest.responseText);
+      doneProcData = true;
+    }
+    catch (e) {
+      procError = true;
     }
   }
 
-  function startExec() {
-    var url = "../data/tracks/acyc_bu_tracks.json";
-    var httpRequest;
-
-    if (window.XMLHttpRequest)
-      httpRequest = new XMLHttpRequest();
-    else if (window.ActiveXObject) {
-      try {
-	httpRequest = new ActiveXObject("Msxml2.XMLHTTP");
-      }
-      catch (e) {
-	try {
-	  httpRequest = new ActiveXObject("Microsoft.XMLHTTP");
-	}
-	catch (e) {}
-      }
-    }
-
-    if (!httpRequest) {
-      throw new Error("Could not load the data!");
-    }
-
-    httpRequest.onreadystatechange = alertContents;
-    httpRequest.open("GET", url, true);
-    // httpRequest.setRequestHeader("Range", "bytes=0-500");
-    httpRequest.send();
-    this.reqLen = 0;
-    this.readyDataProcess = false;
-
-    this.httpRequest = httpRequest;
-  }
-
-  /** This function primarily retrieves the current loading status of
-      the XMLHttpRequest.  */
-  function contExec() {
-    var httpRequest = this.httpRequest;
-    var reqLen = this.reqLen;
-
-    if (!httpRequest) {
-      this.status.returnType = CothreadStatus.FINISHED;
-      this.status.preemptCode = 0;
-      return this.status;
-    } else if (httpRequest.readyState != 4) {
-      this.status.returnType = CothreadStatus.PREEMPTED;
-      this.status.preemptCode = TracksLayer.IOWAIT;
-      if (reqLen) {
-	this.status.percent = httpRequest.responseText.length * 
-	  CothreadStatus.MAX_PERCENT / reqLen;
-      } else
-	this.status.percent = 0;
-      return this.status;
-    }
-    // (httpRequest.readyState == 4)
-
-    // JSON parsing is slow: Return here and come back later.
-    if (!this.readyDataProcess) {
-      this.readyDataProcess = true;
-      this.status.returnType = CothreadStatus.PREEMPTED;
-      this.status.preemptCode = TracksLayer.PROC_DATA;
-      return this.status;
-    }
-
-    this.status.percent = CothreadStatus.MAX_PERCENT;
-
-    // Process the data here.
-
-    TracksLayer.tracksData = JSON.parse(httpRequest.responseText);
+  if (procError) {
+    httpRequest.abort();
     httpRequest.onreadystatechange = null;
     this.httpRequest = null;
-
+    this.retVal = XHRLoader.PROC_ERROR;
     this.status.returnType = CothreadStatus.FINISHED;
     this.status.preemptCode = 0;
-
     return this.status;
   }
 
-  return new Cothread(startExec, contExec);
-})();
+  if (httpRequest.readyState == 4 && doneProcData) {
+    /* Only manipulate the CothreadStatus object from within this
+       function when processing is entirely finished.  */
+    httpRequest.onreadystatechange = null;
+    this.httpRequest = null;
+    this.status.returnType = CothreadStatus.FINISHED;
+    this.status.preemptCode = 0;
+  }
+
+  return this.status;
+};
 
 TracksLayer.setViewport = function(center, width, height,
 				   aspectXY, projector) {

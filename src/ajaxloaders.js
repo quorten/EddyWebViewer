@@ -74,9 +74,18 @@ XHRLoader.prototype.alertContents = function() {
     // return setTimeout(this.notifyFunc, 0);
     break;
   case 2: // HEADERS_RECEIVED
-    return this.notifyFunc(); // Read the fetched Content-Length.
+    /* For loaders that do not maintain a progress meter in realtime
+       but only retrieve progress at the beginning and the end, doing
+       this can result in them displaying 0% for some time.  */
+    // return this.notifyFunc(); // Read the fetched Content-Length.
     break;
   }
+};
+
+/*  This function guarantees that `alertContents()' will have `this'
+    setup properly when being called as an event handler. */
+XHRLoader.prototype.alertContentsWrapper = function(callObj) {
+  return function() { return callObj.alertContents(); };
 };
 
 XHRLoader.prototype.startExec = function() {
@@ -103,7 +112,7 @@ XHRLoader.prototype.startExec = function() {
   }
 
   if (this.notifyFunc)
-    httpRequest.onreadystatechange = this.alertContents;
+    httpRequest.onreadystatechange = this.alertContentsWrapper(this);
   httpRequest.open("GET", this.url, true);
   // httpRequest.setRequestHeader("Range", "bytes=0-500");
   httpRequest.send();
@@ -182,13 +191,14 @@ XHRLoader.prototype.contExec = function() {
  * @returns {@linkcode CothreadStatus} object
  */
 XHRLoader.prototype.procData = function(httpRequest) {
-  var doneProcData = true;
+  var doneProcData = false;
   var procError = false;
 
   // Program timed cothread loop here.
   if (httpRequest.readyState == 4) {
     try {
       this.procObject = JSON.parse(httpRequest.responseText);
+      doneProcData = true;
     }
     catch (e) {
       procError = true;

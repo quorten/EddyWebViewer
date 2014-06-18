@@ -98,7 +98,6 @@ var Cothread = function(startExec, contExec) {
   this.retVal = null;
 };
 
-
 /**
  * Set the exit status of a cothread based off of a condition.
  *
@@ -236,7 +235,7 @@ var RAD2DEG = 180 / Math.PI;
  * @param {Number} lon - longitude
  */
 var PolarPoint = function(lat, lon) {
-  if (typeof lat != "undefined") {
+  if (typeof(lat) != "undefined") {
     this.lat = lat;
     this.lon = lon;
   }
@@ -293,7 +292,7 @@ PolarPoint.prototype.toPoint3D = function() {
  * @param y
  */
 var Point2D = function(x, y) {
-  if (typeof x != "undefined") {
+  if (typeof(x) != "undefined") {
     this.x = x;
     this.y = y;
   }
@@ -327,7 +326,7 @@ Point2D.prototype.normalize = function() {
  * @param z
  */
 var Point3D = function(x, y, z) {
-  if (typeof x != "undefined") {
+  if (typeof(x) != "undefined") {
     this.x = x;
     this.y = y;
     this.z = z;
@@ -806,19 +805,18 @@ RenderLayer.prototype.render = function() {
   throw new Error("Must be implemented by a subclass!");
 };
 
-SSHLayer = new RenderLayer();
-SSHLayer.IOWAIT = 1;
-SSHLayer.PROC_DATA = 2;
 
-/*
+/* CSV parsing functions.  */
 
-Load the data
-Process the data into an image
-Done
-
+/**
+ * Parse some comma-separated value (CSV) text and return a JavaScript
+ * array of the contents.  Note that this algorithm needs a newline at
+ * the end of the file.  It also does not handle files with non-Unix
+ * line endings.
+ *
+ * @param {String} csvText - The text to parse.
+ * @returns Nested arrays of the parsed data.
  */
-/* Note: This algorithm needs a newline at the end of the file.  It
-   also does not handle files with non-Unix line endings.  */
 function csvParse(csvText) {
   var tgtArray = [];
   var i = 0;
@@ -844,6 +842,9 @@ function csvParse(csvText) {
   return tgtArray;
 }
 
+SSHLayer = new RenderLayer();
+SSHLayer.IOWAIT = 1;
+SSHLayer.PROC_DATA = 2;
 
 SSHLayer.setCacheLimits = function(dataCache, renderCache) {
 };
@@ -1014,7 +1015,7 @@ SSHLayer.loadData = (function() {
 })();
 
 SSHLayer.setViewport = function(center, width, height,
-       aspectXY, projector) {
+    aspectXY, projector) {
   // RenderLayer.call(center, width, height, projection);
   this.frontBuf.width = width;
   this.frontBuf.height = height;

@@ -10,6 +10,10 @@ import "cothread";
  *
  * "url" (this.url) -- The URL (as a String) of the data to load.
  *
+ * "byteRange" (this.byteRange) -- (optional) An array specifying the
+ * range of bytes to download [ min, max ].  Either of the two entries
+ * can be an integer or the empty string.
+ *
  * "notifyFunc" (this.notifyFunc) -- (optional) The notification
  * callback function to use when there is either more data available
  * or the transfer is complete.  This is typically the cothread
@@ -114,7 +118,11 @@ XHRLoader.prototype.startExec = function() {
   if (this.notifyFunc)
     httpRequest.onreadystatechange = this.alertContentsWrapper(this);
   httpRequest.open("GET", this.url, true);
-  // httpRequest.setRequestHeader("Range", "bytes=0-500");
+  if (this.byteRange) {
+    var min = this.byteRange[0];
+    var max = this.byteRange[1];
+    httpRequest.setRequestHeader("Range", "bytes=" + min + "-" + max);
+  }
   httpRequest.send();
   this.inv_reqLen = 0; // 1 / requestLength, used for progress meters
   this.readySyncProcess = false; // Non-preemptable data processing

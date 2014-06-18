@@ -47,7 +47,7 @@ function setup2() {
 
 function execTime() {
   var status = TracksLayer.loadData.continueCT();
-  if (status.preemptCode != TracksLayer.PROC_DATA) {
+  if (status.preemptCode != XHRLoader.PROC_DATA) {
     document.getElementById("progElmt").innerHTML = [ "Download: ",
       (status.percent * 100 / CothreadStatus.MAX_PERCENT).toFixed(2), "%"].
       join("");
@@ -64,7 +64,7 @@ function execTime() {
     // Next move on to testing the progressive renderer.
     return setTimeout(setup2, 80);
   }
-  if (status.preemptCode == TracksLayer.IOWAIT)
+  if (status.preemptCode == XHRLoader.IOWAIT)
     return;
   return browserTime();
 }
@@ -95,7 +95,7 @@ function setup() {
   TracksLayer.loadData.timeout = 20;
   var status = TracksLayer.loadData.start();
   if (status.returnType != CothreadStatus.FINISHED) {
-    if (status.preemptCode == TracksLayer.IOWAIT)
+    if (status.preemptCode == XHRLoader.IOWAIT)
       return;
     return browserTime();
   }

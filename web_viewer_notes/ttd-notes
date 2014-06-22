@@ -1117,3 +1117,108 @@ https://sites.google.com/a/umn.edu/mako-eddy-web-viewer/
 
 Performance optimization: Go through my code and change all constants
 to #define and likewise for inline functions.
+
+----------------------------------------
+
+Gotta make multiple versions:
+
+csvtotga: convert csv to 32-bit floats in a 32-bit TGA, with the
+  right transformations applied
+tgafmt: format to fixed point numbers for web viewer
+
+tgatoptga: convert to jpg with a pre-applied color palette
+tgartga: render a tga with a projection
+
+... or just use a series of options right inside the program
+
+... drives me crazy.  just use full memory buffers for the pipeline.
+
+Web Viewer Friendly Eddy Format:
+
+- Series of fixed-width fields
+
+[f1],[f2],[f3],...,[fn]
+
+First field: [ date_index, num_eddies ]
+
+num_eddies fields follows
+
+Each eddy field is like this:
+
+[ eddy_type, eddy_id, latitude, longitude, prev_eddy, next_eddy ]
+
+eddy_type is 0 for cyclonic, 1 for acyclonic.  prev_eddy is the number
+of records backwards in the file to scan to get the previous eddy from
+the current eddy.  If zero, then this is the first eddy in the track.
+Likewise, next_eddy is the number of records forward to scan to get
+the next eddy in the track.  If zero, then this is the last eddy in
+the track.
+
+Following num_eddies is either another "first field" or the end
+of the file.
+
+Wait, but then that's not full random access...
+
+Oh yeah, download all the date index entries at the start of the
+file.  Then the rest of the file is random accesss.
+
+File starts with a list of dates, each a fixed with field...
+
+Then follows the eddies in a contiguous array.
+
+* Avoid pointers in the code to decrease load on the garbage
+  collector reference counting mechanism.  Use indexes when
+  possible instead.
+
+Inside the quadtree, there is an eddy index and an indicator of
+cyclonic/anticyclonic.  I know, it's a pain to keep track of so
+many objects, but this is how things must start.  To mitigate
+this, only load in eddies that are needed.
+
+To make things simple, just implement both a kd-tree and a quad-tree.
+Summary of differences.  A kd-tree has better memory characteristics
+(O(n)) but worse lookup time (O(lg n)), but a quad-tree has better
+lookup time (O(1)) but worse memory characteristics (number of cells +
+number of elements).
+
+So here's the challlenge: What is the threshold where a kd-tree and a
+quad-tree break even?  You need to compare just lookup time: a kd-tree
+obviously wins all when it comes to memory cost.
+
+If memory is at a premium, then use a kd-tree.  For large sizes, a
+kd-tree will obviously benefit from not storing a huge cell bucket
+structure.  Otherwise, if there is not much memory demand (small
+number of elements), then use a quad-tree.  However, a kd-tree
+competitively matches the speed of a quad-tree when there are not many
+elements.  Additionally, a quad-tree may have issues with exceeding
+the size of the CPU cache.
+
+I guess the decision is clear then... kd-trees are the invariant
+winner.  Plus, even if I did go with quad-trees, I'd have to bucket
+into date blocks anyways, each of which would need its own quad-tree,
+and iterating through common dates would necessarily have to iterate
+through multiple date blocks, so segmented kd-trees aren't all that
+bad.  One problem with kd-trees is that it would take time to build a
+kd-tree client-side, but if the kd-tree is only loaded in server
+pre-built blocks, then this is not an issue.  Here's where my blocking
+structures come into play.
+
+Grouping multiple nearby dates into date blocks really helps the
+algorithm.  I think that was the only missing thought from my previous
+plans.
+
+The question, then, is how big is the block size?  64 KB, how about
+that.  Doesn't give the best experience for 56 kbps moden users, but
+should be good enough.  Only about 250 tracks/block?  No, that's too
+small.  That's the size that supposed to be in only one bucket.  Were
+a quad-tree to be used instead, how many cells should there be in one
+timeframe bucket?  64 x 128 = 8192.  There will be 2048000
+tracks/block.  2048000 * 262 bytes = 511 MB?  That's way too big,
+though.  Okay, it's a deal: 64 KB/block.
+
+Wow, another optimization: Rather than nesting arrays, just line up a
+fixed number of numbers into one big array.  Maybe?  Or maybe that's
+not enough blocking to be a machine optimal block size.
+
+Don't use one big mesh array.  Use nested arrays: The overhead will be
+minimal, and dynamically adding and removing elements will be faster.

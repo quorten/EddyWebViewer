@@ -260,7 +260,7 @@ SSHLayer.render = (function() {
 
     var lDate_now = Date.now;
 
-    var lastTime = lDate_now();
+    var startTime = lDate_now();
     var timeout = this.timeout;
 
     while (y < frontBuf_height) {
@@ -301,14 +301,14 @@ SSHLayer.render = (function() {
 	  destImg.data[destIdx++] = value;
 	  destImg.data[destIdx++] = value; */
 	x++;
-	/* if (lDate_now() - lastTime >= timeout)
+	/* if (lDate_now() - startTime >= timeout)
 	  break; */
       }
       if (x >= frontBuf_width) {
 	x = 0;
 	y++;
       }
-      if (y % 32 == 0 && lDate_now() - lastTime >= timeout)
+      if (y % 32 == 0 && lDate_now() - startTime >= timeout)
 	break;
     }
 

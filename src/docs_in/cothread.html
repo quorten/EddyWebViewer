@@ -43,13 +43,13 @@ var computeSumOfSquares = (function() {
     var i = this.i;
     var lDate_now = Date.now;
 
-    var lastTime = lDate_now();
+    var startTime = lDate_now();
     var timeout = this.timeout;
     /* NOTE: In real code, you should avoid calling Date.now() in tight
        and fast loop iterations.  Otherwise, the function call overhead
        will subtract a significant amount of computational time from
        the loop body.  */
-    while (lDate_now() - lastTime &lt; timeout &amp;&amp; i &lt;= n) {
+    while (lDate_now() - startTime &lt; timeout &amp;&amp; i &lt;= n) {
       sum += i * i;
       i++;
     }

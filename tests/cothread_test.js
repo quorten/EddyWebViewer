@@ -29,9 +29,9 @@ var computeSumOfSquares = (function() {
     var i = this.i;
     var lDate_now = Date.now;
 
-    var lastTime = lDate_now();
+    var startTime = lDate_now();
     var timeout = this.timeout;
-    while (lDate_now() - lastTime < timeout && i <= n) {
+    while (lDate_now() - startTime < timeout && i <= n) {
       sum += i * i;
       i++;
     }

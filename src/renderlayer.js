@@ -21,6 +21,9 @@ var RenderLayer = function() {
     "&lt;canvas&gt; element.";
 };
 
+RenderLayer.READY = 0;
+RenderLayer.NEED_DATA = 1;
+
 /**
  * Set the limits of this rendering engine's internal caches.
  * Internal caches are very implementation-specific, but they can be
@@ -43,7 +46,20 @@ RenderLayer.prototype.setCacheLimits = function(dataCache, renderCache) {
 /**
  * Load any pending data resources that must be loaded.  This function
  * is cothreaded so that a controlling function can provide
- * responsiveness.
+ * responsiveness.  If this function is called when all pending data
+ * has been loaded, then it prefetches additional data that is likely
+ * to be needed in the near future.
+ *
+ * Return value: One of the following constants:
+ *
+ *  * RenderLayer.READY -- All critical data for rendering has been
+ *    loaded.
+ *
+ *  * RenderLayer.NEED_DATA -- Critical data for rendering still needs
+ *    to be loaded.  It may still be possible to do a render with only
+ *    partial data available, but the render will only display some of
+ *    all the necessary data.
+ *
  * @abstract
  *
  * @returns the cothread status of the data load operation.
@@ -51,9 +67,6 @@ RenderLayer.prototype.setCacheLimits = function(dataCache, renderCache) {
 RenderLayer.prototype.loadData = function() {
   throw new Error("Must be implemented by a subclass!");
 };
-
-RenderLayer.READY = 0;
-RenderLayer.NEED_DATA = 1;
 
 /**
  * Setup the viewport and projection of a render layer.
@@ -74,11 +87,13 @@ RenderLayer.NEED_DATA = 1;
  *
  * @returns One of the following constants:
  *
- *  * RenderLayer.READY --- Changing the viewport was successful and a
+ *  * RenderLayer.READY -- Changing the viewport was successful and a
  *    render may immediately proceed.
  *
- *  * RenderLayer.NEED_DATA --- The new viewport requires additional
- *    data that needs to be loaded.
+ *  * RenderLayer.NEED_DATA -- The new viewport requires additional
+ *    data that needs to be loaded.  It may still be possible to do a
+ *    render with only partial data available, but the render will
+ *    only display some of all the necessary data.
  */
 RenderLayer.prototype.setViewport =
   function(center, width, height, aspectXY, projector) {
@@ -92,14 +107,14 @@ RenderLayer.NO_DISP_FRAME = 1;
  * Cothreaded rendering routine.
  * @abstract
  *
- * @returns The cothread status of the data load operation.  When the
+ * @returns The cothread status of the render operation.  When the
  * cothread gets preempted before the rendering task is finished, the
  * CothreadStatus preemptCode is one of the following values:
  *
- *  * RenderLayer.FRAME_AVAIL --- A partial frame has been rendered
+ *  * RenderLayer.FRAME_AVAIL -- A partial frame has been rendered
  *    that is suitable for display.
  *
- *  * RenderLayer.NO_DISP_FRAME --- The partial frame is not suitable
+ *  * RenderLayer.NO_DISP_FRAME -- The partial frame is not suitable
  *    for display.
  */
 RenderLayer.prototype.render = function() {

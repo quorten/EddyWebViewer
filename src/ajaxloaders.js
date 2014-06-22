@@ -29,16 +29,18 @@ import "cothread";
  * is the HTTP Partial Content status.  Internally, all other status
  * codes are treated as errors.
  *
- * The CothreadStatus preemptCode may be one of the following values:
+ * `this.status.preemptCode` may be one of the following values:
  *
- * * `TracksLayer.IOWAIT` --- The cothread is waiting for an
+ * * 0 (Zero) -- Not applicable `(returnType == CothreadStatus.FINISHED)`.
+ *
+ * * `TracksLayer.IOWAIT` -- The cothread is waiting for an
  *   XMLHttpRequest to return more data.  This preemption code is
  *   useful in telling the cothread controller that more work will
  *   only arrive by waiting, so if the cothread controller has no
  *   other work to do, it can quit.  The notification function will
  *   resume it when there is more data to process.
  *
- * * `TracksLayer.PROC_DATA` --- The cothread has been preempted when it
+ * * `TracksLayer.PROC_DATA` -- The cothread has been preempted when it
  *   was processing data rather than waiting for data.  This
  *   preemption code is only used when all data has been downloaded
  *   and only data processing remains.
@@ -57,9 +59,14 @@ XHRLoader.prototype = new Cothread();
 XHRLoader.constructor = XHRLoader;
 XHRLoader.IOWAIT = 1;
 XHRLoader.PROC_DATA = 2;
-XHRLoader.CREATE_FAILED = 0;
-XHRLoader.LOAD_FAILED = 1;
-XHRLoader.PROC_ERROR = 2;
+
+(function() {
+  var i = 0;
+  XHRLoader.CREATE_FAILED = i++;
+  XHRLoader.LOAD_FAILED = i++;
+  XHRLoader.PROC_ERROR = i++;
+  XHRLoader.MAX_ENUM = i++; // Useful for derived classes
+})();
 
 XHRLoader.prototype.alertContents = function() {
   var httpRequest = this.httpRequest;
@@ -80,7 +87,8 @@ XHRLoader.prototype.alertContents = function() {
   case 2: // HEADERS_RECEIVED
     /* For loaders that do not maintain a progress meter in realtime
        but only retrieve progress at the beginning and the end, doing
-       this can result in them displaying 0% for some time.  */
+       this can result in them displaying 0% for some time, so we
+       avoid doing that.  */
     // return this.notifyFunc(); // Read the fetched Content-Length.
     break;
   }
@@ -124,7 +132,7 @@ XHRLoader.prototype.startExec = function() {
     httpRequest.setRequestHeader("Range", "bytes=" + min + "-" + max);
   }
   httpRequest.send();
-  this.inv_reqLen = 0; // 1 / requestLength, used for progress meters
+  this.reqLen = 0; // Used for progress meters
   this.readySyncProcess = false; // Non-preemptable data processing
 
   this.httpRequest = httpRequest;
@@ -142,11 +150,11 @@ XHRLoader.prototype.contExec = function() {
     this.status.returnType = CothreadStatus.PREEMPTED;
     this.status.preemptCode = XHRLoader.IOWAIT;
 
-    if (!this.inv_reqLen && httpRequest.readyState >= 2) // HEADERS_RECEIVED
-      this.inv_reqLen = 1 / (+httpRequest.getResponseHeader("Content-Length"));
-    if (this.inv_reqLen) {
+    if (!this.reqLen && httpRequest.readyState >= 2) // HEADERS_RECEIVED
+      this.reqLen = +httpRequest.getResponseHeader("Content-Length");
+    if (this.reqLen) {
       this.status.percent = httpRequest.responseText.length * 
-	CothreadStatus.MAX_PERCENT * this.inv_reqLen;
+	CothreadStatus.MAX_PERCENT / this.reqLen;
     } else
       this.status.percent = 0;
 
@@ -263,16 +271,18 @@ XHRLoader.prototype.procData = function(httpRequest) {
  * * `ImageLoader.LOAD_ABORTED` -- Download aborted
  * * `ImageLoader.PROC_ERROR` -- Error during processing
  *
- * The CothreadStatus preemptCode may be one of the following values:
+ * `this.status.preemptCode` may be one of the following values:
  *
- * * `ImageLoader.IOWAIT` --- The cothread is waiting for more image
+ * * 0 (Zero) -- Not applicable `(returnType == CothreadStatus.FINISHED)`.
+ *
+ * * `ImageLoader.IOWAIT` -- The cothread is waiting for more image
  *   data.  This preemption code is useful in telling the cothread
  *   controller that more work will only arrive by waiting, so if the
  *   cothread controller has no other work to do, it can quit.  The
  *   notification function will resume it when there is more data to
  *   process.
  *
- * * `ImageLoader.PROC_DATA` --- The cothread has been preempted when
+ * * `ImageLoader.PROC_DATA` -- The cothread has been preempted when
  *   it was processing data rather than waiting for data.  This
  *   preemption code is only used when all data has been downloaded
  *   and only data processing remains.
@@ -291,11 +301,16 @@ ImageLoader.prototype = new Cothread();
 ImageLoader.constructor = ImageLoader;
 ImageLoader.IOWAIT = 1;
 ImageLoader.PROC_DATA = 2;
-ImageLoader.SUCCESS = 0;
-ImageLoader.CREATE_FAILED = 1;
-ImageLoader.LOAD_FAILED = 2;
-ImageLoader.LOAD_ABORTED = 3;
-ImageLoader.PROC_ERROR = 4;
+
+(function() {
+  var i = 0;
+  ImageLoader.SUCCESS = i++;
+  ImageLoader.CREATE_FAILED = i++;
+  ImageLoader.LOAD_FAILED = i++;
+  ImageLoader.LOAD_ABORTED = i++;
+  ImageLoader.PROC_ERROR = i++;
+  ImageLoader.MAX_ENUM = i++; // Useful for derived classes
+})();
 
 ImageLoader.prototype.alertContents = function() {
   this.loaded = true;

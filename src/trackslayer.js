@@ -13,17 +13,19 @@ TracksLayer.setCacheLimits = function(dataCache, renderCache) {
  * parameters.  See {@linkcode XHRLoader} for information on the
  * return value.
  *
- * The CothreadStatus preemptCode may be one of the following values:
+ * `this.status.preemptCode` may be one of the following values:
  *
- * * TracksLayer.IOWAIT --- The cothread is waiting for an
+ * * 0 (Zero) -- Not applicable `(returnType == CothreadStatus.FINISHED)`.
+ *
+ * * XHRLoader.IOWAIT -- The cothread is waiting for an
  *   XMLHttpRequest to finish.  For optimal performance, the
  *   controller should not explicitly call continueCT(), since the
  *   asynchronous calling will be handled by the browser during data
  *   loading.  When the data is finished being loaded, this cothread
  *   will explicitly yield control to the controller.
  *
- * * TracksLayer.PROC_DATA --- The cothread has been preempted when it was
- *   processing data rather than waiting for data.
+ * * XHRLoader.PROC_DATA -- The cothread has been preempted when it
+ *   was processing data rather than waiting for data.
  */
 TracksLayer.loadData = new XHRLoader("../data/tracks/acyc_bu_tracks.json",
 				     execTime);
@@ -118,7 +120,7 @@ TracksLayer.render = (function() {
 
     var lDate_now = Date.now;
 
-    var lastTime = lDate_now();
+    var startTime = lDate_now();
     var timeout = this.timeout;
     for (; i < numTracks; ) {
       if (minTrackLen > 0 || maxTrackLen != -1) {
@@ -161,7 +163,7 @@ TracksLayer.render = (function() {
       }
       edc.stroke();
       i++;
-      if (i % 1024 == 0 && lDate_now() - lastTime >= timeout)
+      if (i % 1024 == 0 && lDate_now() - startTime >= timeout)
 	break;
     }
 

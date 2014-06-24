@@ -1181,6 +1181,16 @@ Summary of differences.  A kd-tree has better memory characteristics
 lookup time (O(1)) but worse memory characteristics (number of cells +
 number of elements).
 
+  /* No, one kd-tree per date index.  No chunking.  It is up to the
+     client to perform top-level kd-tree building.  */
+
+  /* Top-level kd-tree building is unnecessary.  Why?  Because the
+     runtime is still O(lg n).  Render linearly more points?  The user
+     expectation is linearly longer render time.  It's just a matter
+     of changing what the constant in the linear relationship is.
+     Chances are that the tree depth per date index will remain
+     constant.  */
+
 So here's the challlenge: What is the threshold where a kd-tree and a
 quad-tree break even?  You need to compare just lookup time: a kd-tree
 obviously wins all when it comes to memory cost.
@@ -1364,3 +1374,35 @@ Additions to the CSS GUI:
    value, etc.
 
 * Separate min and max track lengths.
+
+----------------------------------------
+
+Just to reiterate.  These are the forms of progressive raytrace
+rendering that I need to implement:
+
+* "Interlaced" rendering: Starting at a minimum resolution, render at
+  progressively higher resolutions.  Must verify that browser can use
+  nearest pixel sampling, though.
+
+* "Center" rendering: Render a small portion of the center at full
+  resolution, then progressively render the surrounding areas.
+
+Perhaps I should also make the preemption interval user-configurable,
+though the default should be good for most people who have modern
+systems.
+
+I also must absolutely implement storing the configuration within the
+address bar hash fragment.  This feature proves to be invaluable for
+communicating with others.
+
+Think about how you would implement the GPU code... for each separate
+rendering projection, you would implement a separate fragment shader.
+Why be afraid to do the same with JavaScript.  Sure, you can have the
+modular implementation, slow but easy for development, and you can
+have the fast implementation, the one that uses only a dedicated
+projection method.  All of the projection methods would be implemented
+as macros for either way, of course.  Although math function calls are
+okay, try to minimize user-code function calls in inner loops.  Don't
+worry about scalar variable definitions, it will be okay as long as
+you periodically return from the code to allow the garbage collector
+to operate.

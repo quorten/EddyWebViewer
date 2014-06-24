@@ -225,7 +225,7 @@ document.getElementById('scriptWrapper').style.cssText = '';
       <option>Waters</option>
       <option>Hatches</option>
     </select><br />
-    <div style="text-align: left">Render During Scrolling:</div>
+    <div style="text-align: left">Render Style During Scrolling:</div>
     <label for="cfg-wireRender">Wireframe</label>
     <input id="cfg-wireRender" type="checkbox" /><br />
     <label for="cfg-landScroll">Landmasses</label>
@@ -263,8 +263,7 @@ element in the document.  -->
 --><div class="spacer"></div><!--
 
 --><a class="imgbtn" id="help-btn" title="Help/About"
-      href="../web_viewer_notes/" target="_blank"></a>
-   <!-- WARNING: Using "target" causes validation failures.  -->
+      href="../web_viewer_notes/"></a>
    </div><!--
 
 --><div class="spacer"></div><!--
@@ -556,6 +555,9 @@ element in the document.  -->
 
   var btnImages = [];
   loadImages();
+  /* Configure the "Help" button to prefer opening the link in a new
+     window/tab.  */
+  document.getElementById('help-btn').target = '_blank';
 //--><!]]>
 </script>
 <script type="text/javascript"

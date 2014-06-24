@@ -1340,3 +1340,27 @@ that cross across a small region you are trying to look at, though.
 It might also be the case that the eddy tracks do not practically
 behave like this, so it makes sense to just go with the algorithms
 given above.
+
+----------------------------------------
+
+Additions to the CSS GUI:
+
+* Use a page-turning calendar icon with a white top band for the
+  "current date" field.
+
+* Use a compass icon for the "Latitude, Longitude" field.
+
+* Add drop-down sliders to all numeric configurable fields.  The
+  drop-down slider allows both click-and-drag and arrow panning, like
+  a scrollbar.  Also add vertical precision slider too.
+
+** Do not waste screen space to add this advanced option.  Make the
+   user double-click on the label to get to this.
+
+** Start by displaying a blue shaded circle in the center of the
+   screen.  The popup info displays the modal status and allows the
+   user to exit by clicking on the X.  When the user clicks and drags
+   on the blue dot, the popup is updated with the scale, current
+   value, etc.
+
+* Separate min and max track lengths.

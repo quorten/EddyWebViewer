@@ -164,12 +164,14 @@ document.getElementById('scriptWrapper').style.cssText = '';
 
 <div id="popupInfo">
 <div id="popupClose"></div>
-<b>Eddy #43859</b><br />
-<br />
-Coordinates: 0 N 0 E<br />
-Amplitude: 1.0 cm<br />
-Area: 483 m^2<br />
-Geodesic Speed: 800 km/hr
+  <b>Eddy #43859</b><br />
+  <br />
+  <div style="text-align: right; line-height: 138%">
+    Coordinates: 0 N 0 E<br />
+    Amplitude: 1.0 cm<br />
+    Area: 483 m^2<br />
+    Geodesic Speed: 800 km/hr
+  </div>
 </div>
 
 <div id="configWrapper" style="display: none"><form id="configPanel">
@@ -223,7 +225,6 @@ Geodesic Speed: 800 km/hr
       <option>Waters</option>
       <option>Hatches</option>
     </select><br />
-    <br />
     <div style="text-align: left">Render During Scrolling:</div>
     <label for="cfg-wireRender">Wireframe</label>
     <input id="cfg-wireRender" type="checkbox" /><br />
@@ -256,7 +257,8 @@ element in the document.  -->
 --><div class="spacer"></div><!--
 
 --><div class="iconBtns">
-   <div class="imgbtn" id="config-btn" title="Configure"></div><!--
+   <div class="imgbtn" id="config-btn"
+	title="Advanced Configuration"></div><!--
 
 --><div class="spacer"></div><!--
 

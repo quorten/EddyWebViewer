@@ -119,7 +119,7 @@ function processDates() {
 	realTimes.push(realTime);
       }
 
-      var dateSel = document.getElementById("gui.dateSel");
+      var dateSel = document.getElementById("cfg-dateSel");
       if (dateSel) {
 	for (i = 0; i < dateList.length; i++) {
 	  var option = document.createElement("option");
@@ -469,9 +469,9 @@ function panGlobe(event) {
   while (lon_rot < 0) lon_rot += 360;
   while (lon_rot >= 360) lon_rot -= 360;
 
-  var gui_latLon = document.getElementById("gui.latLon");
-  if (gui_latLon) {
-    gui_latLon.value = tilt.toFixed(3) + " N " +
+  var cfg_latLon = document.getElementById("cfg-latLon");
+  if (cfg_latLon) {
+    cfg_latLon.value = tilt.toFixed(3) + " N " +
       (lon_rot - 180).toFixed(3) + " E";
   }
 
@@ -502,8 +502,8 @@ function zoomGlobe(event) {
       else
         scale /= (event.deltaY / 53) * 1.1;
     }
-    var gui_zoomFac = document.getElementById("gui.zoomFac");
-    if (gui_zoomFac) gui_zoomFac.value = scale;
+    var cfg_scaleFac = document.getElementById("cfg-scaleFac");
+    if (cfg_scaleFac) cfg_scaleFac.value = scale.toFixed(3);
   } else {
     if (event.deltaMode == 0x01) { // DOM_DELTA_LINE
       if (event.deltaY < 0)
@@ -516,8 +516,8 @@ function zoomGlobe(event) {
       else
         persp_fov *= (event.deltaY / 53) * 1.1;
     }
-    var gui_perspFOV = document.getElementById("gui.perspFOV");
-    if (gui_perspFOV) gui_perspFOV.value = persp_fov;
+    var cfg_perspFOV = document.getElementById("cfg-perspFOV");
+    if (cfg_perspFOV) cfg_perspFOV.value = persp_fov;
   }
 
   render_globe();

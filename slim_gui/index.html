@@ -11,10 +11,9 @@
 
     /* "wrap" is used to make sure that a vertical scrollbar never
        appears on the page.  */
-    #wrap { position: absolute; width: 100%; height: 100%;
-            /* top: 0px; bottom: 34px; */ overflow: hidden; }
+    #wrap { position: absolute; width: 100%; height: 100%; overflow: hidden; }
 
-    #drawingContainer { position: relative; width: auto; height: 100%;
+    #drawingContainer { position: relative; width: 100%; height: 100%;
                         overflow: hidden; }
 
     /* Configuration option to change GUI scale factor?  */
@@ -26,7 +25,7 @@
                  margin: 0px auto; padding-left: 10px; padding-right: 10px;
                  background-color: #333348; }
 
-    .iconBtns { display: inline-block; height: 32px;
+    .iconBtns { display: inline-block; height: 34px;
                 vertical-align: top;
                 margin: 0px;
                 padding: 0px;
@@ -56,17 +55,20 @@
     label img { vertical-align: middle; }
 
 
-    #configWrapper { position: absolute; right: 0px; top: 0px;
-                     width: 30%; max-width: 6.5cm; height: 100%;
-                     /* background-color: #3240a0; */ }
-    #configPanel { position: absolute; left: 6px; bottom: 40px; right: 6px;
-               max-height: 90%; /* 100% - 46px important!!! */
-               height: auto; overflow: auto;
-               background-color: rgba(0, 0, 0, 0.6);
-               /* rgba(96, 96, 170, 0.75); */
-               border: solid black;
-               font-family: sans; font-size: 10pt;
-               padding: 6px; }
+    #configWrapper { position: absolute; right: 6px; bottom: 0px;
+                     width: 7.5cm; height: auto; max-height: 100%;
+                     background-color: rgba(0, 0, 0, 0.25);
+                     overflow: auto; }
+    #configPanel { width: auto; height: auto;
+                   /* NOTE: The margins, though transparent, block
+                   mouse events from the canvas underneath.  However,
+                   the bottom margin is necessary to prevent overlap
+                   with the bottom bar.  */
+                   margin-top: 6px; margin-bottom: 40px;
+                   background-color: #333356;
+                   border: solid black;
+                   font-family: sans; font-size: 10pt;
+                   padding: 6px; }
     #configPanel fieldset { text-align: right; }
     #configPanel fieldset legend { text-align: left; }
 
@@ -160,8 +162,78 @@ document.getElementById('scriptWrapper').style.cssText = '';
 
 </div>
 
+<div id="popupInfo">
+<div id="popupClose"></div>
+<b>Eddy #43859</b><br />
+<br />
+Coordinates: 0 N 0 E<br />
+Amplitude: 1.0 cm<br />
+Area: 483 m^2<br />
+Geodesic Speed: 800 km/hr
 </div>
 
+<div id="configWrapper" style="display: none"><form id="configPanel">
+  <fieldset>
+    <legend>Eddy Filters</legend>
+    <label for="cfg-showCyc">Cyclonic</label>
+    <input id="cfg-showCyc" type="checkbox" /><br />
+    <label for="cfg-showAntiCyc">Anticyclonic</label>
+    <input id="cfg-showAntiCyc" type="checkbox" /><br />
+    <label for="cfg-showChelton">Chelton Tracks</label>
+    <input id="cfg-showChelton" type="checkbox" /><br />
+    <label for="cfg-lenRange" title="Format: min, max">
+      Length (weeks):</label>
+    <input id="cfg-lenRange" type="text" value="0, max"
+	   class="numinput" title="Format: min, max" />
+  </fieldset><br />
+
+  <fieldset>
+    <legend>Projection</legend>
+    <label for="cfg-projMethod">Type:</label>
+    <select id="cfg-projMethod">
+      <option>Equirectangular</option>
+      <option>Mercator</option>
+      <option>Robinson</option>
+      <option selected="selected">Orthographic</option>
+      <option>Perspective</option>
+    </select><br />
+
+    <label for="cfg-perspAltitude">Altitude (km):</label>
+    <input id="cfg-perspAltitude" type="text" value="35786"
+	   disabled="disabled" class="numinput" /><br />
+    <label for="cfg-perspFOV">Field of View (deg.):</label>
+    <input id="cfg-perspFOV" type="text" value="17.5"
+	   disabled="disabled" class="numinput" />
+
+  </fieldset><br />
+
+  <fieldset>
+    <legend>Render Parameters</legend>
+    <label for="cfg-landMass">Land Masses:</label>
+    <select id="cfg-landMass">
+      <option>None</option>
+      <option>Silhouettes</option>
+      <option selected="selected">Textured</option>
+    </select><br />
+    <label for="cfg-sshPal" title="Sea Surface Height Palette">
+      SSH Palette:</label>
+    <select id="cfg-sshPal" title="Sea Surface Height Palette">
+      <option>None</option>
+      <option selected="selected">MATLAB</option>
+      <option>Waters</option>
+      <option>Hatches</option>
+    </select><br />
+    <br />
+    <div style="text-align: left">Render During Scrolling:</div>
+    <label for="cfg-wireRender">Wireframe</label>
+    <input id="cfg-wireRender" type="checkbox" /><br />
+    <label for="cfg-landScroll">Landmasses</label>
+    <input id="cfg-landScroll" type="checkbox" />
+  </fieldset>
+</form></div>
+
+<!-- NOTE: It is important to have the bottom bar placed as the last
+element in the document.  -->
 <div id="bbwrap"><form id="bottomBar" action="">
 
    <div class="iconBtns">
@@ -222,53 +294,7 @@ document.getElementById('scriptWrapper').style.cssText = '';
 
 </form></div>
 
-<div id="configWrapper" style="display: none"><form id="configPanel">
-  <fieldset>
-    <legend>Eddy Filters</legend>
-    <label for="cfg-showCyc">Cyclonic</label>
-    <input id="cfg-showCyc" type="checkbox" /><br />
-    <label for="cfg-showAntiCyc">Anticyclonic</label>
-    <input id="cfg-showAntiCyc" type="checkbox" /><br />
-    <label for="cfg-showChelton">Chelton Tracks</label>
-    <input id="cfg-showChelton" type="checkbox" /><br />
-    <label for="cfg-lenRange">Length Range (weeks)</label>
-    <input id="cfg-lenRange" type="text" value="0, max"
-	   class="numinput" title="Format: min, max" />
-  </fieldset><br />
-
-  <fieldset>
-    <legend>Projection</legend>
-    <label for="cfg-projMethod">Type:</label>
-    <select id="cfg-projMethod">
-      <option>Equirectangular</option>
-      <option>Mercator</option>
-      <option selected="selected">Orthographic</option>
-      <option>Perspective</option>
-    </select><br />
-
-    <label for="cfg-perspAltitude">Altitude (km):</label>
-    <input id="cfg-perspAltitude" type="text" value="35786"
-	   disabled="disabled" class="numinput" /><br />
-    <label for="cfg-perspFOV">Field of View (deg.):</label>
-    <input id="cfg-perspFOV" type="text" value="17.5"
-	   disabled="disabled" class="numinput" />
-
-  </fieldset><br />
-
-  <fieldset>
-    <legend>Render Parameters</legend>
-  </fieldset>
-</form></div>
-
-<div id="popupInfo">
-<div id="popupClose"></div>
-<b>Eddy #43859</b><br />
-<br />
-Coordinates: 0 N 0 E<br />
-Amplitude: 1.0 cm<br />
-Area: 483 m^2<br />
-Geodesic Speed: 800 km/hr
-</div>
+</div> <!-- END wrap -->
 
 </div> <!-- END scriptWrapper -->
 
@@ -328,17 +354,25 @@ Geodesic Speed: 800 km/hr
     };
 
     document.getElementById('rewind-btn').onclick = function(event) {
-      alert('Backward faster');
+      alert('Rewind');
     };
 
     document.getElementById('bstep-btn').onclick = function(event) {
-      alert('Step backward');
+      dateIndex--;
+      document.getElementById('cfg-dateSel').selectedIndex = dateIndex;
+      renderEddyTracks();
+      refreshOverlay();
+      render_globe();
     };
 
     document.getElementById('play-btn').onclick = onplay;
 
     document.getElementById('fstep-btn').onclick = function(event) {
-      alert('Step forward');
+      dateIndex++;
+      document.getElementById('cfg-dateSel').selectedIndex = dateIndex;
+      renderEddyTracks();
+      refreshOverlay();
+      render_globe();
     };
 
     document.getElementById('ffwd-btn').onclick = function(event) {
@@ -365,17 +399,161 @@ Geodesic Speed: 800 km/hr
       popupInfo.style.cssText = 'display: none';
     };
 
-    /* document.getElementById('').onchange = function(event) {
-    }; */
+    var cfg_curDate = document.getElementById('cfg-curDate');
+    cfg_curDate.onchange = function(event) {
+    };
+
+    var cfg_latLon = document.getElementById('cfg-latLon');
+    cfg_latLon.onchange = function(event) {
+      var parts = this.value.split(' ');
+      tilt = +parts[0];
+      lon_rot = (+parts[2]) + 180;
+      if (event != null) render_globe();
+    };
+
+    var cfg_scaleFac = document.getElementById('cfg-scaleFac');
+    cfg_scaleFac.onchange = function(event) {
+      scale = +this.value; // Convert string to float
+      if (event != null) render_globe();
+    };
+
+    var cfg_graticule = document.getElementById('cfg-graticule');
+    cfg_graticule.onchange = function(event) {
+      var parts = this.value.split(', ');
+      grat_density = +parts[0];
+      if (event != null) render_globe();
+    };
+
+    var cfg_lenRange = document.getElementById('cfg-lenRange');
+    cfg_lenRange.onchange = function(event) {
+      var parts = this.value.split(', ');
+      min_track_len = +parts[0];
+      if (parts[1] == 'max')
+        max_track_len = -1;
+      else
+        max_track_len = +parts[1];
+      if (event != null) {
+        renderEddyTracks();
+        refreshOverlay();
+        render_globe();
+      }
+    };
+
+    var cfg_projMethod = document.getElementById('cfg-projMethod');
+    cfg_projMethod.onchange = function(event) {
+      var choice = this.options[this.selectedIndex].text;
+      if (choice == 'Perspective') {
+        persp_project = true;
+        equirect_project = false;
+
+        var zoomCtl = document.getElementById('cfg-scaleFac');
+        zoomCtl.setAttribute('disabled', true); // Needed for Firefox.
+        zoomCtl.disabled = true; // Needed for older versions of IE.
+
+        var fovCtl = document.getElementById('cfg-perspFOV');
+        fovCtl.setAttribute('disabled', false);
+        fovCtl.disabled = false;
+
+        var altCtl = document.getElementById('cfg-perspAltitude');
+        altCtl.setAttribute('disabled', false);
+        altCtl.disabled = false;
+
+      } else if (choice == 'Equirectangular') {
+        persp_project = false;
+        equirect_project = true;
+      } else {
+        persp_project = false;
+        equirect_project = false;
+      }
+
+      if (choice != 'Perspective') {
+        var zoomCtl = document.getElementById('cfg-scaleFac');
+        zoomCtl.setAttribute('disabled', false); // Needed for Firefox.
+        zoomCtl.disabled = false; // Needed for older versions of IE.
+
+        var fovCtl = document.getElementById('cfg-perspFOV');
+        fovCtl.setAttribute('disabled', true);
+        fovCtl.disabled = true;
+
+        var altCtl = document.getElementById('cfg-perspAltitude');
+        altCtl.setAttribute('disabled', true);
+        altCtl.disabled = true;
+      }
+
+      if (event != null) render_globe();
+    };
+
+    var cfg_perspAltitude = document.getElementById('cfg-perspAltitude');
+    cfg_perspAltitude.onchange = function(event) {
+      persp_altitude = +this.value;
+      if (event != null) render_globe();
+    };
+
+    var cfg_perspFOV = document.getElementById('cfg-perspFOV');
+    cfg_perspFOV.onchange = function(event) {
+      persp_fov = +this.value;
+      if (event != null) render_globe();
+    };
+
+    var cfg_landMass = document.getElementById('cfg-landMass');
+    cfg_landMass.onchange = function(event) {
+      var choice = this.options[this.selectedIndex].text;
+      if (choice == 'Textured')
+        render_land_tex = true;
+      else
+        render_land_tex = false;
+      if (event != null) {
+        refreshOverlay();
+        render_globe();
+      }
+    };
+
+    var cfg_sshPal = document.getElementById('cfg-sshPal');
+    cfg_sshPal.onchange = function(event) {
+      var choice = this.options[this.selectedIndex].text;
+      if (choice == 'MATLAB')
+        render_ssh = true;
+      else if (choice == 'None')
+        render_ssh = false;
+      if (event != null) {
+        refreshOverlay();
+        render_globe();
+      }
+    };
+
+    var cfg_wireRender = document.getElementById('cfg-wireRender');
+    cfg_wireRender.onclick = function(event) {
+      if (this.checked)
+        wire_render = true;
+      else
+        wire_render = false;
+      if (event != null) render_globe();
+    };
+
+    /* Once all the GUI hooks have been initialized, call all of the
+       event handlers for the FORM controls so that any settings that
+       have been saved by the browser will be picked up by the
+       internal code.  */
+    cfg_curDate.onchange(null);
+    cfg_latLon.onchange(null);
+    cfg_scaleFac.onchange(null);
+    cfg_graticule.onchange(null);
+    cfg_lenRange.onchange(null);
+    cfg_projMethod.onchange(null);
+    cfg_perspAltitude.onchange(null);
+    cfg_perspFOV.onchange(null);
+    cfg_landMass.onchange(null);
+    cfg_sshPal.onchange(null);
+    cfg_wireRender.onclick(null);
   }
 
   function bodyInit() {
-    // return initCTModule();
+    initGUIHooks();
+    return initCTModule();
   }
 
   var btnImages = [];
   loadImages();
-  initGUIHooks();
 //--><!]]>
 </script>
 <script type="text/javascript"

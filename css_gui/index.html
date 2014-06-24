@@ -43,21 +43,21 @@
   <!--//--><![CDATA[//><!--
 
 function initGUIHooks() {
-  document.getElementById('gui.projMethod').onchange = function(event) {
+  document.getElementById('cfg-projMethod').onchange = function(event) {
     var choice = this.options[this.selectedIndex].text;
     if (choice == 'Perspective') {
       persp_project = true;
       equirect_project = false;
 
-      var zoomCtl = document.getElementById('gui.zoomFac');
+      var zoomCtl = document.getElementById('cfg-scaleFac');
       zoomCtl.setAttribute('disabled', true); // Needed for Firefox.
       zoomCtl.disabled = true; // Needed for older versions of IE.
 
-      var fovCtl = document.getElementById('gui.perspFOV');
+      var fovCtl = document.getElementById('cfg-perspFOV');
       fovCtl.setAttribute('disabled', false);
       fovCtl.disabled = false;
 
-      var altCtl = document.getElementById('gui.perspAltitude');
+      var altCtl = document.getElementById('cfg-perspAltitude');
       altCtl.setAttribute('disabled', false);
       altCtl.disabled = false;
 
@@ -70,15 +70,15 @@ function initGUIHooks() {
     }
 
     if (choice != 'Perspective') {
-      var zoomCtl = document.getElementById('gui.zoomFac');
+      var zoomCtl = document.getElementById('cfg-scaleFac');
       zoomCtl.setAttribute('disabled', false); // Needed for Firefox.
       zoomCtl.disabled = false; // Needed for older versions of IE.
 
-      var fovCtl = document.getElementById('gui.perspFOV');
+      var fovCtl = document.getElementById('cfg-perspFOV');
       fovCtl.setAttribute('disabled', true);
       fovCtl.disabled = true;
 
-      var altCtl = document.getElementById('gui.perspAltitude');
+      var altCtl = document.getElementById('cfg-perspAltitude');
       altCtl.setAttribute('disabled', true);
       altCtl.disabled = true;
     }
@@ -90,29 +90,29 @@ function initGUIHooks() {
    the previous form values in the controls.  Ideally, we should get
    the initial values from all the controls on startup.  */
 
-  document.getElementById('gui.zoomFac').onchange = function(event) {
+  document.getElementById('cfg-scaleFac').onchange = function(event) {
     scale = +this.value; // Convert string to float
     render_globe();
   };
 
-  document.getElementById('gui.perspAltitude').onchange = function(event) {
+  document.getElementById('cfg-perspAltitude').onchange = function(event) {
     persp_altitude = +this.value;
     render_globe();
   };
 
-  document.getElementById('gui.perspFOV').onchange = function(event) {
+  document.getElementById('cfg-perspFOV').onchange = function(event) {
     persp_fov = +this.value;
     render_globe();
   };
 
-  document.getElementById('gui.latLon').onchange = function(event) {
+  document.getElementById('cfg-latLon').onchange = function(event) {
     var parts = this.value.split(' ');
     tilt = +parts[0];
     lon_rot = (+parts[2]) + 180;
     render_globe();
   };
 
-  document.getElementById('gui.landMass').onchange = function(event) {
+  document.getElementById('cfg-landMass').onchange = function(event) {
     var choice = this.options[this.selectedIndex].text;
     if (choice == 'Textured')
       render_land_tex = true;
@@ -122,7 +122,7 @@ function initGUIHooks() {
     render_globe();
   };
 
-  document.getElementById('gui.sshPal').onchange = function(event) {
+  document.getElementById('cfg-sshPal').onchange = function(event) {
     var choice = this.options[this.selectedIndex].text;
     if (choice == 'MATLAB')
       render_ssh = true;
@@ -132,7 +132,7 @@ function initGUIHooks() {
     render_globe();
   };
 
-  document.getElementById('gui.lenRange').onchange = function(event) {
+  document.getElementById('cfg-lenRange').onchange = function(event) {
     var parts = this.value.split(', ');
     min_track_len = +parts[0];
     if (parts[1] == 'max')
@@ -144,19 +144,19 @@ function initGUIHooks() {
     render_globe();
   };
 
-  document.getElementById('gui.osaFactor').onchange = function(event) {
+  document.getElementById('cfg-osaFactor').onchange = function(event) {
     osa_factor = ~~(+this.value);
     inv_osa_factor = 1 / osa_factor;
     render_globe();
   };
 
-  document.getElementById('gui.gridDensity').onchange = function(event) {
+  document.getElementById('cfg-gridDensity').onchange = function(event) {
     var parts = this.value.split(', ');
     grat_density = +parts[0];
     render_globe();
   };
 
-  document.getElementById('gui.wireRender').onclick = function(event) {
+  document.getElementById('cfg-wireRender').onclick = function(event) {
     if (this.checked)
       wire_render = true;
     else
@@ -164,24 +164,24 @@ function initGUIHooks() {
     render_globe();
   };
 
-  document.getElementById('gui.dateSel').onchange = function(event) {
+  document.getElementById('cfg-dateSel').onchange = function(event) {
     dateIndex = this.selectedIndex;
     renderEddyTracks();
     refreshOverlay();
     render_globe();
   };
 
-  document.getElementById('gui.datePrev').onclick = function(event) {
+  document.getElementById('cfg-datePrev').onclick = function(event) {
     dateIndex--;
-    document.getElementById('gui.dateSel').selectedIndex = dateIndex;
+    document.getElementById('cfg-dateSel').selectedIndex = dateIndex;
     renderEddyTracks();
     refreshOverlay();
     render_globe();
   };
 
-  document.getElementById('gui.dateNext').onclick = function(event) {
+  document.getElementById('cfg-dateNext').onclick = function(event) {
     dateIndex++;
-    document.getElementById('gui.dateSel').selectedIndex = dateIndex;
+    document.getElementById('cfg-dateSel').selectedIndex = dateIndex;
     renderEddyTracks();
     refreshOverlay();
     render_globe();
@@ -219,21 +219,21 @@ document.getElementById('scriptWrapper').style.cssText = '';
   <div id="topbar">
     <form action="">
       <div class="coldiv">
-	<label for="gui.landMass">Land Mass Background:</label>
-	<select id="gui.landMass">
+	<label for="cfg-landMass">Land Mass Background:</label>
+	<select id="cfg-landMass">
 	  <option>None</option>
 	  <option>Silhouettes</option>
 	  <option selected="selected">Textured</option>
 	</select><br />
-	<label for="gui.sshPal">Sea Surface Height Palette:</label>
-	<select id="gui.sshPal">
+	<label for="cfg-sshPal">Sea Surface Height Palette:</label>
+	<select id="cfg-sshPal">
 	  <option>None</option>
 	  <option selected="selected">MATLAB</option>
 	  <option>Waters</option>
 	  <option>Hatches</option>
 	</select><br />
-	<label for="gui.projMethod">Earth Projection:</label>
-	<select id="gui.projMethod">
+	<label for="cfg-projMethod">Earth Projection:</label>
+	<select id="cfg-projMethod">
 	  <option>Equirectangular</option>
 	  <option>Mercator</option>
 	  <option selected="selected">Orthographic</option>
@@ -241,27 +241,27 @@ document.getElementById('scriptWrapper').style.cssText = '';
 	</select><br />
 	<fieldset>
 	  <legend style="text-align: left">Graticule</legend>
-	  <label for="gui.gridDensity">Latitude, Longitude:</label>
-	  <input id="gui.gridDensity" type="text" value="15, 15"
+	  <label for="cfg-gridDensity">Latitude, Longitude:</label>
+	  <input id="cfg-gridDensity" type="text" value="15, 15"
 		 class="numinput" />
-	  <label for="gui.gridDensity">degrees/line</label><br />
+	  <label for="cfg-gridDensity">degrees/line</label><br />
 	</fieldset>
       </div>
       <div class="coldiv">
-	<label for="gui.trackLWRatio">Eddy Track Length/Width Ratio</label>
-	<input id="gui.trackLWRatio" type="text" value="75"
+	<label for="cfg-trackLWRatio">Eddy Track Length/Width Ratio</label>
+	<input id="cfg-trackLWRatio" type="text" value="75"
 	       class="numinput" /><br />
-	<input id="gui.wireRender" type="checkbox" />
-	<label for="gui.wireRender">Wireframe Render
+	<input id="cfg-wireRender" type="checkbox" />
+	<label for="cfg-wireRender">Wireframe Render
 	</label><br />
-	<input id="gui.landScroll" type="checkbox" />
-	<label for="gui.landScroll">Land Mass Outlines When Scrolling
+	<input id="cfg-landScroll" type="checkbox" />
+	<label for="cfg-landScroll">Land Mass Outlines When Scrolling
 	</label><br />
-	<label for="gui.osaFactor">Oversampling Factor:</label>
-	<input id="gui.osaFactor" type="text" value="1"
+	<label for="cfg-osaFactor">Oversampling Factor:</label>
+	<input id="cfg-osaFactor" type="text" value="1"
 	       class="numinput" /><br />
-	<label for="gui.maxIter">Max. Contiguous Loop Iterations:</label>
-	<input id="gui.maxIter" type="text" value="1024" class="numinput" />
+	<label for="cfg-maxIter">Max. Contiguous Loop Iterations:</label>
+	<input id="cfg-maxIter" type="text" value="1024" class="numinput" />
       </div>
     </form>
   </div>
@@ -274,64 +274,64 @@ document.getElementById('scriptWrapper').style.cssText = '';
 	<div class="solocoldiv">
 	  <fieldset>
 	    <legend style="text-align: left">Projection Properties</legend>
-	    <label for="gui.zoomFac">Zoom Factor:</label>
-	    <input id="gui.zoomFac" type="text" value="1.0"
+	    <label for="cfg-scaleFac">Scale Factor:</label>
+	    <input id="cfg-scaleFac" type="text" value="1.0"
 		   class="numinput" /><br />
-	    <label for="gui.perspAltitude">Altitude:</label>
-	    <input id="gui.perspAltitude" type="text" value="35786"
+	    <label for="cfg-perspAltitude">Altitude:</label>
+	    <input id="cfg-perspAltitude" type="text" value="35786"
 		   disabled="disabled" class="numinput" />
-	    <label for="gui.perspAltitude">kilometers</label><br />
-	    <label for="gui.perspFOV">Field of View:</label>
-	    <input id="gui.perspFOV" type="text" value="17.5"
+	    <label for="cfg-perspAltitude">kilometers</label><br />
+	    <label for="cfg-perspFOV">Field of View:</label>
+	    <input id="cfg-perspFOV" type="text" value="17.5"
 		   disabled="disabled" class="numinput" />
-	    <label for="gui.perspFOV">degrees</label><br />
+	    <label for="cfg-perspFOV">degrees</label><br />
 	  </fieldset><br />
 
-	  <label for="gui.latLon">Latitude, Longitude (degrees):</label>
-	  <input id="gui.latLon" type="text" value="0 N 0 E" /><br />
+	  <label for="cfg-latLon">Latitude, Longitude (degrees):</label>
+	  <input id="cfg-latLon" type="text" value="0 N 0 E" /><br />
 	  <br />
 
-	  <label for="gui.curDate">Date:</label>
-	  <input id="gui.curDate" type="text"
+	  <label for="cfg-curDate">Date:</label>
+	  <input id="cfg-curDate" type="text"
 		 style="width: 6em" />
-	  <select id="gui.dateSel">
+	  <select id="cfg-dateSel">
 	  </select><br />
-	  <input id="gui.dateBegin" type="button" value="&lt;&lt; Begin" />
-	  <input id="gui.datePrev" type="button" value="&lt; Prev" />
-	  <input id="gui.dateNext" type="button" value="Next &gt;" />
-	  <input id="gui.dateEnd" type="button" value="End &gt;&gt;" /><br />
+	  <input id="cfg-dateBegin" type="button" value="&lt;&lt; Begin" />
+	  <input id="cfg-datePrev" type="button" value="&lt; Prev" />
+	  <input id="cfg-dateNext" type="button" value="Next &gt;" />
+	  <input id="cfg-dateEnd" type="button" value="End &gt;&gt;" /><br />
 	  <br />
 
 	  <fieldset>
 	    <legend style="text-align: left">Eddy Filters</legend>
-	    <input id="gui.showCyc" type="checkbox" />
-	    <label for="gui.showCyc">Cyclonic Eddies</label><br />
-	    <input id="gui.showAntiCyc" type="checkbox" />
-	    <label for="gui.showAntiCyc">Anticyclonic Eddies</label><br />
-	    <input id="gui.showChelton" type="checkbox" />
-	    <label for="gui.showChelton">Chelton Tracks</label><br />
-	    <label for="gui.lenRange">Length Range (min, max)</label>
-	    <input id="gui.lenRange" type="text" value="0, max"
+	    <input id="cfg-showCyc" type="checkbox" />
+	    <label for="cfg-showCyc">Cyclonic Eddies</label><br />
+	    <input id="cfg-showAntiCyc" type="checkbox" />
+	    <label for="cfg-showAntiCyc">Anticyclonic Eddies</label><br />
+	    <input id="cfg-showChelton" type="checkbox" />
+	    <label for="cfg-showChelton">Chelton Tracks</label><br />
+	    <label for="cfg-lenRange">Length Range (min, max)</label>
+	    <input id="cfg-lenRange" type="text" value="0, max"
 		   class="wideinput" />
-	    <label for="gui.lenRange">weeks</label>
+	    <label for="cfg-lenRange">weeks</label>
 	  </fieldset><br />
 
 	  <fieldset>
 	    <legend style="text-align: left">Eddy Information</legend>
-	    <label for="gui.dispEID">Eddy ID:</label>
-	    <input id="gui.dispEID" type="text" readonly="readonly"
+	    <label for="cfg-dispEID">Eddy ID:</label>
+	    <input id="cfg-dispEID" type="text" readonly="readonly"
 		   class="numinput" /><br />
-	    <label for="gui.dispLatLon">Latitude, Longitude:</label>
-	    <input id="gui.dispLatLon" type="text" readonly="readonly"
+	    <label for="cfg-dispLatLon">Latitude, Longitude:</label>
+	    <input id="cfg-dispLatLon" type="text" readonly="readonly"
 		   style="width: 6em" /><br />
-	    <label for="gui.dispAmplitude">Amplitude:</label>
-	    <input id="gui.dispAmplitude" type="text" readonly="readonly"
+	    <label for="cfg-dispAmplitude">Amplitude:</label>
+	    <input id="cfg-dispAmplitude" type="text" readonly="readonly"
 		   class="numinput" /><br />
-	    <label for="gui.dispArea">Area:</label>
-	    <input id="gui.dispArea" type="text" readonly="readonly"
+	    <label for="cfg-dispArea">Area:</label>
+	    <input id="cfg-dispArea" type="text" readonly="readonly"
 		   class="numinput" /><br />
-	    <label for="gui.dispGSpeed">Geodesic Speed:</label>
-	    <input id="gui.dispGSpeed" type="text" readonly="readonly"
+	    <label for="cfg-dispGSpeed">Geodesic Speed:</label>
+	    <input id="cfg-dispGSpeed" type="text" readonly="readonly"
 		   class="numinput" />
 	  </fieldset>
 	</div>

@@ -1222,3 +1222,121 @@ not enough blocking to be a machine optimal block size.
 
 Don't use one big mesh array.  Use nested arrays: The overhead will be
 minimal, and dynamically adding and removing elements will be faster.
+
+Last argument for using a top-level kd-tree.  Advantage: Gives a
+top-level three-dimensional kd-tree for latitude, longitude, and date.
+This gives a good even partitioning of the overall large-scale domain.
+Lower in the kd-tree when there is only one discreet date, the kd-tree
+downgrades to a series of 2D kd-trees that can be downloaded
+separately.  bsearch-style tree storage guarantees that these 2D
+kd-trees will be contiguous and uninterrupted in memory.
+Disadvantage: Even when storing with a bsearch-style tree, there are
+no guarantees that any points of any dimension will be stored in
+order.  Here's how it works.  Consider the 2D case.  You have a
+kd-tree with one X split.  Then in one of the X cells, you have a Y
+split.  Now consider any X ordering of points in the two Y cells.
+When the tree is stored in memory bsearch-style, one of these entire Y
+cells is going to have to come before the other, even though both sets
+of X ordered points are the same.  Thus, the kd-tree does not store
+data fully ordered in any one dimension, but rather in "kd-tree"
+order.
+
+Okay, I've think I've got it for tracks rendering:
+
+kd-tree sort lats and lons of eddies on the same date.  Store the tree
+in bsearch order.  Then sort all the dates in ascending order.  The
+superstructure will be stored in this order.
+
+Render a track:
+
+For each date in the render visibility range:
+  Do a potential visibility traversal of the kd-tree to determine the
+    list of points to be rendered.
+  Assign opacities based off of the date index.
+  Render the point, if necessary.
+
+Next, render the lines to connect the points:
+  Sort the list of points to be rendered by index.
+  Note that when rendering the lines, the first point in the line will
+    always have the lowest index.  Also note that we only need to traverse
+    the linked list of render points in forward order for drawing visible
+    lines.  Backward-order traversal is only used to smooth the direction
+    arrow when drawing only one timeframe.
+  Start connecting lines on points, going up one index at a time in the
+    list until there are no more lines left to be rendered.
+
+Viable idea for singly linked lists: "next" eddy indexes never point
+backwards in time, so if you do store a "next" index that points
+backwards in time, that marks the end of the list, and the backwards
+pointer actually points to the eddy that corresponds to the start of
+the list.  So singly-linked list storage is economic for transmitting
+the data over the Internet.  For the viewer, it might convenient to
+construct the backwards pointers, but this is optional and up to the
+choice of the implementer of the viewer.
+
+No, I got it wrong this whole time.  You only need to kd-tree traverse
+the first date index to be rendered.  Then you can get the following
+points via the "next" pointers, no tree traversal involved.  You can
+determine the date index from the pointer.  If two points of a line
+are out of range, then don't render the line.  Stop traversing when
+you exceed the last date index to render.
+
+Wrong again.  Must always kd-tree traverse current timeframe points,
+otherwise you'll short-count the number of visible tracks.
+
+* You need "prev" pointers so that you can draw the escaping lines
+  from visible tracks.
+
+Okay, I think I've got it.  I can divide up the rendering process into
+speed classes.
+
+Class 0: For no visibility testing, just do forward traversal starting
+from the first eddy of a track.
+
+Class I: PVS traverse only the current timeframe.  Determine the past
+and future tracks to render using only the "next" and "prev" pointers.
+
+Class II: PVS traverse the first visible and the current timeframe.
+Use only the "next" pointers to determine the tracks to render.
+
+Class III: PVS traverse all visible timeframes.  Traverse only one
+"next" pointer link to render one track line.  Only render a track
+line from traversing one "prev" pointer link if the previous eddy is
+outside of the visible render area.  (This only works well if visible
+boundary checking is fast, i.e. no obviously curved boundary lines.)
+
+One problem: These visibility testers miss lines where both endpoints
+are on the outside of a cell.  The only computationally fast solution
+to this problem is to "paint" the top-most intermediary kd-tree cell
+which a line passes through but doesn't contain either of the two
+endpoints.  This comes at the expensive of greater memory demand,
+though, and is likely to have no practical advantage at the lowest
+levels of the kd-tree.
+
+Such additional points can be tagged as "virtual" points when added
+into the tree.
+
+How do you add them to the tree?  You can't add them to the tree until
+one version of the tree has been already built.  Where do you add
+them?  At the dividing node within a cell.  What levels do you not
+want to do this at?  That's a hard question.  Let's look at it this
+way.  We want less than 1% of the points in the kd-tree to result in
+adding virtual intermediary points.  Thus, this is only performed at
+the the top few levels of the tree.  lg(n / 100) defines the number of
+top tree levels to use.  Overall, the memory and runtime
+characteristics of this are not all that favorable, so we'll have to
+go without using it.
+
+An entirely aside solution to these problems is to store the data
+track-wise, with the tracks sorted by there geographic size (maximum
+distance between any two points in the track).  Then each track is
+assigned a bounding box.  Then a kd-tree is built on top of this sort.
+This solves all the problems with the painting intermediary points of
+large scale tracks, but the major problem with this mechanism is that
+does not economize interactive downloading.
+
+It might actually be a good thing to not render very large scale lines
+that cross across a small region you are trying to look at, though.
+It might also be the case that the eddy tracks do not practically
+behave like this, so it makes sense to just go with the algorithms
+given above.

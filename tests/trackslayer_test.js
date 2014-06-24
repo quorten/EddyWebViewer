@@ -13,6 +13,8 @@ function execTime2() {
     var totalTime = (Date.now() - rendStartTime) / 1000;
     rendTimeElmt.innerHTML = "Total render time: " +
       totalTime.toFixed(3) + " seconds";
+    // Free up some memory.
+    TracksLayer = null;
     return;
   }
   return browserTime2();

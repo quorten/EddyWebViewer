@@ -9,54 +9,25 @@
     html, body { margin: 0; padding: 0; height: 100%; }
     body { color: white; background-color: #333348; }
 
-    /* "wrap" is only used to get rid of a scrollbar that appears if a
-       website page disclaimer must be displayed underneath the CSS
-       GUI.  */
-    #wrap { height: 100%; }
-
-    #columns { position: absolute; width: 100%;
-               top: 0px; bottom: 36px; overflow: hidden; }
+    /* "wrap" is used to make sure that a vertical scrollbar never
+       appears on the page.  */
+    #wrap { position: absolute; width: 100%; height: 100%;
+            /* top: 0px; bottom: 34px; */ overflow: hidden; }
 
     #drawingContainer { position: relative; width: auto; height: 100%;
                         overflow: hidden; }
 
-    /* NOTE: It would probably be a good idea to make this popup without
-       changing the size of the HTML canvas.  The user should also be allowed
-       to change the width of this.  */
-    /* Should this possibly be a transparent popup?  */
-    /* FIXME: This should be literally positioned on top of the canvas
-       and positioned by a script.  */
-    #sidewrapper { position: relative; float: right;
-                   width: 30%; max-width: 3in; height: 100%;
-                   display: none; }
-    #sidewrap2 { position: absolute; padding: 6px; border: solid black;
-               background-color: #3240a0;
-               top: 0px; bottom: 0px; left: 0px; right: 0px; }
-    #sidebar { position: absolute; padding: 6px; border: solid black;
-               border-top-style: none; border-bottom-style: none;
-               background-color: #333348;
-               top: 0px; bottom: 0px; left: 6px; right: 6px;
-               overflow: auto; }
-
     /* Configuration option to change GUI scale factor?  */
 
-    #popupInfo { position: absolute; left: 8px; top: 8px;
-                 max-width: 4in; background-color: rgba(0, 0, 0, 0.6);
-                 font-size: 9pt;
-                 -moz-border-radius:16px; -webkit-border-radius:16px;
-                 border-radius: 16px; padding: 16px; }
-
-    #bottomBar { position: absolute; bottom: 0px; width: 100%;
-                 text-align: center;
-                 margin: 0px; padding: 0px; vertical-align: bottom;
-                 background-color: #333348;
-                 /* padding-left: 10px; padding-right: 10px; */ }
-    .iconBtns { display: inline-block; height: 34px;
-                /* Comment out for IE.  Still works okay on all other
-                   browsers.  Though this still means that this doesn't
-                   work on IE and I'll have to implement the solution.  */
-                /* vertical-align: bottom; */
-                margin: 0px; margin-top: 1px; margin-bottom: 1px;
+    #bbwrap { position: absolute; bottom: 0px; width: 100%; text-align: center;
+              min-height: 34px; overflow: hidden;
+              margin: 0px; padding: 0px; vertical-align: top; }
+    #bottomBar { display: /* inline- */ block; overflow: hidden;
+                 margin: 0px auto; padding-left: 10px; padding-right: 10px;
+                 background-color: #333348; }
+    .iconBtns { display: inline-block; height: 32px;
+                vertical-align: top;
+                margin: 0px;
                 padding: 0px;
 
                 /* Warning: The following styles used for CSS buttons
@@ -70,65 +41,80 @@
                 cursor: default; }
     .iconBtns img, .iconBtns .imgbtn { border-style: solid; border-width: 1px;
                      border-color: white; margin: 0px; padding: 0px;
-                     vertical-align: bottom; }
+                     vertical-align: top; }
     .iconBtns .imgbtn { display: inline-block; width: 32px; height: 32px; }
-    #beginbtn { background-image: url("beginning.png"); }
-    #beginbtn:active { background-image: url("beginning_light.png"); }
-    #rewindbtn { background-image: url("rewind.png"); }
-    #rewindbtn:active { background-image: url("rewind_light.png"); }
-    #bstepbtn { background-image: url("step_back.png"); }
-    #bstepbtn:active { background-image: url("step_back_light.png"); }
-    #pausebtn { background-image: url("pause.png"); }
-    #pausebtn:active { background-image: url("pause_light.png"); }
-    #playbtn { background-image: url("play.png"); }
-    #playbtn:active { background-image: url("play_light.png"); }
-    #playbtn { background-image: url("play.png"); }
-    #playbtn:active { background-image: url("play_light.png"); }
-    #fstepbtn { background-image: url("step_fwd.png"); }
-    #fstepbtn:active { background-image: url("step_fwd_light.png"); }
-    #ffwdbtn { background-image: url("fast_forward.png"); }
-    #ffwdbtn:active { background-image: url("fast_forward_light.png"); }
-    #endbtn { background-image: url("end.png"); }
-    #endbtn:active { background-image: url("end_light.png"); }
-    #configbtn { background-image: url("config.png"); }
-    #configbtn:active { background-image: url("config_light.png"); }
-    #helpbtn { background-image: url("help.png"); }
-    #helpbtn:active { background-image: url("help_light.png"); }
-    .position-time { display: inline-block; height: 34px;
-                     vertical-align: bottom;
+    .quickcfg { display: inline-block; height: 32px;
+                     vertical-align: top;
                      margin: 0px; margin-top: 1px; margin-bottom: 1px;
                      padding: 0px; }
-    .position-time input { width: 7em; text-align: center; }
-    .position-time input#graticule { width: 4em; }
+    .quickcfg input { width: 4em; text-align: center; }
+    input#cfg-curDate { width: 7em; }
+    input#cfg-latLon { width: 10em; }
     .spacer { display: inline-block; width: 10px; margin: 0px; padding: 0px; }
     label img { vertical-align: middle; }
 
+
+    #configWrapper { position: absolute; right: 0px; top: 0px;
+                     width: 30%; max-width: 6.5cm; height: 100%;
+                     /* background-color: #3240a0; */ }
+    #configPanel { position: absolute; left: 6px; bottom: 40px; right: 6px;
+               max-height: 90%; /* 100% - 46px important!!! */
+               height: auto; overflow: auto;
+               background-color: rgba(0, 0, 0, 0.6);
+               /* rgba(96, 96, 170, 0.75); */
+               border: solid black;
+               font-family: sans; font-size: 10pt;
+               padding: 6px; }
+
+    #popupInfo { position: absolute; left: 8px; top: 8px;
+                 max-width: 10cm; background-color: rgba(0, 0, 0, 0.6);
+                 font-family: sans; font-size: 10pt;
+                 -moz-border-radius:16px; -webkit-border-radius:16px;
+                 border-radius: 16px; padding: 16px; }
+    #popupClose { position: absolute; right: 8px; top: 8px;
+                  width: 16px; height: 16px;
+                  background-image: url("close.png");
+
+                /* Warning: The following styles used for CSS buttons
+                   may have browser compatibility issues.  */
+                -webkit-touch-callout: none;
+                -webkit-user-select: none;
+                -khtml-user-select: none;
+                -moz-user-select: none;
+                -ms-user-select: none;
+                /* user-select: none; */ /* Doesn't validate */
+                cursor: default; }
+    #popupClose:active { background-image: url("close_light.png"); }
+
+
     /* Note: Button highlight color is "#6a6a96".  */
+
+    #minimize-btn { background-image: url("minimize.png"); }
+    #minimize-btn:active { background-image: url("minimize_light.png"); }
+    #begin-btn { background-image: url("beginning.png"); }
+    #begin-btn:active { background-image: url("beginning_light.png"); }
+    #rewind-btn { background-image: url("rewind.png"); }
+    #rewind-btn:active { background-image: url("rewind_light.png"); }
+    #bstep-btn { background-image: url("step_back.png"); }
+    #bstep-btn:active { background-image: url("step_back_light.png"); }
+    #pause-btn { background-image: url("pause.png"); }
+    #pause-btn:active { background-image: url("pause_light.png"); }
+    #play-btn { background-image: url("play.png"); }
+    #play-btn:active { background-image: url("play_light.png"); }
+    #fstep-btn { background-image: url("step_fwd.png"); }
+    #fstep-btn:active { background-image: url("step_fwd_light.png"); }
+    #ffwd-btn { background-image: url("fast_forward.png"); }
+    #ffwd-btn:active { background-image: url("fast_forward_light.png"); }
+    #end-btn { background-image: url("end.png"); }
+    #end-btn:active { background-image: url("end_light.png"); }
+    #config-btn { background-image: url("config.png"); }
+    #config-btn:active { background-image: url("config_light.png"); }
+    #help-btn { background-image: url("help.png"); }
+    #help-btn:active { background-image: url("help_light.png");
+                       outline: none; }
   </style>
-
-  <script type="text/javascript"
-		  src="../canvas_globe_test/globe_render.js"></script>
-  <script type="text/javascript">
-  <!--//--><![CDATA[//><!--
-    // Preload the button images.
-    var images = [];
-    function loadImages() {
-
-      var files = [ "beginning_light.png", "rewind_light.png",
-        "step_back_light.png", "pause_light.png", "play_light.png",
-        "step_fwd_light.png", "fast_forward_light.png",
-        "end_light.png", "config_light.png", "help_light.png" ];
-
-      var i = 0;
-      for (i = 0; i < files.length; i++) {
-        images[i] = new Image(); images[i].src = files[i];
-      }
-    }
-    loadImages();
-  //--><!]]>
-  </script>
 </head>
-<body onload="initCTModule()">
+<body onload="bodyInit()">
 
 <noscript>
 <div style="margin: 0.5em">
@@ -153,81 +139,209 @@ document.getElementById('scriptWrapper').style.cssText = '';
 </script>
 
 <div id="wrap">
-<div id="columns">
-
-<div id="sidewrapper">
-<div id="sidewrap2">
-  <div id="sidebar">Hello</div>
-</div>
-</div>
 
 <div id="drawingContainer">
 
-      <p id="loadingScreen" style="text-align: center">
-		<object type="image/svg+xml"
-			data="../css_gui/loading_composite.svg">
-		  <img src="../css_gui/loading_composite.png"
-		       alt="Decorative Loading Icon." />
-		</object><br />
-		<strong>Loading</strong>
-      </p>
+  <p id="loadingScreen" style="text-align: center">
+    <object type="image/svg+xml"
+	    data="../css_gui/loading_composite.svg">
+      <img src="../css_gui/loading_composite.png"
+	   alt="Decorative Loading Icon." />
+    </object><br />
+    <strong>Loading</strong>
+  </p>
 
 </div>
 
-<div id="popupInfo">
-<b>Eddy #43859</b> <br />
-
-<p>
-  Coordinates: 0 N 0 E <br />
-  Area: 483 m^2 <br />
-  Geodesic Speed: 800 km/hr
-</p>
 </div>
 
-</div>
-</div>
-
-<form id="bottomBar" action="">
+<div id="bbwrap"><form id="bottomBar" action="">
 
    <div class="iconBtns">
-   <div class="imgbtn" id="beginbtn" title="Beginning"></div><!--
---><div class="imgbtn" id="rewindbtn" title="Backward faster"></div><!--
---><div class="imgbtn" id="bstepbtn" title="Step backward"></div><!--
---><div class="imgbtn" id="pausebtn" title="Pause"></div><!--
---><div class="imgbtn" id="playbtn" title="Play"></div><!--
---><div class="imgbtn" id="fstepbtn" title="Step forward"></div><!--
---><div class="imgbtn" id="ffwdbtn" title="Forward faster"></div><!--
---><div class="imgbtn" id="endbtn" title="End"></div>
+   <div class="imgbtn" id="minimize-btn" title="Auto-Hide"></div>
    </div><!--
 
 --><div class="spacer"></div><!--
 
 --><div class="iconBtns">
-   <div class="imgbtn" id="configbtn" title="Configure"></div><!--
-
---><div class="spacer"></div><!--
-
---><div class="imgbtn" id="helpbtn" title="Help/About"></div>
+   <div class="imgbtn" id="begin-btn" title="Beginning"></div><!--
+--><div class="imgbtn" id="rewind-btn" title="Backward faster"></div><!--
+--><div class="imgbtn" id="bstep-btn" title="Step backward"></div><!--
+--><!-- <div class="imgbtn" id="pause-btn" title="Pause"></div> --><!--
+--><div class="imgbtn" id="play-btn" title="Play"></div><!--
+--><div class="imgbtn" id="fstep-btn" title="Step forward"></div><!--
+--><div class="imgbtn" id="ffwd-btn" title="Forward faster"></div><!--
+--><div class="imgbtn" id="end-btn" title="End"></div>
    </div><!--
 
 --><div class="spacer"></div><!--
 
---><div class="position-time">
-   <input id="gui.curDate" type="text" value="1998-10-02"
+--><div class="iconBtns">
+   <div class="imgbtn" id="config-btn" title="Configure"></div><!--
+
+--><div class="spacer"></div><!--
+
+--><a class="imgbtn" id="help-btn" title="Help/About"
+      href="../web_viewer_notes/" target="_blank"></a>
+   <!-- WARNING: Using "target" causes validation failures.  -->
+   </div><!--
+
+--><div class="spacer"></div><!--
+
+--><div class="quickcfg">
+   <input id="cfg-curDate" type="text" value="1998-10-02"
 	  title="Current Date" />
-   <input id="gui.latLon" type="text" value="0 N 0 E"
+   <input id="cfg-latLon" type="text" value="0 N 0 E"
 	  title="Latitude, Longitude" />
-   <label for="graticule"
+   </div>
+
+   <div class="quickcfg">
+   <label for="cfg-scaleFac"
+	  title="Scale Factor">
+     <img src="scale.png" alt="S:" />
+   </label>
+   <input id="cfg-scaleFac" type="text" value="1.0"
+	  title="Scale Factor" />
+   </div>
+
+   <div class="quickcfg">
+   <label for="cfg-graticule"
 	  title="Graticule (degrees/line)">
      <img src="graticule.png" alt="G:" />
    </label>
-   <input id="graticule" type="text" value="15"
+   <input id="cfg-graticule" type="text" value="15"
 	  title="Graticule (degrees/line)" />
    </div>
 
-</form>
+</form></div>
+
+<div id="configWrapper" style="display: none"><div id="configPanel">
+Hello e there<br />
+<br />
+This is some more text to help convince you.<br />
+The quick brown fox jumps over the lazy dog.<br />
+</div></div>
+
+<div id="popupInfo">
+<div id="popupClose"></div>
+<b>Eddy #43859</b><br />
+<br />
+Coordinates: 0 N 0 E<br />
+Amplitude: 1.0 cm<br />
+Area: 483 m^2<br />
+Geodesic Speed: 800 km/hr
+</div>
 
 </div> <!-- END scriptWrapper -->
+
+<script type="text/javascript">
+<!--//--><![CDATA[//><!--
+  // Preload the button images.
+  function loadImages() {
+
+    var files = [ "minimize_light.png", "beginning_light.png",
+      "rewind_light.png", "step_back_light.png", "pause.png",
+      "pause_light.png", "play_light.png", "step_fwd_light.png",
+      "fast_forward_light.png", "end_light.png", "config_light.png",
+      "help_light.png", "close_light.png" ];
+
+    var i = 0;
+    for (i = 0; i < files.length; i++) {
+      btnImages[i] = new Image(); btnImages[i].src = files[i];
+    }
+  }
+
+  function onunhide(event) {
+    document.getElementById('bottomBar').style.cssText = '';
+  }
+
+  function onhide(event) {
+    document.getElementById('bottomBar').style.cssText = 'display: none';
+  }
+
+  function onplay(event) {
+    this.id = 'pause-btn';
+    this.title = 'Pause';
+    this.onclick = onpause;
+  };
+
+  function onpause(event) {
+    this.id = 'play-btn';
+    this.title = 'Play';
+    this.onclick = onplay;
+  }
+
+  function initGUIHooks() {
+    document.getElementById('minimize-btn').onclick = function(event) {
+      var bbwrap = document.getElementById('bbwrap');
+      if (this.style.cssText == '') {
+        this.style.cssText = 'background-image: url("minimize_light.png")';
+        bbwrap.onmouseover = onunhide;
+        bbwrap.onmouseout = onhide;
+      } else {
+        this.style.cssText = '';
+        bbwrap.onmouseover = null;
+        bbwrap.onmouseout = null;
+      }
+    };
+
+    document.getElementById('begin-btn').onclick = function(event) {
+      alert('Beginning');
+    };
+
+    document.getElementById('rewind-btn').onclick = function(event) {
+      alert('Backward faster');
+    };
+
+    document.getElementById('bstep-btn').onclick = function(event) {
+      alert('Step backward');
+    };
+
+    document.getElementById('play-btn').onclick = onplay;
+
+    document.getElementById('fstep-btn').onclick = function(event) {
+      alert('Step forward');
+    };
+
+    document.getElementById('ffwd-btn').onclick = function(event) {
+      alert('Fast forward');
+    };
+
+    document.getElementById('end-btn').onclick = function(event) {
+      alert('End');
+    };
+
+    document.getElementById('config-btn').onclick = function(event) {
+      var configPanel = document.getElementById('configWrapper');
+      if (configPanel.style.cssText == '') {
+        configPanel.style.cssText = 'display: none';
+        this.style.cssText = '';
+      } else {
+        configPanel.style.cssText = '';
+        this.style.cssText = 'background-image: url("config_light.png")';
+      }
+    };
+
+    document.getElementById('popupClose').onclick = function(event) {
+      var popupInfo = document.getElementById('popupInfo');
+      popupInfo.style.cssText = 'display: none';
+    };
+
+    /* document.getElementById('').onchange = function(event) {
+    }; */
+  }
+
+  function bodyInit() {
+    return initCTModule();
+  }
+
+  var btnImages = [];
+  loadImages();
+  initGUIHooks();
+//--><!]]>
+</script>
+<script type="text/javascript"
+	src="../canvas_globe_test/globe_render.js"></script>
 
 </body>
 </html>

@@ -25,6 +25,7 @@
     #bottomBar { display: /* inline- */ block; overflow: hidden;
                  margin: 0px auto; padding-left: 10px; padding-right: 10px;
                  background-color: #333348; }
+
     .iconBtns { display: inline-block; height: 32px;
                 vertical-align: top;
                 margin: 0px;
@@ -43,6 +44,8 @@
                      border-color: white; margin: 0px; padding: 0px;
                      vertical-align: top; }
     .iconBtns .imgbtn { display: inline-block; width: 32px; height: 32px; }
+    .spacer { display: inline-block; width: 10px; margin: 0px; padding: 0px; }
+
     .quickcfg { display: inline-block; height: 32px;
                      vertical-align: top;
                      margin: 0px; margin-top: 1px; margin-bottom: 1px;
@@ -50,7 +53,6 @@
     .quickcfg input { width: 4em; text-align: center; }
     input#cfg-curDate { width: 7em; }
     input#cfg-latLon { width: 10em; }
-    .spacer { display: inline-block; width: 10px; margin: 0px; padding: 0px; }
     label img { vertical-align: middle; }
 
 
@@ -65,6 +67,11 @@
                border: solid black;
                font-family: sans; font-size: 10pt;
                padding: 6px; }
+    #configPanel fieldset { text-align: right; }
+    #configPanel fieldset legend { text-align: left; }
+
+    .numinput { width: 4em; }
+    .wideinput { width: auto; }
 
     #popupInfo { position: absolute; left: 8px; top: 8px;
                  max-width: 10cm; background-color: rgba(0, 0, 0, 0.6);
@@ -215,12 +222,43 @@ document.getElementById('scriptWrapper').style.cssText = '';
 
 </form></div>
 
-<div id="configWrapper" style="display: none"><div id="configPanel">
-Hello e there<br />
-<br />
-This is some more text to help convince you.<br />
-The quick brown fox jumps over the lazy dog.<br />
-</div></div>
+<div id="configWrapper" style="display: none"><form id="configPanel">
+  <fieldset>
+    <legend>Eddy Filters</legend>
+    <label for="cfg-showCyc">Cyclonic</label>
+    <input id="cfg-showCyc" type="checkbox" /><br />
+    <label for="cfg-showAntiCyc">Anticyclonic</label>
+    <input id="cfg-showAntiCyc" type="checkbox" /><br />
+    <label for="cfg-showChelton">Chelton Tracks</label>
+    <input id="cfg-showChelton" type="checkbox" /><br />
+    <label for="cfg-lenRange">Length Range (weeks)</label>
+    <input id="cfg-lenRange" type="text" value="0, max"
+	   class="numinput" title="Format: min, max" />
+  </fieldset><br />
+
+  <fieldset>
+    <legend>Projection</legend>
+    <label for="cfg-projMethod">Type:</label>
+    <select id="cfg-projMethod">
+      <option>Equirectangular</option>
+      <option>Mercator</option>
+      <option selected="selected">Orthographic</option>
+      <option>Perspective</option>
+    </select><br />
+
+    <label for="cfg-perspAltitude">Altitude (km):</label>
+    <input id="cfg-perspAltitude" type="text" value="35786"
+	   disabled="disabled" class="numinput" /><br />
+    <label for="cfg-perspFOV">Field of View (deg.):</label>
+    <input id="cfg-perspFOV" type="text" value="17.5"
+	   disabled="disabled" class="numinput" />
+
+  </fieldset><br />
+
+  <fieldset>
+    <legend>Render Parameters</legend>
+  </fieldset>
+</form></div>
 
 <div id="popupInfo">
 <div id="popupClose"></div>
@@ -332,7 +370,7 @@ Geodesic Speed: 800 km/hr
   }
 
   function bodyInit() {
-    return initCTModule();
+    // return initCTModule();
   }
 
   var btnImages = [];

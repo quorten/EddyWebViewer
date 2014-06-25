@@ -70,11 +70,13 @@ SSHLayer.loadData.procData = function(image) {
   SSHLayer.sshData = [];
   var i = 0;
   while (i < tmpImgData.data.length) {
-    SSHLayer.sshData.push(tmpImgData.data[i++] / 4 - 32);
-    // Skip all the other data in this pixel.
-    i++;
-    i++;
-    i++;
+    if (tmpImgData.data[i+0] < 16 &&
+	tmpImgData.data[i+1] < 16 &&
+	tmpImgData.data[i+2] < 16) // Use fuzz margin due to JPEG artifacts
+      SSHLayer.sshData.push(-32); // Transparent
+    else
+      SSHLayer.sshData.push(tmpImgData.data[i] / 4 - 32);
+    i += 4;
   }
 
   /* SSHLayer.sshData = new Float32Array(1440 * 721 * 4);
@@ -219,14 +221,15 @@ SSHLayer.render = (function() {
 	}
 	var latIdx = ~~((polCoord.lat + 90) / 180 * src_height);
 	var lonIdx = ~~((polCoord.lon + 180) / 360 * src_width);
-	var value = sshData[latIdx*src_width+lonIdx] / 32;
-	// var value = sshData[y*src_width+x] / 32;
+	var value = sshData[latIdx*src_width+lonIdx];
+	// var value = sshData[y*src_width+x];
 
-	  if (isNaN(value) || value == -1) {
+	  if (isNaN(value) || value == -32) {
 	      destIdx += 4;
 	      x++;
 	      continue;
 	  }
+	  value /= 32;
 
 	  if (value > 1) value = 1;
 	  if (value < -1) value = -1;

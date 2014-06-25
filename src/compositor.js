@@ -1,9 +1,73 @@
 /* Composite rendering of 2D RenderLayers, either as a 2D map or
    through a 3D raytrace renderer.  */
 
+import "trackslayer";
+import "sshlayer";
 import "compat";
 
 var Compositor = {};
+
+/* Perform startup initialization for the whole web viewer.  */
+Compositor.init = function() {
+  this.drawingContainer = document.getElementById("drawingContainer");
+  this.canvas = document.createElement("canvas");
+  // TODO: Perform capabilities check here.
+  this.canvas.id = "drawingPad";
+  this.canvas.style.cssText = "display: none";
+  this.drawingContainer.appendChild(this.canvas);
+
+  this.fitCanvasToCntr();
+
+  // Create a backbuffer to pull pixels from.
+  this.bbuf = document.createElement("canvas");
+  this.bbuf.id = "compositeBackBuf";
+
+  // Initialize the overlays.
+  TracksLayer.loadData.timeout = 10;
+  SSHLayer.loadData.timeout = 10;
+};
+
+/* Resize the frontbuffer canvas to fit the CSS allocated space.
+
+   NOTE: Because modern browsers do not provide an event that fires if
+   the width or height of a CSS element has changed, this function
+   must be called every time the screen is updated via one of the
+   render() functions.  */
+Compositor.fitCanvasToCntr = function() {
+  // var drawingContainer = document.getElementById("drawingContainer");
+  // Warning: clientWidth and clientHeight marked as unstable in MDN.
+  if (this.canvas.width == this.drawingContainer.width &&
+      this.canvas.height == this.drawingContainer.height)
+    return;
+  this.canvas.width = this.drawingContainer.clientWidth;
+  this.canvas.height = this.drawingContainer.clientHeight;
+  // window.innerWidth, window.innerHeight
+}
+
+/* Perform one of the 3D raytracing rendering processes.  */
+Compositor.render3d = function() {
+  return render_globe();
+};
+
+/* Simple 2D renderer: Just display the composite of the
+   RenderLayers.  */
+Compositor.render2d = function() {
+  return render_map();
+};
+
+/* Finish any render jobs that may be pending from TracksLayer or
+   SSHLayer.  */
+Compositor.finishRenderJobs = function() {
+  var tracksStatus = TracksLayer.continueCT();
+  var sshStatus = SSHLayer.continueCT();
+
+  // Composite!
+  Compositor.render3d();
+
+  if (tracksStatus.returnType != CothreadStatus.FINISHED ||
+      sshStatus.returnType != CothreadStatus.FINISHED)
+    return setTimeout(Compositor.finishRenderJobs, 30);
+};
 
 // ----------------------------------------
 
@@ -11,9 +75,9 @@ var Compositor = {};
 // gets called from a callback to complete the render.  In general,
 // JavaScript cannot support threads.
 function render_globe() {
-  if (!allocRenderJob())
+  if (!allocRenderJob(render_globe))
     return;
-  fitCanvasToCntr();
+  Compositor.fitCanvasToCntr();
   if (equirect_project) {
     if (wire_render)
       return render_equi_graticule();
@@ -335,13 +399,4 @@ function render_ortho_graticule() {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.stroke();
   }
-}
-
-function periodic_render() {
-  if (!rotating)
-    return;
-  lon_rot += 5;
-  render_globe();
-  if (rotating)
-    return rotating = setTimeout(periodic_render, 10);
 }

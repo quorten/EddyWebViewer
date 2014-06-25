@@ -94,10 +94,11 @@ XHRLoader.prototype.alertContents = function() {
   }
 };
 
-/*  This function guarantees that `alertContents()' will have `this'
-    setup properly when being called as an event handler.  */
-XHRLoader.prototype.alertContentsWrapper = function(callObj) {
-  return function() { return callObj.alertContents(); };
+/*  This function guarantees that the given event handler (such as
+    `alertContents()') will have `this' setup properly when being
+    called as an event handler.  */
+XHRLoader.prototype.makeEventWrapper = function(callObj, handler) {
+  return function() { return callObj[handler](); };
 };
 
 XHRLoader.prototype.startExec = function() {
@@ -123,8 +124,10 @@ XHRLoader.prototype.startExec = function() {
     return;
   }
 
-  if (this.notifyFunc)
-    httpRequest.onreadystatechange = this.alertContentsWrapper(this);
+  if (this.notifyFunc) {
+    httpRequest.onreadystatechange =
+      this.makeEventWrapper(this, "alertContents");
+  }
   httpRequest.open("GET", this.url, true);
   if (this.byteRange) {
     var min = this.byteRange[0];
@@ -317,6 +320,13 @@ ImageLoader.prototype.alertContents = function() {
   this.retVal = ImageLoader.SUCCESS;
   if (this.notifyFunc)
     return this.notifyFunc();
+};
+
+/*  This function guarantees that the given event handler (such as
+    `alertContents()') will have `this' setup properly when being
+    called as an event handler.  */
+ImageLoader.prototype.makeEventWrapper = function(callObj, handler) {
+  return function() { return callObj[handler](); };
 };
 
 /*  This function guarantees that `alertContents()' will have `this'

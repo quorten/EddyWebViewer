@@ -1449,6 +1449,8 @@ Okay, break time.  Let's see what we've got done so far:
 
 Need:
 
+* Error checking for image loader must be fixed.
+
 * Parameterized layers
 
 * Compositor class
@@ -1500,3 +1502,13 @@ RenderLayers in progress.
 
 Build the raytracers right into Compositor, in all ugliness.  Yes, for
 now, if the raytracers are too slow, they are just too slow.
+
+----
+
+Pending questions:
+
+* Can I get the polar ice caps and land mass masks separate from the
+  SSH data?  This will help a lot since I need to maintain a division
+  between lossy and lossless compressed data for the web viewer.  It
+  will also help in that I will be able to draw the regions of the
+  current polar ice caps as white on the Earth.

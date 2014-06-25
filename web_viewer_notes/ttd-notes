@@ -1406,3 +1406,68 @@ okay, try to minimize user-code function calls in inner loops.  Don't
 worry about scalar variable definitions, it will be okay as long as
 you periodically return from the code to allow the garbage collector
 to operate.
+
+----------------------------------------
+
+Things that I must be able to get done pretty fast:
+
+* Parameterized TracksLayer
+
+* Parameterized SSHLayer
+
+* Main Loop (just startup)
+
+* Clicking
+
+* Mouse clicks
+
+* Just go with Equirectangular projection
+
+* How will the new code load the dates?  Use a simple non-cothreaded
+  initialization module.
+
+Loading the dates will be taken care of by a global module.
+
+So, how do I start?  Just add parameters to the TracksLayer and
+SSHLayer.  Then the GUI code just hooks right into them, except
+that I also have a main loop to manage this too.
+
+Seriously, let's try to keep things simple: We'll just chain rendering
+in a SeriesCTCtl.  That way, we don't have to worry about too much
+code complexity.
+
+Okay, break time.  Let's see what we've got done so far:
+
+* Dates
+
+* Cyc and acyc track loading
+
+* Render one of cyc or acyc, but not both.
+
+* Viewer parameterized as much as useful for at one size.  Pixelation
+  will have to do for other render sizes.
+
+Need:
+
+* Parameterized layers
+
+* Similar to the older viewer, we will just draw onto one "master"
+  canvas size, then we will pull off of the master canvas to create
+  the display canvas.  Thus, we only render onto a 2D canvas, and for
+  the 3D projectors, we will raytrace like has been done in the past,
+  and 2D will display and scroll.  Only equirect will tile.
+
+Don't need:
+
+* More than one layer size
+
+Okay, how to integrate the SSHLayer with the old code base?
+
+No, work on the new code base.  Integrate the old code with the new
+code.
+
+No partial rendering.  No max track ranging.  Yes filtering, though.
+Yes cothreading, though.  No IOWAIT-ing.
+
+Do not use curDates private to layers.  Just use one global in Date.
+

@@ -154,6 +154,7 @@ function finishStartup() {
       renderEddyTracks();
       refreshOverlay();
       pointerTestInit();
+      render_globe();
     /* } else {
       alert("There was a problem with the request.");
     }
@@ -396,7 +397,7 @@ function msieVersion() {
 var mouseDown = false;
 var buttonDown = 0;
 var firstPoint = {};
-var topLeft = {};
+var topLeft = { x: 0, y: 0 };
 var ptMSIE = msieVersion();
 firstPoint.x = 0; firstPoint.y = 0;
 
@@ -416,13 +417,13 @@ function setMouseDown(event) {
   mouseDown = true;
   buttonDown = event.button;
   firstPoint.x = event.clientX; firstPoint.y = event.clientY;
-  if (!topLeft.x) {
+  /* if (!topLeft.x) {
     topLeft.x = firstPoint.x - canvas.width / 2;
     topLeft.y = firstPoint.y - canvas.height / 2;
     var ctx = canvas.getContext("2d");
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-  }
+  } */
   old_lon_rot = lon_rot;
   old_tilt = tilt;
 }
@@ -497,10 +498,12 @@ function zoomGlobe(event) {
       else
         scale /= (event.deltaY / 3) * 1.1;
     } else if (event.deltaMode == 0x00) { // DOM_DELTA_PIXEL
+      /* FIXME: a good factor for this is wildly different across
+	 systems.  */
       if (event.deltaY < 0)
-        scale *= (event.deltaY / 53) * -1.1;
+        scale *= (event.deltaY / 128 /* 51 */) * -1.1;
       else
-        scale /= (event.deltaY / 53) * 1.1;
+        scale /= (event.deltaY / 128) * 1.1;
     }
     var cfg_scaleFac = document.getElementById("cfg-scaleFac");
     if (cfg_scaleFac) cfg_scaleFac.value = scale.toFixed(3);
@@ -643,7 +646,7 @@ function pointerTestInit() {
   document.addWheelListener(canvas, zoomGlobe);
   // window.onkeydown = keyEvent;
 
-  var ctx = canvas.getContext("2d");
+  /* var ctx = canvas.getContext("2d");
   ctx.font = "12pt Sans";
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -652,7 +655,7 @@ function pointerTestInit() {
   ctx.fillText("Click on the dot in the center.",
 	       10, ~~(canvas.height * 3 / 4));
   ctx.fillRect(~~(canvas.width / 2),
-    ~~(canvas.height / 2), 1, 1);
+    ~~(canvas.height / 2), 1, 1); */
 }
 
 /* Try to allocate a new render job.  This will either preempt an
@@ -881,12 +884,9 @@ function render_equi_graticule() {
   render_map();
 
   var ctx = canvas.getContext("2d");
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
   ctx.strokeStyle = 'rgba(128, 128, 128, 0.5)';
   ctx.lineWidth = scale;
-  // ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.translate(x_shift + canvas.width / 2, y_shift + canvas.height / 2);
-  // ctx.fillRect(0, 0, screen_scalfac, screen_scalfac / 2);
 
   ctx.beginPath();
   for (var lat = 0; lat < 180; lat += grat_density) {
@@ -916,7 +916,6 @@ function render_equi_graticule() {
 
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.translate(real_x_shift, y_shift + canvas.height / 2);
-  // ctx.fillRect(0, 0, screen_scalfac, screen_scalfac / 2);
 
   ctx.beginPath();
   for (var lat = 0; lat < 180; lat += grat_density) {

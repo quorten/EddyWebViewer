@@ -258,6 +258,7 @@ SeriesCTCtl.prototype.contExec = function() {
   var lDate_now = Date.now;
   var startTime = lDate_now();
   var timeout = this.timeout;
+
   while (true) {
     status = jobList[curJob].continueCT();
     if (lDate_now() - startTime >= timeout)
@@ -266,17 +267,17 @@ SeriesCTCtl.prototype.contExec = function() {
     if (status.returnType == CothreadStatus.FINISHED) {
       if (jobList[curJob].retVal == SeriesCTCtl.QUIT) {
 	this.retVal = SeriesCTCtl.QUIT;
-	this.returnType = CothreadStatus.FINISHED;
+	this.status.returnType = CothreadStatus.FINISHED;
 	this.status.preemptCode = 0;
 	this.status.percent = CothreadStatus.MAX_PERCENT;
 	return this.status;
       }
 
-      curJob++;
+      curJob++; this.curJob = curJob;
 
       if (curJob >= numJobs) {
 	this.retVal = 0;
-	this.returnType = CothreadStatus.FINISHED;
+	this.status.returnType = CothreadStatus.FINISHED;
 	this.status.preemptCode = 0;
 	this.status.percent = CothreadStatus.MAX_PERCENT;
 	return this.status;

@@ -4,11 +4,36 @@ import "renderlayer";
 import "csv";
 
 SSHLayer = new RenderLayer();
-SSHLayer.IOWAIT = 1;
-SSHLayer.PROC_DATA = 2;
+
+/* Important parameters for TracksLayer: */
+
+// loadPrefix: prefix to append to date for frame to load
+SSHLayer.loadPrefix = "../data/jpgssh/ssh_";
+
+// loadFrame: hyphenless date of frame to load
+SSHLayer.loadFrame = "19930303";
+
+// loadPostfix: extension to append for frame to load
+SSHLayer.loadPostfix = ".jpg";
+
+// shadeStyle: Zero for grayscale, one for MATLAB jet
+SSHLayer.shadeStyle = 1;
+
+// notifyFunc: Main loop function to call for notifications
+SSHLayer.notifyFunc = execTime;
 
 SSHLayer.setCacheLimits = function(dataCache, renderCache) {
 };
+
+/*
+
+Work on SSHLayer.  What needs to be done?
+
+1. Load the data.  Start by using the cothread imageloader module.
+After the cothread imageloader module finishes, copy the data into a
+byte array, 0..255.  Rendering: just write out pixel value.
+
+*/
 
 /**
  * Cothreaded data loading function.  This function only initiates
@@ -26,7 +51,7 @@ SSHLayer.loadData = (function() {
     case 4: // DONE
       if (httpRequest.status == 200) {
 	// Call the main loop to continue cothread execution.
-	return execTime();
+	return SSHLayer.notifyFunc();
       } else {
 	throw new Error("There was a problem with the HTTP request.");
       }
@@ -36,7 +61,7 @@ SSHLayer.loadData = (function() {
 	 download speed, so we avoid it.  In the future, we should
 	 only do it after a timeout of two seconds.  */
       // Call the main loop to update the download status.
-      // return execTime();
+      // return SSHLayer.notifyFunc();
       break;
     case 2: // HEADERS_RECEIVED
       SSHLayer.loadData.reqLen = httpRequest.getResponseHeader("Content-Length");
@@ -47,7 +72,7 @@ SSHLayer.loadData = (function() {
   function imgLoaded() {
     // Call the main loop to continue cothread execution.
     SSHLayer.loadData.imgReady = true;
-    return execTime();
+    return SSHLayer.notifyFunc();
   }
 
   function startExec() {
@@ -81,7 +106,8 @@ SSHLayer.loadData = (function() {
 
     this.tmpImg = new Image();
     this.tmpImg.onload = imgLoaded;
-    this.tmpImg.src = "../pngssh/ssh_19921014.png";
+    this.tmpImg.src =
+      SSHLayer.loadPrefix + SSHLayer.loadFrame + SSHLayer.loadPostfix;
     this.imgReady = false;
 
     // this.httpRequest = httpRequest;
@@ -99,7 +125,7 @@ SSHLayer.loadData = (function() {
       return this.status;
     } else if (httpRequest.readyState != 4) {
       this.status.returnType = CothreadStatus.PREEMPTED;
-      this.status.preemptCode = SSHLayer.IOWAIT;
+      this.status.preemptCode = CothreadStatus.IOWAIT;
       if (reqLen) {
 	this.status.percent = httpRequest.responseText.length * 
 	  CothreadStatus.MAX_PERCENT / reqLen;
@@ -111,7 +137,7 @@ SSHLayer.loadData = (function() {
 
     if (!this.imgReady) {
       this.status.returnType = CothreadStatus.PREEMPTED;
-      this.status.preemptCode = SSHLayer.IOWAIT;
+      this.status.preemptCode = CothreadStatus.IOWAIT;
       return this.status;
     }
 
@@ -119,7 +145,7 @@ SSHLayer.loadData = (function() {
     if (!this.readyDataProcess) {
       this.readyDataProcess = true;
       this.status.returnType = CothreadStatus.PREEMPTED;
-      this.status.preemptCode = SSHLayer.PROC_DATA;
+      this.status.preemptCode = CothreadStatus.PROC_DATA;
       return this.status;
     }
 

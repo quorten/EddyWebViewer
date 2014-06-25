@@ -8,6 +8,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "../libs/cjs/exparray.h"
 
 struct InputEddy_tag {
@@ -46,6 +47,8 @@ EA_TYPE(unsigned);
 InputEddy_array_array json_input;
 SortedEddy_array sorted_eddies;
 unsigned_array eddies_per_date;
+
+void qsort_eddies_date();
 
 int se_date_cmp(const void *p1, const void *p2);
 
@@ -129,15 +132,23 @@ int main(int argc, char *argv[]) {
 	seddy->lon = ieddy->lon;
 	seddy->date_index = ieddy->date_index;
 	seddy->unsorted_index = sorted_eddies.len;
-	if (sorted_eddies.len > 0) {
+	if (j == 0) {
+	  seddy->prev = 0;
+	  seddy->prev_date_index = 0;
+	} else {
+	  seddy->prev = sorted_eddies.len - 1;
+	  seddy->prev_date_index =
+	    sorted_eddies.d[sorted_eddies.len-1].date_index;
+	}
+	seddy->next = 0;
+	seddy->next_date_index = 0;
+
+	/* Initialize the "next" indexes of the previous eddy.  */
+	if (sorted_eddies.len > 0 &&
+	    j < json_input.d[i].len - 1) {
 	  seddy = sorted_eddies.d[sorted_eddies.len-1];
-	  if (j < json_input.d[i].len - 1) {
-	    seddy->next = sorted_eddies.len;
-	    seddy->next_date_index = ieddy->date_index;
-	  } else {
-	    seddy->next = sorted_eddies.len - j;
-	    seddy->next_date_index = json_input.d[i].d[0].date_index;
-	  }
+	  seddy->next = sorted_eddies.len;
+	  seddy->next_date_index = ieddy->date_index;
 	}
 	EA_ADD(sorted_eddies);
       }
@@ -152,9 +163,10 @@ int main(int argc, char *argv[]) {
     EA_DESTROY(json_input);
   }
 
-  /* Sort the eddies by date.  */
-  qsort(sorted_eddies.d, sorted_eddies.len, sizeof(SortedEddy),
-	se_date_cmp);
+  /* Sort the eddies by date.  We must use our own sort function
+     instead of libc qsort() so that the linked lists of eddies are
+     preserved.  */
+  qsort_eddies_date(sorted_eddies.d, sorted_eddies.len);
 
   { /* The eddies are now grouped into series of contiguous chunks
        where each date index in the chunk is identical.  Find the
@@ -172,6 +184,9 @@ int main(int argc, char *argv[]) {
     }
     EA_APPEND(eddies_per_date, cur_epd);
   }
+
+  /* Quicksort the eddies by latitude and longitude to prepare for
+     kd-tree construction.  */
 
   { /* Build a 2D kd-tree within each chunk from the latitude and
        longitude of each eddy.  The top node of the kd-tree is stored

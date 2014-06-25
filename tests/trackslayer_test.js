@@ -49,7 +49,7 @@ function setup2() {
 
 function execTime() {
   var status = TracksLayer.loadData.continueCT();
-  if (status.preemptCode != XHRLoader.PROC_DATA) {
+  if (status.preemptCode != CothreadStatus.PROC_DATA) {
     document.getElementById("progElmt").innerHTML = [ "Download: ",
       (status.percent * 100 / CothreadStatus.MAX_PERCENT).toFixed(2), "%"].
       join("");
@@ -59,14 +59,15 @@ function execTime() {
   if (status.returnType == CothreadStatus.FINISHED) {
     var resultElmt = document.createElement("p");
     resultElmt.id = "resultElmt";
-    resultElmt.innerHTML = "Result: " + TracksLayer.tracksData.length +
+    resultElmt.innerHTML = "Result: " +
+      (TracksLayer.acTracksData.length + TracksLayer.cTracksData.length) +
       " tracks";
     document.documentElement.children[1].appendChild(resultElmt);
 
     // Next move on to testing the progressive renderer.
     return setTimeout(setup2, 80);
   }
-  if (status.preemptCode == XHRLoader.IOWAIT)
+  if (status.preemptCode == CothreadStatus.IOWAIT)
     return;
   return browserTime();
 }
@@ -97,7 +98,7 @@ function setup() {
   TracksLayer.loadData.timeout = 20;
   var status = TracksLayer.loadData.start();
   if (status.returnType != CothreadStatus.FINISHED) {
-    if (status.preemptCode == XHRLoader.IOWAIT)
+    if (status.preemptCode == CothreadStatus.IOWAIT)
       return;
     return browserTime();
   }

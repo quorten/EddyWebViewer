@@ -27,10 +27,14 @@ struct SortedEddy_tag {
   unsigned unsorted_index;
   /* Index of the next eddy in a track.  If this is less than the
      index of the current eddy, then this is the last eddy in this
-     track, and the index is pointing to the first eddy in this
-     track.  */
-  unsigned next;
-  unsigned next_date_index;
+     track, and the index is pointing to the first eddy in this track
+     (for singly-linked lists).  If this is equal to the current eddy,
+     then this marks the end of the track (for doubly-linked
+     lists).  */
+  int next;
+  int next_date_index;
+  int prev;
+  int prev_date_index;
 };
 typedef struct SortedEddy_tag SortedEddy;
 
@@ -226,7 +230,7 @@ int main(int argc, char *argv[]) {
        intervals for readability.  */
     for (i = 0; i < sorted_eddies.len - 1; i++) {
       SortedEddy *seddy = sorted_eddies.d[i];
-      printf("[%1u,%5u,%10f,%10f,%10u],", seddy->type, seddy->eddy_index,
+      printf("[%1u,%5u,%10f,%10f,%10i],", seddy->type, seddy->eddy_index,
 	     seddy->lat, seddy->lon, seddy->next);
       if (i % 4 == 0)
 	putchar('\n');
@@ -234,7 +238,7 @@ int main(int argc, char *argv[]) {
 
     { /* Last iteration: no comma at the end of the data.  */
       SortedEddy *seddy = sorted_eddies.d[i];
-      printf("[%1u,%5u,%10f,%10f,%10u]", seddy->type, seddy->eddy_index,
+      printf("[%1u,%5u,%10f,%10f,%10i]", seddy->type, seddy->eddy_index,
 	     seddy->lat, seddy->lon, seddy->next);
       putchar('\n');
     }

@@ -13,3 +13,4 @@ import "csv";
 import "compat";
 import "ajaxloaders";
 import "dates";
+import "compositor";

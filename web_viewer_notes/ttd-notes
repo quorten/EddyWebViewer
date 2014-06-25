@@ -1451,6 +1451,14 @@ Need:
 
 * Parameterized layers
 
+* Compositor class
+
+* All mouse handling code goes in GUI codebase.  No pointer
+  calibration needed whatsoever for this project, just use clientX and
+  clientY.  What about the cothread dispatcher?  Create a MainLoop
+  class for that.  Lump all quickwrite and disorganized code into
+  "compositor.js"
+
 * Similar to the older viewer, we will just draw onto one "master"
   canvas size, then we will pull off of the master canvas to create
   the display canvas.  Thus, we only render onto a 2D canvas, and for
@@ -1471,3 +1479,24 @@ Yes cothreading, though.  No IOWAIT-ing.
 
 Do not use curDates private to layers.  Just use one global in Date.
 
+----
+
+SSHLayer:
+
+Parameterized data loading.
+
+No set viewport magic.  Just adjust the lower-level parameter.
+
+Both 2D and 3D display:
+
+Use a simple compositor class.
+
+What is the architecture of the compositor?
+
+The compositor is a wrapper around a SeriesCTCtl that runs
+RenderLayers in progress to completion.  Each time the SeriesCTCtl
+exits, the compositor composites all the front buffers of the
+RenderLayers in progress.
+
+Build the raytracers right into Compositor, in all ugliness.  Yes, for
+now, if the raytracers are too slow, they are just too slow.

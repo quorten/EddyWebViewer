@@ -99,7 +99,8 @@ MercatorMapProjector.project = function(polCoord) {
 MercatorMapProjector.unproject = function(mapCoord) {
   var r = 1; // Radius
   var polCoord = {};
-  polCoord.lat = 2 * Math.atan(Math.exp(y * Math.PI / r)) - Math.PI / 2;
+  polCoord.lat = (2 * Math.atan(Math.exp(mapCoord.y * Math.PI / r)) -
+		  Math.PI / 2) * RAD2DEG;
   polCoord.lon = mapCoord.x * 180;
   return polCoord;
 };

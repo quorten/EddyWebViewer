@@ -47,7 +47,7 @@ function setup2() {
 
 function execTime() {
   var status = SSHLayer.loadData.continueCT();
-  if (status.preemptCode != SSHLayer.PROC_DATA) {
+  if (status.preemptCode != CothreadStatus.PROC_DATA) {
     document.getElementById("progElmt").innerHTML = [ "Download: ",
       (status.percent * 100 / CothreadStatus.MAX_PERCENT).toFixed(2), "%"].
       join("");
@@ -64,8 +64,8 @@ function execTime() {
     // Next move on to testing the progressive renderer.
     return setTimeout(setup2, 80);
   }
-  if (status.preemptCode == SSHLayer.IOWAIT)
-    return;
+  /* if (status.preemptCode == CothreadStatus.IOWAIT)
+    return; */
   return browserTime();
 }
 
@@ -95,8 +95,8 @@ function setup() {
   SSHLayer.loadData.timeout = 20;
   var status = SSHLayer.loadData.start();
   if (status.returnType != CothreadStatus.FINISHED) {
-    if (status.preemptCode == SSHLayer.IOWAIT)
-      return;
+    /* if (status.preemptCode == CothreadStatus.IOWAIT)
+      return; */
     return browserTime();
   }
 }

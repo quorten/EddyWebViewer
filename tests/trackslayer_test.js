@@ -39,7 +39,7 @@ function setup2() {
   document.documentElement.children[1].appendChild(rendTimeElmt);
   document.documentElement.children[1].appendChild(TracksLayer.frontBuf);
 
-  var width = 1000, height = 500;
+  var width = 1440, height = 721;
   TracksLayer.setViewport(null, width, height, width / height,
 			  EquirectMapProjector);
   TracksLayer.render.timeout = 20;

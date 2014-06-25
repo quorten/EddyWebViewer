@@ -95,7 +95,7 @@ XHRLoader.prototype.alertContents = function() {
 };
 
 /*  This function guarantees that `alertContents()' will have `this'
-    setup properly when being called as an event handler. */
+    setup properly when being called as an event handler.  */
 XHRLoader.prototype.alertContentsWrapper = function(callObj) {
   return function() { return callObj.alertContents(); };
 };
@@ -319,6 +319,12 @@ ImageLoader.prototype.alertContents = function() {
     return this.notifyFunc();
 };
 
+/*  This function guarantees that `alertContents()' will have `this'
+    setup properly when being called as an event handler.  */
+ImageLoader.prototype.alertContentsWrapper = function(callObj) {
+  return function() { return callObj.alertContents(); };
+};
+
 ImageLoader.prototype.alertError = function() {
   this.image = null;
   this.retVal = ImageLoader.LOAD_FAILED;
@@ -345,10 +351,10 @@ ImageLoader.prototype.startExec = function() {
   this.readySyncProcess = false; // Non-preemptable data processing
   // image.onloadstart = this.alertLoadStart; // Works only on recent browsers
   // image.onprogress = this.alertProgress; // Works only on recent browsers
-  image.onload = this.alertContents;
-  image.onerror = this.alertError;
-  image.onabort = this.alertAbort;
-  image.src = this.url;
+  this.image.onload = this.alertContentsWrapper(this);
+  this.image.onerror = this.alertError;
+  this.image.onabort = this.alertAbort;
+  this.image.src = this.url;
 };
 
 ImageLoader.prototype.contExec = function() {
@@ -362,7 +368,7 @@ ImageLoader.prototype.contExec = function() {
     this.status.percent = 0;
     return this.status;
   }
-  // (image.loaded == true)
+  // (this.image.loaded == true)
   this.status.returnType = CothreadStatus.PREEMPTED;
   this.status.preemptCode = ImageLoader.PROC_DATA;
   this.status.percent = CothreadStatus.MAX_PERCENT;

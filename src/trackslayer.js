@@ -249,7 +249,7 @@ TracksLayer.render = (function() {
     }
 
     this.setExitStatus(i < numTracks);
-    this.status.preemptCode = 0;
+    this.status.preemptCode = RenderLayer.FRAME_AVAIL;
     this.status.percent = i * CothreadStatus.MAX_PERCENT / numTracks;
 
     this.i = i;

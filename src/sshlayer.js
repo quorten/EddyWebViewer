@@ -2,6 +2,7 @@
 
 import "renderlayer";
 import "csv";
+import "ajaxloaders";
 
 SSHLayer = new RenderLayer();
 
@@ -18,9 +19,6 @@ SSHLayer.loadPostfix = ".jpg";
 
 // shadeStyle: Zero for grayscale, one for MATLAB jet
 SSHLayer.shadeStyle = 1;
-
-// notifyFunc: Main loop function to call for notifications
-SSHLayer.notifyFunc = execTime;
 
 SSHLayer.setCacheLimits = function(dataCache, renderCache) {
 };
@@ -40,166 +38,81 @@ byte array, 0..255.  Rendering: just write out pixel value.
  * loading of one SSH frame at initialization and the cothread loop
  * only tells whether the image has been fully loaded or not.
  */
-SSHLayer.loadData = (function() {
-  "use strict";
+SSHLayer.loadData = new ImageLoader("", null /* execTime */);
 
-  function alertContents() {
-    var httpRequest = SSHLayer.loadData.httpRequest;
-    if (!httpRequest)
-      return;
-    switch (httpRequest.readyState) {
-    case 4: // DONE
-      if (httpRequest.status == 200) {
-	// Call the main loop to continue cothread execution.
-	return SSHLayer.notifyFunc();
-      } else {
-	throw new Error("There was a problem with the HTTP request.");
-      }
-      break;
-    case 3: // LOADING
-      /* NOTE: In some browsers, doing this can dramatically reduce
-	 download speed, so we avoid it.  In the future, we should
-	 only do it after a timeout of two seconds.  */
-      // Call the main loop to update the download status.
-      // return SSHLayer.notifyFunc();
-      break;
-    case 2: // HEADERS_RECEIVED
-      SSHLayer.loadData.reqLen = httpRequest.getResponseHeader("Content-Length");
-      break;
-    }
+SSHLayer.loadData.url =
+  SSHLayer.loadPrefix + SSHLayer.loadFrame + SSHLayer.loadPostfix;
+
+SSHLayer.loadData.procData = function(image) {
+  var doneProcData = true;
+  var procError = false;
+
+  /* Pull the pixels off of the image and fill them into the sshData
+     array as floating point numbers.  */
+  var tmpCanvas = document.createElement("canvas");
+  tmpCanvas.width = 1440;
+  tmpCanvas.height = 721;
+  var ctx = tmpCanvas.getContext("2d");
+  ctx.drawImage(image, 0, 0);
+  this.image = null;
+  var tmpImgData = ctx.getImageData(0, 0, tmpCanvas.width, tmpCanvas.height);
+  // document.documentElement.children[1].appendChild(tmpCanvas);
+  tmpCanvas = null; ctx = null;
+
+  /* var iSz = 1440 * 721 * 4;
+     var sshData = new Float32Array(1440 * 721);
+     SSHLayer.sshData = sshData;
+     var ntohl = new DataView(tmpImgData.data.buffer);
+     for (var i = 0, j = 0; i < iSz; i += 4) {
+     sshData[j++] = ntohl.getFloat32(i, false);
+     } */
+
+  SSHLayer.sshData = [];
+  var i = 0;
+  while (i < tmpImgData.data.length) {
+    SSHLayer.sshData.push(tmpImgData.data[i++] / 4 - 32);
+    // Skip all the other data in this pixel.
+    i++;
+    i++;
+    i++;
   }
 
-  function imgLoaded() {
-    // Call the main loop to continue cothread execution.
-    SSHLayer.loadData.imgReady = true;
-    return SSHLayer.notifyFunc();
-  }
+  /* SSHLayer.sshData = new Float32Array(1440 * 721 * 4);
+  var sshData = SSHLayer.sshData;
+  var bytePacker = new Uint8Array(SSHLayer.sshData.buffer);
+  var badCSize = 1440 * 4 * 721 * 4;
+  var ntohlBuf = new Uint8Array(4);
+  var ntohl = new DataView(ntohlBuf.buffer);
+  for (var i = 0, j = 0; i < badCSize; i += 16) {
+    /\* FIXME: Optimize loader.  *\/
+    ntohlBuf[0] = tmpImgData.data[i+0];
+    ntohlBuf[1] = tmpImgData.data[i+4];
+    ntohlBuf[2] = tmpImgData.data[i+8];
+    ntohlBuf[3] = tmpImgData.data[i+12];
+    sshData[j++] = ntohl.getFloat32(0, false);
+  } */
 
-  function startExec() {
-    var url = "../data/SSH/ssh_19930303.dat";
-    /* var httpRequest;
+  // SSHLayer.sshData = csvParse(httpRequest.responseText);
+  // httpRequest.onreadystatechange = null;
+  // this.httpRequest = null;
 
-    if (window.XMLHttpRequest)
-      httpRequest = new XMLHttpRequest();
-    else if (window.ActiveXObject) {
-      try {
-	httpRequest = new ActiveXObject("Msxml2.XMLHTTP");
-      }
-      catch (e) {
-	try {
-	  httpRequest = new ActiveXObject("Microsoft.XMLHTTP");
-	}
-	catch (e) {}
-      }
-    }
-
-    if (!httpRequest) {
-      throw new Error("Could not load the data!");
-    }
-
-    httpRequest.onreadystatechange = alertContents;
-    httpRequest.open("GET", url, true); */
-    // httpRequest.setRequestHeader("Range", "bytes=0-500");
-    // httpRequest.send();
-    this.reqLen = 0;
-    this.readyDataProcess = false;
-
-    this.tmpImg = new Image();
-    this.tmpImg.onload = imgLoaded;
-    this.tmpImg.src =
-      SSHLayer.loadPrefix + SSHLayer.loadFrame + SSHLayer.loadPostfix;
-    this.imgReady = false;
-
-    // this.httpRequest = httpRequest;
-  }
-
-  /** This function primarily retrieves the current loading status of
-      the XMLHttpRequest.  */
-  function contExec() {
-    var httpRequest = this.httpRequest;
-    var reqLen = this.reqLen;
-
-    /* if (!httpRequest) {
-      this.status.returnType = CothreadStatus.FINISHED;
-      this.status.preemptCode = 0;
-      return this.status;
-    } else if (httpRequest.readyState != 4) {
-      this.status.returnType = CothreadStatus.PREEMPTED;
-      this.status.preemptCode = CothreadStatus.IOWAIT;
-      if (reqLen) {
-	this.status.percent = httpRequest.responseText.length * 
-	  CothreadStatus.MAX_PERCENT / reqLen;
-      } else
-	this.status.percent = 0;
-      return this.status;
-    } */
-    // (httpRequest.readyState == 4)
-
-    if (!this.imgReady) {
-      this.status.returnType = CothreadStatus.PREEMPTED;
-      this.status.preemptCode = CothreadStatus.IOWAIT;
-      return this.status;
-    }
-
-    // JSON parsing is slow: Return here and come back later.
-    if (!this.readyDataProcess) {
-      this.readyDataProcess = true;
-      this.status.returnType = CothreadStatus.PREEMPTED;
-      this.status.preemptCode = CothreadStatus.PROC_DATA;
-      return this.status;
-    }
-
-    this.status.percent = CothreadStatus.MAX_PERCENT;
-
-    // Process the data here.
-
-    /* Pull the pixels off of the image and fill them into the sshData
-       array as floating point numbers.  */
-    var tmpCanvas = document.createElement("canvas");
-    tmpCanvas.width = 1440 * 4;
-    tmpCanvas.height = 721;
-    var ctx = tmpCanvas.getContext("2d");
-    ctx.drawImage(this.tmpImg, 0, 0);
-    this.tmpImg = null;
-    var tmpImgData = ctx.getImageData(0, 0, tmpCanvas.width, tmpCanvas.height);
-    // document.documentElement.children[1].appendChild(tmpCanvas);
-    tmpCanvas = null; ctx = null;
-
-    /* var iSz = 1440 * 721 * 4;
-    var sshData = new Float32Array(1440 * 721);
-    SSHLayer.sshData = sshData;
-    var ntohl = new DataView(tmpImgData.data.buffer);
-    for (var i = 0, j = 0; i < iSz; i += 4) {
-      sshData[j++] = ntohl.getFloat32(i, false);
-    } */
-
-    SSHLayer.sshData = new Float32Array(1440 * 721 * 4);
-    var sshData = SSHLayer.sshData;
-    var bytePacker = new Uint8Array(SSHLayer.sshData.buffer);
-    var badCSize = 1440 * 4 * 721 * 4;
-    var ntohlBuf = new Uint8Array(4);
-    var ntohl = new DataView(ntohlBuf.buffer);
-    for (var i = 0, j = 0; i < badCSize; i += 16) {
-      /* FIXME: Optimize loader.  */
-      ntohlBuf[0] = tmpImgData.data[i+0];
-      ntohlBuf[1] = tmpImgData.data[i+4];
-      ntohlBuf[2] = tmpImgData.data[i+8];
-      ntohlBuf[3] = tmpImgData.data[i+12];
-      sshData[j++] = ntohl.getFloat32(0, false);
-    }
-
-    // SSHLayer.sshData = csvParse(httpRequest.responseText);
-    // httpRequest.onreadystatechange = null;
-    // this.httpRequest = null;
-
+  if (procError) {
+    this.image = null;
+    this.retVal = ImageLoader.PROC_ERROR;
     this.status.returnType = CothreadStatus.FINISHED;
     this.status.preemptCode = 0;
-
     return this.status;
   }
 
-  return new Cothread(startExec, contExec);
-})();
+  if (doneProcData) {
+    /* Only manipulate the CothreadStatus object from within this
+       function when processing is entirely finished.  */
+    this.status.returnType = CothreadStatus.FINISHED;
+    this.status.preemptCode = 0;
+  }
+
+  return this.status;
+};
 
 SSHLayer.setViewport = function(center, width, height,
 				aspectXY, projector) {
@@ -291,23 +204,25 @@ SSHLayer.render = (function() {
 
     while (y < frontBuf_height) {
       while (x < frontBuf_width) {
-	// var mapCoord = { x: (x / frontBuf_width) * 2 - 1,
-	// y: -((y / frontBuf_height) * 2 - 1) * inv_aspectXY };
-	// var polCoord = projector_unproject(mapCoord);
-	// var polCoord = { lat: mapCoord.y * 180, lon: mapCoord.x * 180  };
-	/* if (!isNaN(polCoord.lat) && !isNaN(polCoord.lon) &&
+	var mapCoord = { x: (x / frontBuf_width) * 2 - 1,
+	y: ((y / frontBuf_height) * 2 - 1) * inv_aspectXY };
+	// NOTE: Object creation is slow.  Newer versions must avoid this.
+	var polCoord = projector_unproject(mapCoord);
+	if (!isNaN(polCoord.lat) && !isNaN(polCoord.lon) &&
 	    polCoord.lat > -90 && polCoord.lat < 90 &&
-	    polCoord.lon > -180 && polCoord.lon < 180) */
-	  /* SSH strangeness: The SSH data measures from the international
-	     date line, not the prime meridian?  */
-	  // var latIdx = ~~((((((-((y / frontBuf_height) * 2 - 1) * inv_aspectXY) * 180) + 90) / 180) % 1) * src_height);
-	  // var lonIdx = ~~(((((((x / frontBuf_width) * 2 - 1) * 180) + 180 + 180) / 360) % 1) * src_width);
-	  // var value = sshData[latIdx][lonIdx] / 32;
-	  // var value = sshData[~~((((((-((y / frontBuf_height) * 2 - 1) * inv_aspectXY) * 180) + 90) / 180) % 1) * src_height)][~~(((((((x / frontBuf_width) * 2 - 1) * 180) + 180 + 180) / 360) % 1) * src_width)] / 32;
-	// var value = sshData[src_height-1-y][x] / 32;
-	var value = sshData[y*src_width+x] / 32;
+	    polCoord.lon > -180 && polCoord.lon < 180)
+	  ;
+	else {
+	  destIdx += 4;
+	  x++;
+	  continue;
+	}
+	var latIdx = ~~((polCoord.lat + 90) / 180 * src_height);
+	var lonIdx = ~~((polCoord.lon + 180) / 360 * src_width);
+	var value = sshData[latIdx*src_width+lonIdx] / 32;
+	// var value = sshData[y*src_width+x] / 32;
 
-	  if (isNaN(value)) {
+	  if (isNaN(value) || value == -1) {
 	      destIdx += 4;
 	      x++;
 	      continue;
@@ -315,12 +230,19 @@ SSHLayer.render = (function() {
 
 	  if (value > 1) value = 1;
 	  if (value < -1) value = -1;
-	  value = (~~((value + 1) / 2 * 255)) << 2;
-
-	  destImg.data[destIdx++] = colorTbl[value++];
-	  destImg.data[destIdx++] = colorTbl[value++];
-	  destImg.data[destIdx++] = colorTbl[value++];
-	  destImg.data[destIdx++] = colorTbl[value++];
+	  value = ~~((value + 1) / 2 * 255);
+	  if (SSHLayer.shadeStyle == 1) {
+	    value <<= 2;
+	    destImg.data[destIdx++] = colorTbl[value++];
+	    destImg.data[destIdx++] = colorTbl[value++];
+	    destImg.data[destIdx++] = colorTbl[value++];
+	    destImg.data[destIdx++] = colorTbl[value++];
+	  } else {
+	    destImg.data[destIdx++] = value;
+	    destImg.data[destIdx++] = value;
+	    destImg.data[destIdx++] = value;
+	    destImg.data[destIdx++] = 255;
+	  }
 
 	  /* destImg.data[destIdx++] = value;
 	  destImg.data[destIdx++] = value;
@@ -340,7 +262,7 @@ SSHLayer.render = (function() {
 
     this.setExitStatus(y < frontBuf_height);
     ctx.putImageData(destImg, 0, 0, 0, oldY, frontBuf_width, y - oldY);
-    this.status.preemptCode = 0;
+    this.status.preemptCode = RenderLayer.FRAME_AVAIL;
     this.status.percent = y * CothreadStatus.MAX_PERCENT / frontBuf_height;
 
     this.destIdx = destIdx;

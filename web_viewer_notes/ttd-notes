@@ -1520,4 +1520,21 @@ Pending questions:
   will also help in that I will be able to draw the regions of the
   current polar ice caps as white on the Earth.
 
-* Eddy ID, track ID, amplitude, area, geodesic speed?
+* Eddy ID, track ID, amplitude, area, geodesic speed?  These are going
+  to have to be gotten from elsewhere.
+
+Now, things are winding down:
+
+* Step forward and step backward
+
+* Display only tracks that have one eddy in current date
+
+* As soon as eddy leaves track, make it disappear.
+
+* Draw a marker at the current date.
+
+Then simply take off all the buttons that currently don't work, and
+then I'll be done.
+
+Right now, memory fragmentation is a considerable problem in the
+viewer, so I'll have to optimize it to be more memory conscious.

@@ -39,7 +39,7 @@ Compositor.rayPersp = 2;
 Compositor.projector = EquirectMapProjector;
 
 // Backbuffer scaling factor
-Compositor.backbufScale = 1;
+Compositor.backbufScale = 2;
 
 // Density of the graticule lines in degrees per line
 Compositor.gratDensity = 15;
@@ -98,8 +98,8 @@ Compositor.init = function() {
     Compositor.projEarthTex.earthTex =
       ctx.getImageData(0, 0, tmpCanv.width, tmpCanv.height);
     Compositor.earthTex = null; // Don't need this anymore
-    Compositor.projEarthTex.frontBuf.width = Compositor.backbuf.width;
-    Compositor.projEarthTex.frontBuf.height = Compositor.backbuf.height;
+    Compositor.projEarthTex.frontBuf.width = tmpCanv.width;
+    Compositor.projEarthTex.frontBuf.height = tmpCanv.height;
     Compositor.ready = true;
     return Compositor.finishStartup();
   };
@@ -124,6 +124,8 @@ Compositor.setProjector = function(projector) {
   var width = 1440; height = 721;
   SSHLayer.setViewport(null, width, height, width / height, projector);
   SSHLayer.render.start();
+  width = Compositor.backbuf.width;
+  height = Compositor.backbuf.height;
   TracksLayer.setViewport(null, width, height, width / height, projector);
   TracksLayer.render.start();
 };
@@ -249,6 +251,8 @@ Compositor.finishStartup = function() {
     projector = this.projector;
   SSHLayer.setViewport(null, width, height, width / height,
 		       projector);
+  width = Compositor.backbuf.width;
+  height = Compositor.backbuf.height;
   TracksLayer.setViewport(null, width, height, width / height,
 			  projector);
 
@@ -258,33 +262,42 @@ Compositor.finishStartup = function() {
   if (loadingScreen)
     loadingScreen.style.cssText = "display: none";
   this.canvas.style.cssText = "";
+  addWheelListener(this.canvas, zoomGlobe);
+
   this.projEarthTex.start();
   SSHLayer.render.start();
   TracksLayer.render.start();
   return this.finishRenderJobs();
 };
 
-/* Finish any render jobs that may be pending from TracksLayer or
-   SSHLayer.  */
-Compositor.finishRenderJobs = function() {
-  var petStatus = this.projEarthTex.continueCT();
-  var sshStatus = SSHLayer.render.continueCT();
-  var tracksStatus = TracksLayer.render.continueCT();
+Compositor.renderInProg = false;
 
-  { // Compose the layers.
-    var backbuf = this.backbuf;
-    var ctx = backbuf.getContext("2d");
-    ctx.clearRect(0, 0, backbuf.width, backbuf.height);
-    ctx.drawImage(this.projEarthTex.frontBuf,
-		  0, 0, backbuf.width, backbuf.height);
-    ctx.drawImage(SSHLayer.frontBuf,
-		  0, 0, backbuf.width, backbuf.height);
-    ctx.drawImage(TracksLayer.frontBuf,
-		  0, 0, backbuf.width, backbuf.height);
-    if (this.projector == Compositor.rayOrtho ||
-	this.projector == Compositor.rayPersp ||
-	this.projector == EquirectMapProjector)
-      this.renderEquiGraticule();
+/* Finish any render jobs that may be pending from TracksLayer or
+   SSHLayer.  If the parameter "fast" is provided and set to true,
+   then only redraw the composite without doing any more
+   computations.  */
+Compositor.finishRenderJobs = function(fast) {
+  if (!fast) {
+    this.renderInProg = true;
+    var petStatus = this.projEarthTex.continueCT();
+    var sshStatus = SSHLayer.render.continueCT();
+    var tracksStatus = TracksLayer.render.continueCT();
+
+    { // Compose the layers.
+      var backbuf = this.backbuf;
+      var ctx = backbuf.getContext("2d");
+      ctx.clearRect(0, 0, backbuf.width, backbuf.height);
+      ctx.drawImage(this.projEarthTex.frontBuf,
+		    0, 0, backbuf.width, backbuf.height);
+      ctx.drawImage(SSHLayer.frontBuf,
+		    0, 0, backbuf.width, backbuf.height);
+      ctx.drawImage(TracksLayer.frontBuf,
+		    0, 0, backbuf.width, backbuf.height);
+      if (this.projector == Compositor.rayOrtho ||
+	  this.projector == Compositor.rayPersp ||
+	  this.projector == EquirectMapProjector)
+	this.renderEquiGraticule();
+    }
   }
 
   this.fitCanvasToCntr();
@@ -294,16 +307,22 @@ Compositor.finishRenderJobs = function() {
   else
     this.show2dComposite();
 
+  if (fast)
+    return;
+
   /* var renderMethod;
   if (allocRenderJob(renderMethod))
     renderMethod(); */
 
-  if (tracksStatus.returnType != CothreadStatus.FINISHED ||
+  if (petStatus.returnType != CothreadStatus.FINISHED ||
+      tracksStatus.returnType != CothreadStatus.FINISHED ||
       sshStatus.returnType != CothreadStatus.FINISHED)
     return setTimeout(
       Compositor.makeEventWrapper(Compositor, "finishRenderJobs"), 15);
-  else
+  else {
+    this.renderInProg = false;
     console.log("Done rendering.");
+  }
 };
 
 /* Resize the frontbuffer canvas to fit the CSS allocated space.
@@ -476,6 +495,9 @@ Compositor.show2dComposite = function() {
                 y_shift + canvas.height / 2,
                 screen_scalfac, screen_scalfac / 2);
 
+  // For now, don't bother with the following fancy stuff...
+  return;
+
   // Draw a second image for a continuous wrapped display.
   /* if (lon_rot == 180) {
     return;
@@ -523,7 +545,7 @@ Compositor.renderEquiGraticule = function() {
   var width = this.backbuf.width;
   var height = this.backbuf.height;
   var gratDensity = this.gratDensity;
-  ctx.strokeStyle = 'rgba(128, 128, 128, 0.5)';
+  ctx.strokeStyle = "rgba(128, 128, 128, 0.5)";
   ctx.lineWidth = this.backbufScale;
 
   for (var lat = 0; lat < 180; lat += gratDensity) {
@@ -679,4 +701,43 @@ function render_ortho_graticule() {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.stroke();
   }
+}
+
+function zoomGlobe(event) {
+  if (Compositor.projector != Compositor.rayPersp) {
+    if (event.deltaMode == 0x01) { // DOM_DELTA_LINE
+      if (event.deltaY < 0)
+        scale *= (event.deltaY / 3) * -1.1;
+      else
+        scale /= (event.deltaY / 3) * 1.1;
+    } else if (event.deltaMode == 0x00) { // DOM_DELTA_PIXEL
+      /* FIXME: a good factor for this is wildly different across
+	 systems.  */
+      if (event.deltaY < 0)
+        scale *= (event.deltaY / 51) * -1.1;
+      else
+        scale /= (event.deltaY / 51) * 1.1;
+    }
+    var cfg_scaleFac = document.getElementById("cfg-scaleFac");
+    if (cfg_scaleFac) cfg_scaleFac.value = scale.toFixed(3);
+  } else {
+    if (event.deltaMode == 0x01) { // DOM_DELTA_LINE
+      if (event.deltaY < 0)
+        persp_fov /= -(event.deltaY / 3) * 1.1;
+      else
+        persp_fov *= (event.deltaY / 3) * 1.1;
+    } else if (event.deltaMode == 0x00) { // DOM_DELTA_PIXEL
+      if (event.deltaY < 0)
+        persp_fov /= -(event.deltaY / 53) * 1.1;
+      else
+        persp_fov *= (event.deltaY / 53) * 1.1;
+    }
+    var cfg_perspFOV = document.getElementById("cfg-perspFOV");
+    if (cfg_perspFOV) cfg_perspFOV.value = persp_fov;
+  }
+
+  if (allocRenderJob(Compositor.finishRenderJobs))
+    Compositor.finishRenderJobs(true);
+  event.preventDefault();
+  return false;
 }

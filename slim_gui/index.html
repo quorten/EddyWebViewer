@@ -157,7 +157,8 @@ document.getElementById('scriptWrapper').style.cssText = '';
       <img src="../css_gui/loading_composite.png"
 	   alt="Decorative Loading Icon." />
     </object><br />
-    <strong>Loading</strong>
+    <strong>Loading&hellip; Alpha version takes about 30 seconds to
+    load, please wait.</strong>
   </p>
 
 </div>
@@ -416,7 +417,8 @@ element in the document.  -->
     var cfg_scaleFac = document.getElementById('cfg-scaleFac');
     cfg_scaleFac.onchange = function(event) {
       scale = +this.value; // Convert string to float
-      if (event != null) render_globe();
+      if (event != null)
+        Compositor.finishRenderJobs(true);
     };
 
     var cfg_graticule = document.getElementById('cfg-graticule');
@@ -436,20 +438,18 @@ element in the document.  -->
         TracksLayer.maxLength = +parts[1];
       if (event != null) {
         TracksLayer.render.start();
-        return Compositor.finishRenderJobs();
+        if (!Compositor.renderInProg)
+          return Compositor.finishRenderJobs();
       }
     };
 
     var cfg_projMethod = document.getElementById('cfg-projMethod');
     cfg_projMethod.onchange = function(event) {
+      if (event == null) // ??? Must fix this.
+        return;
       var choice = this.options[this.selectedIndex].text;
       if (choice == 'Perspective') {
-        persp_project = true;
-        equirect_project = false;
-
-        var zoomCtl = document.getElementById('cfg-scaleFac');
-        zoomCtl.setAttribute('disabled', true); // Needed for Firefox.
-        zoomCtl.disabled = true; // Needed for older versions of IE.
+        Compositor.setProjector(Compositor.rayPersp);
 
         var fovCtl = document.getElementById('cfg-perspFOV');
         fovCtl.setAttribute('disabled', false);
@@ -459,19 +459,17 @@ element in the document.  -->
         altCtl.setAttribute('disabled', false);
         altCtl.disabled = false;
 
+      } else if (choice == 'Orthographic') {
+        Compositor.setProjector(Compositor.rayOrtho);
       } else if (choice == 'Equirectangular') {
-        persp_project = false;
-        equirect_project = true;
-      } else {
-        persp_project = false;
-        equirect_project = false;
+        Compositor.setProjector(EquirectMapProjector);
+      } else if (choice == 'Robinson') {
+        Compositor.setProjector(RobinsonMapProjector);
+      } else if (choice == 'Mercator') {
+        Compositor.setProjector(MercatorMapProjector);
       }
 
       if (choice != 'Perspective') {
-        var zoomCtl = document.getElementById('cfg-scaleFac');
-        zoomCtl.setAttribute('disabled', false); // Needed for Firefox.
-        zoomCtl.disabled = false; // Needed for older versions of IE.
-
         var fovCtl = document.getElementById('cfg-perspFOV');
         fovCtl.setAttribute('disabled', true);
         fovCtl.disabled = true;
@@ -481,7 +479,8 @@ element in the document.  -->
         altCtl.disabled = true;
       }
 
-      if (event != null) render_globe();
+      if (event != null && !Compositor.renderInProg)
+        return Compositor.finishRenderJobs();
     };
 
     var cfg_perspAltitude = document.getElementById('cfg-perspAltitude');

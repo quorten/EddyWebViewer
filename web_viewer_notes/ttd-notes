@@ -261,6 +261,8 @@ practical purposes, creation of array objects is equally as expensive
 as creating a dictionary object.  In other words, don't create
 objects!  So this is why assigning values to an array is so slow!
 
+Even simple table lookups on plain arrays are slow.
+
 Thus, avoid creating new objects via the new operator.
 
 Moving variable declarations outside of a loop seems to have no effect
@@ -1455,6 +1457,8 @@ Need:
 
 * Compositor class
 
+* Mandatory graticule rendering
+
 * All mouse handling code goes in GUI codebase.  No pointer
   calibration needed whatsoever for this project, just use clientX and
   clientY.  What about the cothread dispatcher?  Create a MainLoop
@@ -1512,3 +1516,5 @@ Pending questions:
   between lossy and lossless compressed data for the web viewer.  It
   will also help in that I will be able to draw the regions of the
   current polar ice caps as white on the Earth.
+
+* Eddy ID, track ID, amplitude, area, geodesic speed?

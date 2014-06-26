@@ -19,12 +19,56 @@ Compositor.init = function() {
   this.fitCanvasToCntr();
 
   // Create a backbuffer to pull pixels from.
-  this.bbuf = document.createElement("canvas");
-  this.bbuf.id = "compositeBackBuf";
+  this.backbuf = document.createElement("canvas");
+  this.backbuf.id = "compositeBackbuf";
+
+  this.ready = false;
 
   // Initialize the overlays.
-  TracksLayer.loadData.timeout = 10;
-  SSHLayer.loadData.timeout = 10;
+  TracksLayer.loadData.timeout = 15;
+  TracksLayer.render.timeout = 15;
+  SSHLayer.loadData.timeout = 15;
+  SSHLayer.render.timeout = 15;
+
+  TracksLayer.loadData.startExec();
+  SSHLayer.loadData.startExec();
+
+  TracksLayer.setViewport();
+  SSHLayer.setViewport();
+
+  // Load the land mass background image.
+  this.earth_tex = new Image();
+  this.earth_tex.onload = function() {
+    Compositor.backbuf.width = earth_tex.width * backbufScale;
+    Compositor.backbuf.height = earth_tex.height * backbufScale;
+    Compositor.ready = true;
+    return Compositor.finishStartup();
+  };
+  this.earth_tex.src = "../blue_marble/land_ocean_ice_2048.jpg";
+  // this.earth_tex.src = "../blue_marble/land_shallow_topo_2048.jpg";
+  // this.earth_tex.src = "../blue_marble/world.200408.3x5400x2700.jpg";
+  // this.earth_tex.src = "../blue_marble/world.200402.3x5400x2700.jpg";
+};
+
+// Change projection
+
+Compositor.finishStartup = function() {
+  var tracksStatus = TracksLayer.loadData.continueCT();
+  var sshStatus = SSHLayer.loadData.continueCT();
+  if (tracksStatus.returnType != CothreadStatus.FINISHED ||
+      sshStatus.returnType != CothreadStatus.FINISHED) {
+    if (tracksStatus.preemptCode == CothreadStatus.IOWAIT ||
+	sshStatus.preemptCode == CothreadStatus.IOWAIT)
+      return;
+    return setTimeout(Compositor.finishStartup, 300);
+  }
+  if (!Compositor.ready)
+    return;
+
+  renderEddyTracks();
+  refreshOverlay();
+  pointerTestInit();
+  render_globe();
 };
 
 /* Resize the frontbuffer canvas to fit the CSS allocated space.
@@ -58,15 +102,15 @@ Compositor.render2d = function() {
 /* Finish any render jobs that may be pending from TracksLayer or
    SSHLayer.  */
 Compositor.finishRenderJobs = function() {
-  var tracksStatus = TracksLayer.continueCT();
-  var sshStatus = SSHLayer.continueCT();
+  var tracksStatus = TracksLayer.render.continueCT();
+  var sshStatus = SSHLayer.render.continueCT();
 
   // Composite!
   Compositor.render3d();
 
   if (tracksStatus.returnType != CothreadStatus.FINISHED ||
       sshStatus.returnType != CothreadStatus.FINISHED)
-    return setTimeout(Compositor.finishRenderJobs, 30);
+    return setTimeout(Compositor.finishRenderJobs, 15);
 };
 
 // ----------------------------------------

@@ -8,40 +8,35 @@ SSHLayer = new RenderLayer();
 
 /* Important parameters for TracksLayer: */
 
-// loadPrefix: prefix to append to date for frame to load
-SSHLayer.loadPrefix = "../data/jpgssh/ssh_";
+// imgFormat: desired image format to use
+SSHLayer.imgFormat = "png";
+
+// loadPrefix: path prefix to append to date for frame to load
+SSHLayer.loadPrefix = "../data/";
 
 // loadFrame: hyphenless date of frame to load
 SSHLayer.loadFrame = "19930303";
 
-// loadPostfix: extension to append for frame to load
-SSHLayer.loadPostfix = ".jpg";
-
-// shadeStyle: Zero for grayscale, one for MATLAB jet
-SSHLayer.shadeStyle = 1;
+// shadeStyle: See the render() function for details
+SSHLayer.shadeStyle = 2;
 
 SSHLayer.setCacheLimits = function(dataCache, renderCache) {
 };
-
-/*
-
-Work on SSHLayer.  What needs to be done?
-
-1. Load the data.  Start by using the cothread imageloader module.
-After the cothread imageloader module finishes, copy the data into a
-byte array, 0..255.  Rendering: just write out pixel value.
-
-*/
 
 /**
  * Cothreaded data loading function.  This function only initiates
  * loading of one SSH frame at initialization and the cothread loop
  * only tells whether the image has been fully loaded or not.
  */
-SSHLayer.loadData = new ImageLoader("", null /* execTime */);
+SSHLayer.loadData = new ImageLoader("", execTime);
 
-SSHLayer.loadData.url =
-  SSHLayer.loadPrefix + SSHLayer.loadFrame + SSHLayer.loadPostfix;
+SSHLayer.loadData.startExec = function() {
+  SSHLayer.loadData.url =
+    SSHLayer.loadPrefix +
+    SSHLayer.imgFormat + "ssh/ssh_" + SSHLayer.loadFrame +
+    "." + SSHLayer.imgFormat;
+  return ImageLoader.prototype.startExec.call(this);
+};
 
 SSHLayer.loadData.procData = function(image) {
   var doneProcData = true;
@@ -69,14 +64,37 @@ SSHLayer.loadData.procData = function(image) {
 
   SSHLayer.sshData = [];
   var i = 0;
-  while (i < tmpImgData.data.length) {
-    if (tmpImgData.data[i+0] < 16 &&
-	tmpImgData.data[i+1] < 16 &&
-	tmpImgData.data[i+2] < 16) // Use fuzz margin due to JPEG artifacts
-      SSHLayer.sshData.push(-32); // Transparent
-    else
-      SSHLayer.sshData.push(tmpImgData.data[i] / 4 - 32);
-    i += 4;
+  var bad; // Bits After Decimal
+  var bbd; // Bits Before Decimal
+  if (SSHLayer.imgFormat == "jpg") {
+    bad = 2;
+    bbd = 6;
+    while (i < tmpImgData.data.length) {
+      if (tmpImgData.data[i+0] < 16 &&
+	  tmpImgData.data[i+1] < 16 &&
+	  tmpImgData.data[i+2] < 16) // Use fuzz margin due to JPEG artifacts
+	SSHLayer.sshData.push(-128); // Transparent
+      else
+	SSHLayer.sshData.push((tmpImgData.data[i] - 12) / (1 << bad) -
+			      (1 << (bbd - 1)));
+      i += 4;
+    }
+
+  } else if (SSHLayer.imgFormat == "png") {
+    bad = 8; // Actually only 7, but we decode it as 8.
+    bbd = 8;
+    while (i < tmpImgData.data.length) {
+      if (tmpImgData.data[i+0] == 0 &&
+	  tmpImgData.data[i+1] == 0)
+	SSHLayer.sshData.push(-128); // Transparent
+      else {
+	var intVal = (tmpImgData.data[i] << 8) + tmpImgData.data[i+1];
+	if (intVal & 0x100) intVal ^= 0xff;
+	SSHLayer.sshData.push(intVal / (1 << bad) -
+			      (1 << (bbd - 1)));
+      }
+      i += 4;
+    }
   }
 
   /* SSHLayer.sshData = new Float32Array(1440 * 721 * 4);
@@ -224,23 +242,36 @@ SSHLayer.render = (function() {
 	var value = sshData[latIdx*src_width+lonIdx];
 	// var value = sshData[y*src_width+x];
 
-	  if (isNaN(value) || value == -32) {
+	  if (isNaN(value) || value == -128) {
 	      destIdx += 4;
 	      x++;
 	      continue;
 	  }
-	  value /= 32;
 
-	  if (value > 1) value = 1;
-	  if (value < -1) value = -1;
-	  value = ~~((value + 1) / 2 * 255);
-	  if (SSHLayer.shadeStyle == 1) {
+	  if (SSHLayer.shadeStyle == 1) { // MATLAB
+	    value /= 32;
+	    if (value > 1) value = 1;
+	    if (value < -1) value = -1;
+	    value = ~~((value + 1) / 2 * 255);
 	    value <<= 2;
 	    destImg.data[destIdx++] = colorTbl[value++];
 	    destImg.data[destIdx++] = colorTbl[value++];
 	    destImg.data[destIdx++] = colorTbl[value++];
 	    destImg.data[destIdx++] = colorTbl[value++];
-	  } else {
+	  } else if (SSHLayer.shadeStyle == 2) { // Contour bands
+	    value += 32;
+	    value *= (1 << 5);
+	    if (value & 0x100) value = ~value;
+	    value &= 0xff;
+	    destImg.data[destIdx++] = value;
+	    destImg.data[destIdx++] = value;
+	    destImg.data[destIdx++] = value;
+	    destImg.data[destIdx++] = 255;
+	  } else { // Grayscale
+	    value /= 32;
+	    if (value > 1) value = 1;
+	    if (value < -1) value = -1;
+	    value = ~~((value + 1) / 2 * 255);
 	    destImg.data[destIdx++] = value;
 	    destImg.data[destIdx++] = value;
 	    destImg.data[destIdx++] = value;

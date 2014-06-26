@@ -69,16 +69,16 @@ int main(void) {
 
       /* The two most important user parameters.  The sum of these
 	 parameters must not exceed 24.  */
-      bad = 2; /* Bits After Decimal.  18 for max detail (and worst
-		  JPEG compression due to high noise), 7 preferred for
-		  high detail.  */
-      bbd = 6; /* Bits Before Decimal */
+      bad = BITS_AFT_DEC; /* Bits After Decimal.  18 for max detail
+			     (and worst JPEG compression due to high
+			     noise), 7 preferred for high detail.  */
+      bbd = BITS_BEF_DEC; /* Bits Before Decimal */
 
       /* Shift the desired number of bits after the decimal to be
 	 before the decimal.  */
       out_val = (unsigned int)(in_val * (1 << bad));
 
-      overflow = 1;
+      overflow = 2;
       if (overflow == 2) {
 	/* Saturating Overflow: Any numbers greater than the maximum or
 	   less than the minimum are truncated to the numeric
@@ -89,13 +89,20 @@ int main(void) {
 
 	/* 24 must be added to evade JPEG noise problems at the
 	   minimum.  */
-	/* min += 24; */
+	min += 24;
 	/* As a compensatory measure, the value range will be shifted
 	   up by 12.  */
-	/* out_val += 12; tout_val = out_val; */
+	out_val += 12; tout_val = out_val;
 
 	if (tout_val > max) out_val = (unsigned int)max;
 	if (tout_val < min) out_val = (unsigned int)min;
+      }
+
+      if (overflow != 2) {
+	/* The largest negative is reserved for NaN.  In order to
+	   avoid JPEG noise problems, shift the entire value range up
+	   by 12.  */
+	/* out_val += 12; */
       }
 
       /* Shift value zero to be at the middle of the unsigned value

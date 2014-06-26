@@ -179,11 +179,13 @@ TracksLayer.render = (function() {
        track: [ list of eddies ]
        eddy: [ latitude, longitude, date_index, eddy_index ]
      */
-    var tracksData;
+    var tracksData = [];
     if (TracksLayer.dispAcyc && !TracksLayer.dispCyc)
       tracksData = TracksLayer.acTracksData;
     else
       tracksData = TracksLayer.cTracksData;
+    /* if (tracksData.length == 0)
+      return; */
     var numTracks = tracksData.length;
     var frontBuf_width = TracksLayer.frontBuf.width;
     var frontBuf_height = TracksLayer.frontBuf.height;

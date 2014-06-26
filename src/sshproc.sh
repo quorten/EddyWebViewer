@@ -5,7 +5,12 @@ if [ -z "$FMT" ]; then
     FMT=jpg
 fi
 
-gcc csvtotga.c -o csvtotga
+if [ "$FMT" = "png" ]; then
+    gcc -DBITS_BEF_DEC=8 -DBITS_AFT_DEC=7 csvtotga.c -o csvtotga
+else # JPG
+    gcc -DBITS_BEF_DEC=6 -DBITS_AFT_DEC=2 csvtotga.c -o csvtotga
+fi
+
 trap "rm csvtotga" EXIT
 
 if [ -n "$FAST" ]; then

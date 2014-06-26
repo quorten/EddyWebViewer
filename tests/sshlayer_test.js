@@ -64,8 +64,8 @@ function execTime() {
     // Next move on to testing the progressive renderer.
     return setTimeout(setup2, 80);
   }
-  /* if (status.preemptCode == CothreadStatus.IOWAIT)
-    return; */
+  if (status.preemptCode == CothreadStatus.IOWAIT)
+    return;
   return browserTime();
 }
 
@@ -95,8 +95,8 @@ function setup() {
   SSHLayer.loadData.timeout = 20;
   var status = SSHLayer.loadData.start();
   if (status.returnType != CothreadStatus.FINISHED) {
-    /* if (status.preemptCode == CothreadStatus.IOWAIT)
-      return; */
+    if (status.preemptCode == CothreadStatus.IOWAIT)
+      return;
     return browserTime();
   }
 }

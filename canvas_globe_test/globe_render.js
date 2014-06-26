@@ -501,9 +501,9 @@ function zoomGlobe(event) {
       /* FIXME: a good factor for this is wildly different across
 	 systems.  */
       if (event.deltaY < 0)
-        scale *= (event.deltaY / 128 /* 51 */) * -1.1;
+        scale *= (event.deltaY / 51) * -1.1;
       else
-        scale /= (event.deltaY / 128) * 1.1;
+        scale /= (event.deltaY / 51) * 1.1;
     }
     var cfg_scaleFac = document.getElementById("cfg-scaleFac");
     if (cfg_scaleFac) cfg_scaleFac.value = scale.toFixed(3);

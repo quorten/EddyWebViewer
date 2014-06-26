@@ -1,16 +1,58 @@
 /* Composite rendering of 2D RenderLayers, either as a 2D map or
    through a 3D raytrace renderer.  */
 
+// Prevent errors, please...
+var execTime = null;
+
+import "oevmath";
+import "projector";
+import "cothread";
 import "trackslayer";
 import "sshlayer";
 import "compat";
 
+// BAD variables that need updating
+
+// longitude rotation
+var lon_rot = 180;
+// globe tilt
+var tilt = 0;
+// orthographic globe scale
+var scale = 1.0;
+// perspective altitude
+var persp_altitude = 35786;
+// perspective field of view
+var persp_fov = 17.5;
+
 var Compositor = {};
+
+// Important parameters:
+
+// Raytraced orthographic projection to an equirectangular backbuffer.
+Compositor.rayOrtho = 1;
+
+// Raytraced perspective projection to an equirectangular backbuffer.
+Compositor.rayPersp = 2;
+
+/* Projection method.  Must either one of the Projector objects or a
+   raytracer from the compositor module.  */
+Compositor.projector = EquirectMapProjector;
+
+// Backbuffer scaling factor
+Compositor.backbufScale = 1;
+
+// Density of the graticule lines in degrees per line
+Compositor.gratDensity = 15;
+
+// A function that should probably go in compat...
+Compositor.makeEventWrapper = function(callObj, handler) {
+  return function() { return callObj[handler](); };
+};
 
 /* Perform startup initialization for the whole web viewer.  */
 Compositor.init = function() {
   this.drawingContainer = document.getElementById("drawingContainer");
-  this.canvas = document.createElement("canvas");
+  this.canvas = document.createElement("canvas"); // Front buffer
   // TODO: Perform capabilities check here.
   this.canvas.id = "drawingPad";
   this.canvas.style.cssText = "display: none";
@@ -25,50 +67,243 @@ Compositor.init = function() {
   this.ready = false;
 
   // Initialize the overlays.
-  TracksLayer.loadData.timeout = 15;
-  TracksLayer.render.timeout = 15;
+  this.projEarthTex.timeout = 15;
+  Dates.notifyFunc = this.makeEventWrapper(Compositor, "finishStartup");
+  SSHLayer.loadData.notifyFunc = this.makeEventWrapper(Compositor, "finishStartup");
   SSHLayer.loadData.timeout = 15;
   SSHLayer.render.timeout = 15;
+  TracksLayer.acLoad.notifyFunc = this.makeEventWrapper(Compositor, "finishStartup");
+  TracksLayer.cLoad.notifyFunc = this.makeEventWrapper(Compositor, "finishStartup");
+  TracksLayer.loadData.timeout = 15;
+  TracksLayer.render.timeout = 15;
 
-  TracksLayer.loadData.startExec();
-  SSHLayer.loadData.startExec();
-
-  TracksLayer.setViewport();
-  SSHLayer.setViewport();
+  SSHLayer.loadData.start();
+  TracksLayer.loadData.start();
 
   // Load the land mass background image.
-  this.earth_tex = new Image();
-  this.earth_tex.onload = function() {
-    Compositor.backbuf.width = earth_tex.width * backbufScale;
-    Compositor.backbuf.height = earth_tex.height * backbufScale;
+  this.earthTex = new Image();
+  this.earthTex.onload = function() {
+    Compositor.backbuf.width =
+      Compositor.earthTex.width * Compositor.backbufScale;
+    Compositor.backbuf.height =
+      Compositor.earthTex.height * Compositor.backbufScale;
+
+    // Prepare the Earth texture projection buffer.
+    var tmpCanv = document.createElement("canvas");
+    tmpCanv.width = Compositor.earthTex.width;
+    tmpCanv.height = Compositor.earthTex.height;
+    var ctx = tmpCanv.getContext("2d");
+    ctx.drawImage(Compositor.earthTex, 0, 0);
+
+    Compositor.projEarthTex.earthTex =
+      ctx.getImageData(0, 0, tmpCanv.width, tmpCanv.height);
+    Compositor.earthTex = null; // Don't need this anymore
+    Compositor.projEarthTex.frontBuf.width = Compositor.backbuf.width;
+    Compositor.projEarthTex.frontBuf.height = Compositor.backbuf.height;
     Compositor.ready = true;
     return Compositor.finishStartup();
   };
-  this.earth_tex.src = "../blue_marble/land_ocean_ice_2048.jpg";
-  // this.earth_tex.src = "../blue_marble/land_shallow_topo_2048.jpg";
-  // this.earth_tex.src = "../blue_marble/world.200408.3x5400x2700.jpg";
-  // this.earth_tex.src = "../blue_marble/world.200402.3x5400x2700.jpg";
+  this.earthTex.src = "../blue_marble/land_ocean_ice_2048.jpg";
+  // this.earthTex.src = "../blue_marble/land_shallow_topo_2048.jpg";
+  // this.earthTex.src = "../blue_marble/world.200408.3x5400x2700.jpg";
+  // this.earthTex.src = "../blue_marble/world.200402.3x5400x2700.jpg";
+
+  return this.finishStartup();
 };
 
-// Change projection
+// Change projection in a safe way for all RenderLayers.
+Compositor.setProjector = function(projector) {
+  if (projector == Compositor.rayOrtho || projector == Compositor.rayPersp) {
+    this.projector = projector;
+    projector = EquirectMapProjector;
+  } else
+    this.projector = projector;
+
+  // Update projected land masses.
+  this.projEarthTex.start();
+  var width = 1440; height = 721;
+  SSHLayer.setViewport(null, width, height, width / height, projector);
+  SSHLayer.render.start();
+  TracksLayer.setViewport(null, width, height, width / height, projector);
+  TracksLayer.render.start();
+};
+
+// Start rendering for all RenderLayers at once.
+Compositor.startRender = function() {
+  SSHLayer.render.start();
+  TracksLayer.render.start();
+};
+
+// Pre-project the Earth texture for faster composing.
+Compositor.projEarthTex = new Cothread();
+
+// ... non-ideal
+Compositor.projEarthTex.frontBuf = document.createElement("canvas");
+
+Compositor.projEarthTex.startExec = function() {
+  this.ctx = this.frontBuf.getContext("2d");
+  // TODO: This should be carried around in a cache-like manner.
+  this.destImg = this.ctx.createImageData(this.frontBuf.width,
+					  this.frontBuf.height);
+  this.destIdx = 0;
+  this.aspectXY = this.frontBuf.width / this.frontBuf.height;
+  this.x = 0;
+  this.y = 0;
+};
+
+Compositor.projEarthTex.contExec = function() {
+  var ctx = this.ctx;
+  var destImg = this.destImg;
+  var destIdx = this.destIdx;
+  var x = this.x;
+  var y = this.y;
+  var oldY = y;
+
+  var frontBuf_width = destImg.width;
+  var frontBuf_height = destImg.height;
+  var earthTex = this.earthTex;
+  var srcWidth = earthTex.width;
+  var srcHeight = earthTex.height;
+  var aspectXY = this.aspectXY;
+  var inv_aspectXY = 1 / aspectXY;
+  var projector_unproject;
+  if (Compositor.projector == Compositor.rayOrtho ||
+      Compositor.projector == Compositor.rayPersp)
+    projector_unproject = EquirectMapProjector.unproject;
+  else
+    projector_unproject = Compositor.projector.unproject;
+
+  var lDate_now = Date.now;
+
+  var startTime = lDate_now();
+  var timeout = this.timeout;
+
+  while (y < frontBuf_height) {
+    while (x < frontBuf_width) {
+      var mapCoord = { x: (x / frontBuf_width) * 2 - 1,
+		       y: ((y / frontBuf_height) * 2 - 1) * inv_aspectXY };
+      // NOTE: Object creation is slow.  Newer versions must avoid this.
+      var polCoord = projector_unproject(mapCoord);
+      if (!isNaN(polCoord.lat) && !isNaN(polCoord.lon) &&
+	  polCoord.lat > -90 && polCoord.lat < 90 &&
+	  polCoord.lon > -180 && polCoord.lon < 180)
+	;
+      else {
+	destIdx += 4;
+	x++;
+	continue;
+      }
+      var latIdx = ~~((polCoord.lat + 90) / 180 * srcHeight);
+      var lonIdx = ~~((polCoord.lon + 180) / 360 * srcWidth);
+      var index = (latIdx * srcWidth + lonIdx) * 4;
+
+      destImg.data[destIdx++] = earthTex.data[index++];
+      destImg.data[destIdx++] = earthTex.data[index++];
+      destImg.data[destIdx++] = earthTex.data[index++];
+      destImg.data[destIdx++] = earthTex.data[index++];
+
+      x++;
+    }
+    if (x >= frontBuf_width) {
+      x = 0;
+      y++;
+    }
+    if (y % 32 == 0 && lDate_now() - startTime >= timeout)
+      break;
+  }
+
+  this.setExitStatus(y < frontBuf_height);
+  ctx.putImageData(destImg, 0, 0, 0, oldY, frontBuf_width, y - oldY);
+  this.status.preemptCode = RenderLayer.FRAME_AVAIL;
+  this.status.percent = y * CothreadStatus.MAX_PERCENT / frontBuf_height;
+
+  this.destIdx = destIdx;
+  this.x = x;
+  this.y = y;
+  return this.status;
+};
 
 Compositor.finishStartup = function() {
-  var tracksStatus = TracksLayer.loadData.continueCT();
   var sshStatus = SSHLayer.loadData.continueCT();
+  var tracksStatus = TracksLayer.loadData.continueCT();
   if (tracksStatus.returnType != CothreadStatus.FINISHED ||
       sshStatus.returnType != CothreadStatus.FINISHED) {
     if (tracksStatus.preemptCode == CothreadStatus.IOWAIT ||
 	sshStatus.preemptCode == CothreadStatus.IOWAIT)
       return;
-    return setTimeout(Compositor.finishStartup, 300);
+    return setTimeout(
+      Compositor.makeEventWrapper(Compositor, "finishStartup"), 300);
   }
+  if (Compositor.noDouble)
+    return;
   if (!Compositor.ready)
     return;
+  Compositor.noDobule = true;
 
-  renderEddyTracks();
-  refreshOverlay();
-  pointerTestInit();
-  render_globe();
+  var width = 1440; var height = 721;
+  var projector;
+  if (this.projector == Compositor.rayOrtho ||
+      this.projector == Compositor.rayPersp)
+    projector = EquirectMapProjector;
+  else
+    projector = this.projector;
+  SSHLayer.setViewport(null, width, height, width / height,
+		       projector);
+  TracksLayer.setViewport(null, width, height, width / height,
+			  projector);
+
+  /* Now that all the necessary startup data is loaded, we should
+     proceed to rendering the first frame.  */
+  var loadingScreen = document.getElementById("loadingScreen");
+  if (loadingScreen)
+    loadingScreen.style.cssText = "display: none";
+  this.canvas.style.cssText = "";
+  this.projEarthTex.start();
+  SSHLayer.render.start();
+  TracksLayer.render.start();
+  return this.finishRenderJobs();
+};
+
+/* Finish any render jobs that may be pending from TracksLayer or
+   SSHLayer.  */
+Compositor.finishRenderJobs = function() {
+  var petStatus = this.projEarthTex.continueCT();
+  var sshStatus = SSHLayer.render.continueCT();
+  var tracksStatus = TracksLayer.render.continueCT();
+
+  { // Compose the layers.
+    var backbuf = this.backbuf;
+    var ctx = backbuf.getContext("2d");
+    ctx.clearRect(0, 0, backbuf.width, backbuf.height);
+    ctx.drawImage(this.projEarthTex.frontBuf,
+		  0, 0, backbuf.width, backbuf.height);
+    ctx.drawImage(SSHLayer.frontBuf,
+		  0, 0, backbuf.width, backbuf.height);
+    ctx.drawImage(TracksLayer.frontBuf,
+		  0, 0, backbuf.width, backbuf.height);
+    if (this.projector == Compositor.rayOrtho ||
+	this.projector == Compositor.rayPersp ||
+	this.projector == EquirectMapProjector)
+      this.renderEquiGraticule();
+  }
+
+  this.fitCanvasToCntr();
+  if (this.projector == Compositor.rayOrtho ||
+      this.projector == Compositor.rayPersp)
+    this.show3dComposite();
+  else
+    this.show2dComposite();
+
+  /* var renderMethod;
+  if (allocRenderJob(renderMethod))
+    renderMethod(); */
+
+  if (tracksStatus.returnType != CothreadStatus.FINISHED ||
+      sshStatus.returnType != CothreadStatus.FINISHED)
+    return setTimeout(
+      Compositor.makeEventWrapper(Compositor, "finishRenderJobs"), 15);
+  else
+    console.log("Done rendering.");
 };
 
 /* Resize the frontbuffer canvas to fit the CSS allocated space.
@@ -88,55 +323,27 @@ Compositor.fitCanvasToCntr = function() {
   // window.innerWidth, window.innerHeight
 }
 
-/* Perform one of the 3D raytracing rendering processes.  */
-Compositor.render3d = function() {
-  return render_globe();
-};
-
-/* Simple 2D renderer: Just display the composite of the
-   RenderLayers.  */
-Compositor.render2d = function() {
-  return render_map();
-};
-
-/* Finish any render jobs that may be pending from TracksLayer or
-   SSHLayer.  */
-Compositor.finishRenderJobs = function() {
-  var tracksStatus = TracksLayer.render.continueCT();
-  var sshStatus = SSHLayer.render.continueCT();
-
-  // Composite!
-  Compositor.render3d();
-
-  if (tracksStatus.returnType != CothreadStatus.FINISHED ||
-      sshStatus.returnType != CothreadStatus.FINISHED)
-    return setTimeout(Compositor.finishRenderJobs, 15);
-};
-
-// ----------------------------------------
-
 // TODO: This function should be a tile-based rendering engine that
 // gets called from a callback to complete the render.  In general,
 // JavaScript cannot support threads.
-function render_globe() {
-  if (!allocRenderJob(render_globe))
-    return;
-  Compositor.fitCanvasToCntr();
-  if (equirect_project) {
-    if (wire_render)
-      return render_equi_graticule();
-    return render_map();
-  }
-  if (wire_render)
-    return render_ortho_graticule();
-  // Project and render the image.
-  var ctx = canvas.getContext("2d");
-  var dest_data = ctx.createImageData(canvas.width, canvas.height);
+
+/* Perform one of the 3D raytracing rendering processes to display the
+   backbuffer on the frontbuffer.  */
+Compositor.show3dComposite = function() {
+  // FIXME
+  var osa_factor = 1;
+  var inv_osa_factor = 1;
+  var backbufCtx = this.backbuf.getContext("2d");
+  var src_data = backbufCtx.getImageData(0, 0, this.backbuf.width,
+					 this.backbuf.height);
+
+  var ctx = this.canvas.getContext("2d");
+  var dest_data = ctx.createImageData(this.canvas.width, this.canvas.height);
   var dest_index = 0;
   var y_center = dest_data.height / 2;
   var x_center = dest_data.width / 2;
   var disp_scale = 1;
-  if (!persp_project)
+  if (this.projector != this.rayPersp)
     disp_scale = scale;
   /* display radius */
   var disp_rad = Math.min(dest_data.height, dest_data.width) * disp_scale / 2.0;
@@ -157,7 +364,7 @@ function render_globe() {
 	   z axis.  */
 	var r3src_x, r3src_y, r3src_z;
 
-	if (!persp_project) {
+	if (this.projector != this.rayPersp) {
 	  // Orthographic projection
 	  r3src_y = (y + yj - y_center) / disp_rad;
 	  r3src_x = (x + xj - x_center) / disp_rad;
@@ -244,14 +451,17 @@ function render_globe() {
   }
 
   ctx.putImageData(dest_data, 0, 0);
-}
+};
 
-/* This function just copies the backbuffer to the frontbuffer, with
-   the correct shifting and scaling factors.  */
-function render_map() {
+/* Simple 2D renderer: Just bitblt the composite of the RenderLayers
+   onto the frontbuffer with the correct shifting and scaling
+   factors.  */
+Compositor.show2dComposite = function() {
   /* Compute the screen scale factor so that it corresponds to
      unwrapping the orthographically projected globe.  The width of
      the equirectangular map is stretched to `screen_scalfac'.  */
+  var canvas = this.canvas;
+  var earth_buffer = this.backbuf;
   var disp_rad = Math.min(canvas.width, canvas.height) * scale / 2.0;
   var screen_scalfac = disp_rad * 2 * Math.PI;
   var x_shift = (180 - lon_rot) * inv_360 * screen_scalfac - screen_scalfac / 2;
@@ -303,8 +513,32 @@ function render_map() {
 		real_x_shift,
                 y_shift + canvas.height / 2,
                 screen_scalfac, screen_scalfac / 2);
-}
+};
 
+// ----------------------------------------
+
+// Special function for rendering an equirectangular graticule only.
+Compositor.renderEquiGraticule = function() {
+  var ctx = this.backbuf.getContext("2d");
+  var width = this.backbuf.width;
+  var height = this.backbuf.height;
+  var gratDensity = this.gratDensity;
+  ctx.strokeStyle = 'rgba(128, 128, 128, 0.5)';
+  ctx.lineWidth = this.backbufScale;
+
+  for (var lat = 0; lat < 180; lat += gratDensity) {
+    ctx.moveTo(0, (lat / 180) * height);
+    ctx.lineTo(width, (lat / 180) * height);
+  }
+  for (var lon = 0; lon < 360; lon += gratDensity) {
+    ctx.moveTo((lon / 360) * width, 0);
+    ctx.lineTo((lon / 360) * width, height);
+  }
+  ctx.stroke();
+};
+
+/* Even more special function for rendering an equirectangular
+   graticule with screen scaling and shifting.  */
 function render_equi_graticule() {
   /* Compute the screen scale factor so that it corresponds to
      unwrapping the orthographically projected globe.  The width of
@@ -362,6 +596,8 @@ function render_equi_graticule() {
   ctx.stroke();
 }
 
+/* Special rendering for an orthographic graticule: Render by
+   computing the series of ellipses to draw to the screen.  */
 function render_ortho_graticule() {
   var ctx = canvas.getContext("2d");
   var y_center = canvas.height / 2;

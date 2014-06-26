@@ -2,16 +2,16 @@ CPP = cpp
 cjs_dir = ../libs/cjs
 SOURCES = triglut.js oevns.js oevmath.js cothread.js renderlayer.js \
 	projector.js trackslayer.js sshlayer.js csv.js compat.js \
-	ajaxloaders.js dates.js compositor.js doc.js
+	ajaxloaders.js dates.js compositor.js bundle.js doc.js
 BUNDLES = bundle.js docbundle.js
 
 # all: docs
-all: docbundle.js
+all: docbundle.js bundle.js
 
 include $(cjs_dir)/cjs.mak
 
-# bundle.js: ...
-# 	$(cjs_dir)/hjssmash.sh $< -o $@
+bundle.js: compositor.hjs
+	$(cjs_dir)/hjssmash.sh $< -o $@
 
 docs: docbundle.js
 	../libs/jsdoc-master/jsdoc $^ ../README.md -u docs_in

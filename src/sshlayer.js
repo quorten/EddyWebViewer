@@ -18,7 +18,7 @@ SSHLayer.loadPrefix = "../data/";
 SSHLayer.loadFrame = "19930303";
 
 // shadeStyle: See the render() function for details
-SSHLayer.shadeStyle = 2;
+SSHLayer.shadeStyle = 1;
 
 SSHLayer.setCacheLimits = function(dataCache, renderCache) {
 };

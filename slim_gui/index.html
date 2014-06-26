@@ -429,15 +429,14 @@ element in the document.  -->
     var cfg_lenRange = document.getElementById('cfg-lenRange');
     cfg_lenRange.onchange = function(event) {
       var parts = this.value.split(', ');
-      min_track_len = +parts[0];
+      TracksLayer.minLength = +parts[0];
       if (parts[1] == 'max')
-        max_track_len = -1;
+        TracksLayer.maxLength = -1;
       else
-        max_track_len = +parts[1];
+        TracksLayer.maxLength = +parts[1];
       if (event != null) {
-        renderEddyTracks();
-        refreshOverlay();
-        render_globe();
+        TracksLayer.render.start();
+        return Compositor.finishRenderJobs();
       }
     };
 
@@ -551,7 +550,7 @@ element in the document.  -->
 
   function bodyInit() {
     initGUIHooks();
-    return initCTModule();
+    return Compositor.init();
   }
 
   var btnImages = [];
@@ -562,7 +561,7 @@ element in the document.  -->
 //--><!]]>
 </script>
 <script type="text/javascript"
-	src="../canvas_globe_test/globe_render.js"></script>
+	src="../src/bundle.js"></script>
 
 </body>
 </html>

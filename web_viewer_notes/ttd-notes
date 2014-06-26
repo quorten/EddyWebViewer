@@ -1507,6 +1507,9 @@ RenderLayers in progress.
 Build the raytracers right into Compositor, in all ugliness.  Yes, for
 now, if the raytracers are too slow, they are just too slow.
 
+DO NOT call startExec() bare.  For now, you must always use the
+start() function.
+
 ----
 
 Pending questions:

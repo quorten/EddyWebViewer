@@ -33,6 +33,17 @@ to give them the time and patience that they need.
 
 https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Functions_and_function_scope/Strict_mode?redirectlocale=en-US&redirectslug=JavaScript%2FReference%2FFunctions_and_function_scope%2FStrict_mode
 
+Tickless kernels?  Well, it's somewhat of a trick: it only refers to
+the kernel not requiring ticks under certain circumstances.  The
+system as a whole still needs timing, of course.
+
+http://randomascii.wordpress.com/2013/07/08/windows-timer-resolution-megawatts-wasted/
+http://lwn.net/Articles/549580/
+
+Good, I should be in good shape for performance counting when I use
+performance.now() on Windows systems.  Don't worry, it's a drop-in
+replacement for Date.now().
+
 ----------------------------------------
 
 Code base plans
@@ -1532,6 +1543,10 @@ Now, things are winding down:
 * As soon as eddy leaves track, make it disappear.
 
 * Draw a marker at the current date.
+
+* Improve preemption timer on Windows systems
+
+* Do not use negative degrees north and east.
 
 Then simply take off all the buttons that currently don't work, and
 then I'll be done.

@@ -15,7 +15,7 @@ SSHLayer.imgFormat = "png";
 SSHLayer.loadPrefix = "../data/";
 
 // loadFrame: hyphenless date of frame to load
-SSHLayer.loadFrame = "19930303";
+SSHLayer.loadFrame = "19921014";
 
 // shadeStyle: See the render() function for details
 SSHLayer.shadeStyle = 1;

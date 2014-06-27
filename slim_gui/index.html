@@ -121,6 +121,9 @@
     #help-btn { background-image: url("help.png"); }
     #help-btn:active { background-image: url("help_light.png");
                        outline: none; }
+
+    /* Remove non-functional buttons for the alpha version.  */
+    #play-btn, #rewind-btn, #ffwd-btn { display: none }
   </style>
 </head>
 <body onload="bodyInit()">
@@ -157,13 +160,13 @@ document.getElementById('scriptWrapper').style.cssText = '';
       <img src="../css_gui/loading_composite.png"
 	   alt="Decorative Loading Icon." />
     </object><br />
-    <strong>Loading&hellip; Alpha version takes about 30 seconds to
+    <strong>Loading&hellip; Alpha version takes about 16 seconds to
     load, please wait.</strong>
   </p>
 
 </div>
 
-<div id="popupInfo">
+<div id="popupInfo" style="display: none">
 <div id="popupClose"></div>
   <b>Eddy #43859</b><br />
   <br />
@@ -181,9 +184,9 @@ document.getElementById('scriptWrapper').style.cssText = '';
     <label for="cfg-showCyc">Cyclonic</label>
     <input id="cfg-showCyc" type="checkbox" /><br />
     <label for="cfg-showAntiCyc">Anticyclonic</label>
-    <input id="cfg-showAntiCyc" type="checkbox" /><br />
-    <label for="cfg-showChelton">Chelton Tracks</label>
-    <input id="cfg-showChelton" type="checkbox" /><br />
+    <input id="cfg-showAntiCyc" type="checkbox" checked="checked" /><br />
+    <!-- <label for="cfg-showChelton">Chelton Tracks</label>
+    <input id="cfg-showChelton" type="checkbox" /><br /> -->
     <label for="cfg-lenRange" title="Format: min, max">
       Length (weeks):</label>
     <input id="cfg-lenRange" type="text" value="0, max"
@@ -194,10 +197,10 @@ document.getElementById('scriptWrapper').style.cssText = '';
     <legend>Projection</legend>
     <label for="cfg-projMethod">Type:</label>
     <select id="cfg-projMethod">
-      <option>Equirectangular</option>
+      <option selected="selected">Equirectangular</option>
       <option>Mercator</option>
       <option>Robinson</option>
-      <option selected="selected">Orthographic</option>
+      <option>Orthographic</option>
       <option>Perspective</option>
     </select><br />
 
@@ -215,7 +218,7 @@ document.getElementById('scriptWrapper').style.cssText = '';
     <label for="cfg-landMass">Land Masses:</label>
     <select id="cfg-landMass">
       <option>None</option>
-      <option>Silhouettes</option>
+      <!-- <option>Silhouettes</option> -->
       <option selected="selected">Textured</option>
     </select><br />
     <label for="cfg-sshPal" title="Sea Surface Height Palette">
@@ -224,14 +227,14 @@ document.getElementById('scriptWrapper').style.cssText = '';
       <option>None</option>
       <option>Grayscale</option>
       <option selected="selected">MATLAB</option>
-      <option>Waters</option>
-      <option>Hatches</option>
-    </select><br />
-    <div style="text-align: left">Render Style During Scrolling:</div>
-    <label for="cfg-wireRender">Wireframe</label>
-    <input id="cfg-wireRender" type="checkbox" /><br />
-    <label for="cfg-landScroll">Landmasses</label>
-    <input id="cfg-landScroll" type="checkbox" />
+      <!-- <option>Waters</option> -->
+      <option>Contour Bands</option>
+    </select><!-- <br />
+    <div style="text-align: left">Render Style During Scrolling:</div> -->
+    <label style="display: none" for="cfg-wireRender">Wireframe</label>
+    <input style="display: none" id="cfg-wireRender" type="checkbox" /><br />
+    <label style="display: none" for="cfg-landScroll">Landmasses</label>
+    <input style="display: none" id="cfg-landScroll" type="checkbox" />
   </fieldset>
 </form></div>
 
@@ -249,7 +252,6 @@ element in the document.  -->
    <div class="imgbtn" id="begin-btn" title="Beginning"></div><!--
 --><div class="imgbtn" id="rewind-btn" title="Backward faster"></div><!--
 --><div class="imgbtn" id="bstep-btn" title="Step backward"></div><!--
---><!-- <div class="imgbtn" id="pause-btn" title="Pause"></div> --><!--
 --><div class="imgbtn" id="play-btn" title="Play"></div><!--
 --><div class="imgbtn" id="fstep-btn" title="Step forward"></div><!--
 --><div class="imgbtn" id="ffwd-btn" title="Forward faster"></div><!--
@@ -271,7 +273,7 @@ element in the document.  -->
 --><div class="spacer"></div><!--
 
 --><div class="quickcfg">
-   <input id="cfg-curDate" type="text" value="1998-10-02"
+   <input id="cfg-curDate" type="text" value="1992-10-14"
 	  title="Current Date" />
    <input id="cfg-latLon" type="text" value="0 N 0 E"
 	  title="Latitude, Longitude" />
@@ -287,11 +289,11 @@ element in the document.  -->
    </div>
 
    <div class="quickcfg">
-   <label for="cfg-graticule"
+   <label style="display: none" for="cfg-graticule"
 	  title="Graticule (degrees/line)">
      <img src="graticule.png" alt="G:" />
    </label>
-   <input id="cfg-graticule" type="text" value="15"
+   <input style="display: none" id="cfg-graticule" type="text" value="15"
 	  title="Graticule (degrees/line)" />
    </div>
 
@@ -353,7 +355,21 @@ element in the document.  -->
     };
 
     document.getElementById('begin-btn').onclick = function(event) {
-      alert('Beginning');
+      if (Dates.curDate == 0)
+        return;
+      Dates.curDate = 0;
+      var dateStr = Dates.dateList[Dates.curDate];
+      document.getElementById('cfg-curDate').value = dateStr;
+      if (event != null) {
+        if (Compositor.dispSSH) {
+          SSHLayer.loadFrame = dateStr.replace('-', '').replace('-', '');
+          SSHLayer.loadData.start();
+          SSHLayer.render.start();
+        }
+        TracksLayer.render.start();
+        if (!Compositor.renderInProg)
+          return Compositor.finishRenderJobs();
+      }
     };
 
     document.getElementById('rewind-btn').onclick = function(event) {
@@ -361,21 +377,41 @@ element in the document.  -->
     };
 
     document.getElementById('bstep-btn').onclick = function(event) {
-      dateIndex--;
-      document.getElementById('cfg-dateSel').selectedIndex = dateIndex;
-      renderEddyTracks();
-      refreshOverlay();
-      render_globe();
+      if (Dates.curDate <= 0)
+        return;
+      Dates.curDate--;
+      var dateStr = Dates.dateList[Dates.curDate];
+      document.getElementById('cfg-curDate').value = dateStr;
+      if (event != null) {
+        if (Compositor.dispSSH) {
+          SSHLayer.loadFrame = dateStr.replace('-', '').replace('-', '');
+          SSHLayer.loadData.start();
+          SSHLayer.render.start();
+        }
+        TracksLayer.render.start();
+        if (!Compositor.renderInProg)
+          return Compositor.finishRenderJobs();
+      }
     };
 
     document.getElementById('play-btn').onclick = onplay;
 
     document.getElementById('fstep-btn').onclick = function(event) {
-      dateIndex++;
-      document.getElementById('cfg-dateSel').selectedIndex = dateIndex;
-      renderEddyTracks();
-      refreshOverlay();
-      render_globe();
+      if (Dates.curDate >= Dates.dateList.length - 1)
+        return;
+      Dates.curDate++;
+      var dateStr = Dates.dateList[Dates.curDate];
+      document.getElementById('cfg-curDate').value = dateStr;
+      if (event != null) {
+        if (Compositor.dispSSH) {
+          SSHLayer.loadFrame = dateStr.replace('-', '').replace('-', '');
+          SSHLayer.loadData.start();
+          SSHLayer.render.start();
+        }
+        TracksLayer.render.start();
+        if (!Compositor.renderInProg)
+          return Compositor.finishRenderJobs();
+      }
     };
 
     document.getElementById('ffwd-btn').onclick = function(event) {
@@ -383,7 +419,22 @@ element in the document.  -->
     };
 
     document.getElementById('end-btn').onclick = function(event) {
-      alert('End');
+      var endIdx = Dates.dateList.length - 1;
+      if (Dates.curDate == endIdx)
+        return;
+      Dates.curDate = endIdx;
+      var dateStr = Dates.dateList[Dates.curDate];
+      document.getElementById('cfg-curDate').value = dateStr;
+      if (event != null) {
+        if (Compositor.dispSSH) {
+          SSHLayer.loadFrame = dateStr.replace('-', '').replace('-', '');
+          SSHLayer.loadData.start();
+          SSHLayer.render.start();
+        }
+        TracksLayer.render.start();
+        if (!Compositor.renderInProg)
+          return Compositor.finishRenderJobs();
+      }
     };
 
     document.getElementById('config-btn').onclick = function(event) {
@@ -404,14 +455,49 @@ element in the document.  -->
 
     var cfg_curDate = document.getElementById('cfg-curDate');
     cfg_curDate.onchange = function(event) {
+      if (event == null) // ??? Must fix this.
+        return;
+      var userDate = +(new Date(this.value));
+
+      /* Linear search for the closest match to the user-provided
+         date.  */
+      var numDates = Dates.dateList.length;
+      for (var i = 0; i < numDates; i++) {
+        if (+(new Date(Dates.dateList[i])) > userDate) {
+          var dateStr = Dates.dateList[i-1];
+          this.value = dateStr;
+          Dates.curDate = i - 1;
+          if (event != null) {
+            if (Compositor.dispSSH) {
+              SSHLayer.loadFrame = dateStr.replace('-', '').replace('-', '');
+              SSHLayer.loadData.start();
+              SSHLayer.render.start();
+            }
+            TracksLayer.render.start();
+            if (!Compositor.renderInProg)
+              return Compositor.finishRenderJobs();
+            return;
+          }
+        }
+      }
+
+      // else...
+      // Just reset the curDate control to the old date value.
+      this.value = Dates.dateList[Dates.curDate];
     };
 
     var cfg_latLon = document.getElementById('cfg-latLon');
     cfg_latLon.onchange = function(event) {
       var parts = this.value.split(' ');
       tilt = +parts[0];
-      lon_rot = (+parts[2]) + 180;
-      if (event != null) render_globe();
+      if (parts[1] == 'S')
+        tilt = -tilt;
+      lon_rot = +parts[2];
+      if (parts[3] == 'W')
+        lon_rot = -lon_rot;
+      lon_rot += 180;
+      if (event != null)
+        Compositor.finishRenderJobs(true);
     };
 
     var cfg_scaleFac = document.getElementById('cfg-scaleFac');
@@ -424,8 +510,35 @@ element in the document.  -->
     var cfg_graticule = document.getElementById('cfg-graticule');
     cfg_graticule.onchange = function(event) {
       var parts = this.value.split(', ');
-      grat_density = +parts[0];
-      if (event != null) render_globe();
+      Compositor.gratDensity = +parts[0];
+      /* if (event != null)
+        Compositor.finishRenderJobs(false, true); */
+    };
+
+    var cfg_showCyc = document.getElementById('cfg-showCyc');
+    cfg_showCyc.onclick = function(event) {
+      if (this.checked)
+        TracksLayer.dispCyc = true;
+      else
+        TracksLayer.dispCyc = false;
+      if (event != null) {
+        TracksLayer.render.start();
+        if (!Compositor.renderInProg)
+          return Compositor.finishRenderJobs();
+      }
+    };
+
+    var cfg_showAntiCyc = document.getElementById('cfg-showAntiCyc');
+    cfg_showAntiCyc.onclick = function(event) {
+      if (this.checked)
+        TracksLayer.dispAcyc = true;
+      else
+        TracksLayer.dispAcyc = false;
+      if (event != null) {
+        TracksLayer.render.start();
+        if (!Compositor.renderInProg)
+          return Compositor.finishRenderJobs();
+      }
     };
 
     var cfg_lenRange = document.getElementById('cfg-lenRange');
@@ -499,25 +612,39 @@ element in the document.  -->
     cfg_landMass.onchange = function(event) {
       var choice = this.options[this.selectedIndex].text;
       if (choice == 'Textured')
-        render_land_tex = true;
+        Compositor.dispLandMasses = true;
       else
-        render_land_tex = false;
-      if (event != null) {
-        refreshOverlay();
-        render_globe();
-      }
+        Compositor.dispLandMasses = false;
+      if (event != null)
+        Compositor.finishRenderJobs(false, true);
     };
 
     var cfg_sshPal = document.getElementById('cfg-sshPal');
     cfg_sshPal.onchange = function(event) {
       var choice = this.options[this.selectedIndex].text;
-      if (choice == 'MATLAB')
-        render_ssh = true;
-      else if (choice == 'None')
-        render_ssh = false;
+      if (choice == 'None')
+        Compositor.dispSSH = false;
+      else if (!Compositor.dispSSH) {
+        Compositor.dispSSH = true;
+        // We'll need to make sure we've loaded the latest frame.
+        var dateStr = Dates.dateList[Dates.curDate];
+        SSHLayer.loadFrame = dateStr.replace('-', '').replace('-', '');
+        SSHLayer.loadData.start();
+      }
+
+      if (choice == 'Grayscale')
+        SSHLayer.shadeStyle = 0;
+      else if (choice == 'MATLAB')
+        SSHLayer.shadeStyle = 1;
+      else if (choice == 'Contour Bands')
+        SSHLayer.shadeStyle = 2;
       if (event != null) {
-        refreshOverlay();
-        render_globe();
+        if (Compositor.dispSSH) {
+          SSHLayer.render.start();
+          if (!Compositor.renderInProg)
+            return Compositor.finishRenderJobs();
+        } else
+          Compositor.finishRenderJobs(false, true);
       }
     };
 
@@ -538,6 +665,8 @@ element in the document.  -->
     cfg_latLon.onchange(null);
     cfg_scaleFac.onchange(null);
     cfg_graticule.onchange(null);
+    cfg_showCyc.onclick(null);
+    cfg_showAntiCyc.onclick(null);
     cfg_lenRange.onchange(null);
     cfg_projMethod.onchange(null);
     cfg_perspAltitude.onchange(null);

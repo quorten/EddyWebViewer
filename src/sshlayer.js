@@ -160,7 +160,7 @@ SSHLayer.render = (function() {
     var frontBuf = SSHLayer.frontBuf;
     var ctx = frontBuf.getContext("2d");
     this.ctx = ctx;
-    var destImg = ctx.createImageData(frontBuf.width, frontBuf.height);
+    var destImg = ctx.getImageData(0, 0, frontBuf.width, frontBuf.height);
     this.destImg = destImg;
     this.destIdx = 0;
 
@@ -192,13 +192,21 @@ SSHLayer.render = (function() {
     }
     this.colorTbl = colorTbl;
 
-    ctx.clearRect(0, 0, frontBuf.width, frontBuf.height);
+    // ctx.clearRect(0, 0, frontBuf.width, frontBuf.height);
 
     this.x = 0;
     this.y = 0;
   }
 
   function contExec() {
+    if (SSHLayer.loadData.status.returnType != CothreadStatus.FINISHED) {
+      SSHLayer.loadData.continueCT();
+      this.status.returnType = CothreadStatus.PREEMPTED;
+      this.status.preemptCode = RenderLayer.NO_DISP_FRAME;
+      this.status.percent = 0;
+      return this.status;
+    }
+
     var ctx = this.ctx;
     var destImg = this.destImg;
     var destIdx = this.destIdx;
@@ -233,7 +241,10 @@ SSHLayer.render = (function() {
 	    polCoord.lon > -180 && polCoord.lon < 180)
 	  ;
 	else {
-	  destIdx += 4;
+	  destImg.data[destIdx++] = 0;
+	  destImg.data[destIdx++] = 0;
+	  destImg.data[destIdx++] = 0;
+	  destImg.data[destIdx++] = 0;
 	  x++;
 	  continue;
 	}
@@ -243,9 +254,12 @@ SSHLayer.render = (function() {
 	// var value = sshData[y*src_width+x];
 
 	  if (isNaN(value) || value == -128) {
-	      destIdx += 4;
-	      x++;
-	      continue;
+	    destImg.data[destIdx++] = 0;
+	    destImg.data[destIdx++] = 0;
+	    destImg.data[destIdx++] = 0;
+	    destImg.data[destIdx++] = 0;
+	    x++;
+	    continue;
 	  }
 
 	  if (SSHLayer.shadeStyle == 1) { // MATLAB

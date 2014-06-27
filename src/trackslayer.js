@@ -149,10 +149,8 @@ TracksLayer.setViewport = function(center, width, height,
   return RenderLayer.READY;
 };
 
-var backbufScale = 1;
 var minTrackLen = 0, maxTrackLen = -1;
 var numericDates = [];
-var dateIndex = 0;
 var inv_180 = 1 / 180, inv_360 = 1 / 360;
 
 TracksLayer.render = (function() {
@@ -164,7 +162,7 @@ TracksLayer.render = (function() {
     this.edc = edc;
 
     edc.clearRect(0, 0, frontBuf.width, frontBuf.height);
-    edc.lineWidth = backbufScale;
+    edc.lineWidth = Compositor.backbufScale;
     edc.strokeStyle = "#800080";
     edc.lineJoin = "round";
 
@@ -178,15 +176,23 @@ TracksLayer.render = (function() {
     /* Data format: [list of tracks]
        track: [ list of eddies ]
        eddy: [ latitude, longitude, date_index, eddy_index ]
+       Date indexes start from one, not zero.
      */
-    var tracksData = [];
-    if (TracksLayer.dispAcyc && !TracksLayer.dispCyc)
-      tracksData = TracksLayer.acTracksData;
-    else
-      tracksData = TracksLayer.cTracksData;
-    /* if (tracksData.length == 0)
-      return; */
-    var numTracks = tracksData.length;
+    var backbufScale = Compositor.backbufScale;
+    var curDate = Dates.curDate;
+    var acTracksData = TracksLayer.acTracksData;
+    var acTracksData_length = acTracksData.length;
+    var dispAcyc = TracksLayer.dispAcyc;
+    var cTracksData = TracksLayer.cTracksData;
+    var cTracksData_length = cTracksData.length;
+    var dispCyc = TracksLayer.dispCyc;
+    var numTracks = 0;
+    if (dispAcyc)
+      numTracks = acTracksData_length;
+    if (dispCyc && cTracksData_length > numTracks)
+      numTracks = cTracksData_length;
+    var renderPart = 0;
+
     var frontBuf_width = TracksLayer.frontBuf.width;
     var frontBuf_height = TracksLayer.frontBuf.height;
     var aspectXY = TracksLayer.aspectXY;
@@ -197,18 +203,54 @@ TracksLayer.render = (function() {
 
     var startTime = lDate_now();
     var timeout = this.timeout;
+
     for (; i < numTracks; ) {
+      var tracksData;
+      if (renderPart == 0 && dispAcyc) {
+	if (i >= acTracksData_length) {
+	  renderPart++;
+	  continue;
+	}
+        tracksData = acTracksData;
+      } else if (renderPart == 1 && dispCyc) {
+	if (i >= cTracksData_length) {
+	  renderPart++;
+	  if (renderPart == 2) { renderPart = 0; i++; }
+	  continue;
+	}
+        tracksData = cTracksData;
+      } else {
+	// Nothing to render.
+	renderPart++;
+	if (renderPart == 2) { renderPart = 0; i++; }
+	continue;
+      }
+
+      // First check if the track is within the time range.
+      if (tracksData[i][0][2] - 1 > curDate ||
+	  tracksData[i][tracksData[i].length-1][2] - 1 < curDate) {
+	renderPart++;
+	if (renderPart == 2) { renderPart = 0; i++; }
+	continue;
+      }
+
       if (TracksLayer.minLength > 0 && TracksLayer.maxLength != -1) {
 	// Determine the length of the eddy in weeks.
 	var numEddies = tracksData[i].length;
-	var firstDateIdx = tracksData[i][0][2];
-	var lastDateIdx = tracksData[i][numEddies-1][2];
+	var firstDateIdx = tracksData[i][0][2] - 1;
+	var lastDateIdx = tracksData[i][numEddies-1][2] - 1;
 	var trackLen = Dates.realTimes[lastDateIdx] -
 	  Dates.realTimes[firstDateIdx];
-	if (trackLen < TracksLayer.minLength)
-	  { i++; continue; }
-	if (maxTrackLen != -1 && trackLen > TracksLayer.maxLength)
-	  { i++; continue; }
+	if (trackLen < TracksLayer.minLength) {
+	  renderPart++;
+	  if (renderPart == 2) { renderPart = 0; i++; }
+	  continue;
+	}
+	if (maxTrackLen != -1 && trackLen > TracksLayer.maxLength) {
+	  renderPart++;
+	  if (renderPart == 2) { renderPart = 0; i++; }
+	  continue;
+	}
       }
 
       edc.beginPath();
@@ -218,14 +260,16 @@ TracksLayer.render = (function() {
       var mapY = (90 - lat) * inv_180 * frontBuf_height;
       var polCoord = { lat: tracksData[i][0][0], lon: tracksData[i][0][1] };
       var mapCoord = projector_project(polCoord);
-      var mapCoord_x = mapCoord.x;
-      var mapCoord_y = mapCoord.y;
+      var mapCoord_x = (mapCoord.x + 1) * 0.5 * frontBuf_width;
+      var mapCoord_y = (-mapCoord.y * aspectXY + 1) * 0.5 * frontBuf_height;
 
       // var mapCoord_x = tracksData[i][0][1] / 180;
       // var mapCoord_y = tracksData[i][0][0] / 180;
 
-      edc.moveTo((mapCoord_x + 1) * 0.5 * frontBuf_width,
-		 (-mapCoord_y * aspectXY + 1) * 0.5 * frontBuf_height);
+      edc.moveTo(mapCoord_x, mapCoord_y);
+      if (tracksData[i][0][2] - 1 == Dates.curDate)
+	edc.arc(mapCoord_x, mapCoord_y,
+		2 * backbufScale, 0, 2 * Math.PI, false);
       for (var j = 1; j < tracksData[i].length; j++) {
 	lat = tracksData[i][j][0];
 	lon = tracksData[i][j][1];
@@ -233,19 +277,22 @@ TracksLayer.render = (function() {
 	mapY = (90 - lat) * inv_180 * frontBuf_height;
 	polCoord = { lat: tracksData[i][j][0], lon: tracksData[i][j][1] };
 	mapCoord = projector_project(polCoord);
-	mapCoord_x = mapCoord.x;
-	mapCoord_y = mapCoord.y;
+	mapCoord_x = (mapCoord.x + 1) * 0.5 * frontBuf_width;
+	mapCoord_y = (-mapCoord.y * aspectXY + 1) * 0.5 * frontBuf_height;
 
 	// mapCoord_x = tracksData[i][j][1] / 180;
 	// mapCoord_y = tracksData[i][j][0] / 180;
 
-	edc.lineTo((mapCoord_x + 1) * 0.5 * frontBuf_width,
-		   (-mapCoord_y * aspectXY + 1) * 0.5 * frontBuf_height);
-	if (tracksData[i][j][2] == dateIndex)
-	  edc.arc(mapCoord_x, mapCoord_y, 2 * backbufScale, 0, 2 * Math.PI, false);
+	edc.lineTo(mapCoord_x, mapCoord_y);
+	if (tracksData[i][j][2] - 1 == Dates.curDate)
+	  edc.arc(mapCoord_x, mapCoord_y,
+		  2 * backbufScale, 0, 2 * Math.PI, false);
       }
       edc.stroke();
-      i++;
+
+      renderPart++;
+      if (renderPart == 2) { renderPart = 0; i++; }
+
       if (i % 1024 == 0 && lDate_now() - startTime >= timeout)
 	break;
     }

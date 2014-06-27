@@ -44,6 +44,12 @@ Compositor.backbufScale = 2;
 // Density of the graticule lines in degrees per line
 Compositor.gratDensity = 15;
 
+// Display the land mass texture?
+Compositor.dispLandMasses = true;
+
+// Display the SSH overlay?
+Compositor.dispSSH = true;
+
 // A function that should probably go in compat...
 Compositor.makeEventWrapper = function(callObj, handler) {
   return function() { return callObj[handler](); };
@@ -241,6 +247,7 @@ Compositor.finishStartup = function() {
   if (!Compositor.ready)
     return;
   Compositor.noDobule = true;
+  SSHLayer.loadData.notifyFunc = this.makeEventWrapper(Compositor, "finishRenderJobs");
 
   var width = 1440; var height = 721;
   var projector;
@@ -256,14 +263,23 @@ Compositor.finishStartup = function() {
   TracksLayer.setViewport(null, width, height, width / height,
 			  projector);
 
-  /* Now that all the necessary startup data is loaded, we should
-     proceed to rendering the first frame.  */
+  /* Connect the front buffer to the GUI now that loading is
+     finished.  */
   var loadingScreen = document.getElementById("loadingScreen");
   if (loadingScreen)
     loadingScreen.style.cssText = "display: none";
   this.canvas.style.cssText = "";
+  this.canvas.onmousedown = setMouseDown;
+  if (!this.canvas.setCapture) {
+    window.onmousemove = panGlobe;
+  } else {
+    this.canvas.onmousemove = panGlobe;
+    this.canvas.onmouseup = setMouseUp;
+  }
   addWheelListener(this.canvas, zoomGlobe);
 
+  /* Now that all the necessary startup data is loaded, we should
+     proceed to rendering the first frame.  */
   this.projEarthTex.start();
   SSHLayer.render.start();
   TracksLayer.render.start();
@@ -274,29 +290,40 @@ Compositor.renderInProg = false;
 
 /* Finish any render jobs that may be pending from TracksLayer or
    SSHLayer.  If the parameter "fast" is provided and set to true,
-   then only redraw the composite without doing any more
-   computations.  */
-Compositor.finishRenderJobs = function(fast) {
+   then only redraw the composite without doing any more computations.
+   If "noContinue" is provided and set to true, then this function
+   will not use setTimeout() to finish the cothreaded rendering
+   jobs.  */
+Compositor.finishRenderJobs = function(fast, noContinue) {
+  var petStatus;
+  var sshStatus;
+  var tracksStatus;
   if (!fast) {
-    this.renderInProg = true;
-    var petStatus = this.projEarthTex.continueCT();
-    var sshStatus = SSHLayer.render.continueCT();
-    var tracksStatus = TracksLayer.render.continueCT();
+    if (!noContinue)
+      this.renderInProg = true;
+    petStatus = this.projEarthTex.continueCT();
+    if (this.dispSSH)
+      sshStatus = SSHLayer.render.continueCT();
+    else
+      sshStatus = { returnType: CothreadStatus.FINISHED };
+    tracksStatus = TracksLayer.render.continueCT();
 
     { // Compose the layers.
       var backbuf = this.backbuf;
       var ctx = backbuf.getContext("2d");
       ctx.clearRect(0, 0, backbuf.width, backbuf.height);
-      ctx.drawImage(this.projEarthTex.frontBuf,
-		    0, 0, backbuf.width, backbuf.height);
-      ctx.drawImage(SSHLayer.frontBuf,
-		    0, 0, backbuf.width, backbuf.height);
+      if (this.dispLandMasses)
+        ctx.drawImage(this.projEarthTex.frontBuf,
+		      0, 0, backbuf.width, backbuf.height);
+      if (this.dispSSH)
+        ctx.drawImage(SSHLayer.frontBuf,
+		      0, 0, backbuf.width, backbuf.height);
       ctx.drawImage(TracksLayer.frontBuf,
 		    0, 0, backbuf.width, backbuf.height);
-      if (this.projector == Compositor.rayOrtho ||
+      /* if (this.projector == Compositor.rayOrtho ||
 	  this.projector == Compositor.rayPersp ||
 	  this.projector == EquirectMapProjector)
-	this.renderEquiGraticule();
+	this.renderEquiGraticule(); */
     }
   }
 
@@ -307,7 +334,7 @@ Compositor.finishRenderJobs = function(fast) {
   else
     this.show2dComposite();
 
-  if (fast)
+  if (fast || noContinue)
     return;
 
   /* var renderMethod;
@@ -701,6 +728,112 @@ function render_ortho_graticule() {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.stroke();
   }
+}
+
+var mouseDown = false;
+var buttonDown = 0;
+var firstPoint = {};
+var topLeft = { x: 0, y: 0 };
+var ptMSIE = 0; // msieVersion();
+firstPoint.x = 0; firstPoint.y = 0;
+
+var old_lon_rot;
+var old_tilt;
+
+function setMouseDown(event) {
+  /* if (ptMSIE <= 6 && ptMSIE > 0)
+    event = window.event; */
+
+  if (this.setCapture) {
+    this.setCapture();
+  }
+  else
+    window.onmouseup = setMouseUp;
+
+  mouseDown = true;
+  buttonDown = event.button;
+  firstPoint.x = event.clientX; firstPoint.y = event.clientY;
+  /* if (!topLeft.x) {
+    topLeft.x = firstPoint.x - canvas.width / 2;
+    topLeft.y = firstPoint.y - canvas.height / 2;
+    var ctx = canvas.getContext("2d");
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  } */
+  old_lon_rot = lon_rot;
+  old_tilt = tilt;
+}
+
+function panGlobe(event) {
+  if (!mouseDown)
+    return;
+  if (ptMSIE <= 6 && ptMSIE > 0)
+    event = window.event;
+
+  var ctx = Compositor.canvas.getContext("2d");
+
+  /* var disp_rad = Math.min(canvas.height, canvas.width) * scale / 2.0;
+  var first_ang_x = Math.asin((firstPoint.x - canvas.width / 2) / disp_rad);
+  var first_ang_y = Math.asin((firstPoint.y - canvas.width / 2) / disp_rad);
+  var cur_ang_x = Math.asin((event.clientX - canvas.width / 2) / disp_rad);
+  var cur_ang_y = Math.asin((event.clientY - canvas.width / 2) / disp_rad);
+
+  if (isNaN(first_ang_x) || isNaN(first_ang_y) ||
+      isNaN(cur_ang_x) || isNaN(cur_ang_y))
+    return;
+
+  lon_rot = old_lon_rot + first_ang_y - cur_ang_y;
+  tilt = old_tilt - (first_ang_x - cur_ang_x); */
+
+  var pan_scale;
+  var equirect_x_scale = 1;
+  if (Compositor.projector != Compositor.rayPersp)
+    pan_scale = scale;
+  else
+    pan_scale = 1; // TODO: Do more complicated calculation
+  if (Compositor.projector != Compositor.rayOrtho &&
+      Compositor.projector != Compositor.rayPersp) {
+    var disp_rad = Math.min(Compositor.canvas.width, Compositor.canvas.height) * scale / 2.0;
+    var screen_scalfac = disp_rad * 2 * Math.PI;
+    equirect_x_scale = 1;
+  }
+  lon_rot = old_lon_rot + (firstPoint.x - event.clientX) /
+    Compositor.canvas.width / pan_scale * equirect_x_scale * 180;
+  tilt = old_tilt - (firstPoint.y - event.clientY) /
+    Compositor.canvas.height / pan_scale * 180;
+
+  if (tilt > 90) tilt = 90;
+  if (tilt < -90) tilt = -90;
+  while (lon_rot < 0) lon_rot += 360;
+  while (lon_rot >= 360) lon_rot -= 360;
+
+  var cfg_latLon = document.getElementById("cfg-latLon");
+  if (cfg_latLon) {
+    var dispLat = tilt;
+    var dispLon = lon_rot - 180;
+    if (dispLat < 0)
+      dispLat = (-dispLat).toFixed(3) + " S";
+    else
+      dispLat = dispLat.toFixed(3) + " N";
+    if (dispLon < 0)
+      dispLon = (-dispLon).toFixed(3) + " W";
+    else
+      dispLon = dispLon.toFixed(3) + " E";
+    cfg_latLon.value = dispLat + " " + dispLon;
+  }
+
+  Compositor.finishRenderJobs(true);
+
+  /* if (ptMSIE <= 6 && ptMSIE > 0)
+    event.cancelBubble = true; */
+  return false; // Cancel the default, or at least attempt to do so.
+}
+
+function setMouseUp(event) {
+  mouseDown = false;
+  Compositor.finishRenderJobs(true);
+  window.onmouseup = null;
+  return false;
 }
 
 function zoomGlobe(event) {

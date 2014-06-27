@@ -6,8 +6,9 @@ import "ajaxloaders";
 
 var Dates = new XHRLoader("../data/dates.dat", execTime);
 
-/* Important parameter: the current date selected by the user.  */
-Dates.curDate = "";
+/* Important parameter: the current date index selected by the
+   user.  */
+Dates.curDate = 0;
 
 Dates.procData = function(httpRequest) {
   var doneProcData = false;
@@ -24,11 +25,14 @@ Dates.procData = function(httpRequest) {
     var dateList = Dates.dateList;
     var numDates = dateList.length;
     for (var i = 0; i < numDates; i++) {
+      // First change the date to a more readable hyphenated date.
       var dlen = dateList[i].length;
       var day = dateList[i].substr(dlen - 2, 2);
       var month = dateList[i].substr(dlen - 4, 2);
       var year = dateList[i].substring(0, dlen - 4);
       var fmtDate = [ year, month, day ].join("-");
+      Dates.dateList[i] = fmtDate;
+
       var realTime = +(new Date(fmtDate)) / (1000 * 60 * 60 * 24 * 7);
       Dates.realTimes.push(realTime);
     }

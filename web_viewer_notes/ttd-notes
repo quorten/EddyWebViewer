@@ -1553,3 +1553,27 @@ then I'll be done.
 
 Right now, memory fragmentation is a considerable problem in the
 viewer, so I'll have to optimize it to be more memory conscious.
+
+----------------------------------------
+
+Last things to add to the viewer:
+
+put in about
+legend, just center, not entire body, colors
+contact
+system-level
+research
+just James contact
+alpha version
+
+In Advanced configuration
+<span style="color: red">Alpha Version of Viewer</span>
+
+<b>Legend</b>
+
+<ul>
+  <li>Circles = center of eddy, not size</li>
+  <li>Both cyclonic and anticyclonic are colored purple</li>
+</ul>
+
+Add the viewer to the navbar.

@@ -599,13 +599,13 @@ element in the document.  -->
     var cfg_perspAltitude = document.getElementById('cfg-perspAltitude');
     cfg_perspAltitude.onchange = function(event) {
       persp_altitude = +this.value;
-      if (event != null) render_globe();
+      if (event != null) return Compositor.finishRenderJobs(true);
     };
 
     var cfg_perspFOV = document.getElementById('cfg-perspFOV');
     cfg_perspFOV.onchange = function(event) {
       persp_fov = +this.value;
-      if (event != null) render_globe();
+      if (event != null) return Compositor.finishRenderJobs(true);
     };
 
     var cfg_landMass = document.getElementById('cfg-landMass');

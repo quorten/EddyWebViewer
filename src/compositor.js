@@ -338,6 +338,7 @@ Compositor.finishRenderJobs = function(fast, noContinue) {
     return;
 
   /* var renderMethod;
+  this.makeEventWrapper(this, "renderMethod"); // ...
   if (allocRenderJob(renderMethod))
     renderMethod(); */
 
@@ -869,7 +870,8 @@ function zoomGlobe(event) {
     if (cfg_perspFOV) cfg_perspFOV.value = persp_fov;
   }
 
-  if (allocRenderJob(Compositor.finishRenderJobs))
+  // NOTE: allocRenderJob() messes up what `this' points to.
+  // if (allocRenderJob(this.makeEventWrapper(Compositor, "finishRenderJobs")))
     Compositor.finishRenderJobs(true);
   event.preventDefault();
   return false;

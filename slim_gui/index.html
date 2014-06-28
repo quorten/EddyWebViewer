@@ -7,7 +7,9 @@
   <title>Ocean Eddies Web Viewer</title>
   <style type="text/css">
     html, body { margin: 0; padding: 0; height: 100%; }
-    body { color: white; background-color: #333348; }
+    /* In order for the JavaScript-disabled screen to show in default
+       browser colors, we add this with a script at a later time.  */
+    /* body { color: white; background-color: #333348; } */
 
     /* "wrap" is used to make sure that a vertical scrollbar never
        appears on the page.  */
@@ -126,7 +128,7 @@
     #play-btn, #rewind-btn, #ffwd-btn { display: none }
   </style>
 </head>
-<body onload="bodyInit()">
+<body id="topBody" style="height: auto" onload="bodyInit()">
 
 <noscript>
 <div style="margin: 0.5em">
@@ -146,6 +148,8 @@ ignore it, since it will be unusable to you.</p>
 <div id="scriptWrapper" style="display: none">
 <script type="text/javascript">
 <!--//--><![CDATA[//><!--
+document.getElementById('topBody').style.cssText =
+  'color: white; background-color: #333348;';
 document.getElementById('scriptWrapper').style.cssText = '';
 //--><!]]>
 </script>

@@ -1574,6 +1574,8 @@ In Advanced configuration
 <ul>
   <li>Circles = center of eddy, not size</li>
   <li>Both cyclonic and anticyclonic are colored purple</li>
+  <li>Sea Surface Height (SSH) ranges from -32 to +32 cm for the
+  MATLAB palette.</li>
 </ul>
 
 Add the viewer to the navbar.

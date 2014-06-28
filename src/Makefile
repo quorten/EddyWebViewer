@@ -22,6 +22,17 @@ docs: docbundle.js
 docbundle.js: doc.hjs
 	$(cjs_dir)/hjssmash.sh $< -o $@
 
+install: bundle.js
+	mkdir -p ../htdocs
+	cp bundle.js ../htdocs/
+	sed -i -e 's/\.\.\///g' ../htdocs/bundle.js
+	cp ../css_gui/loading_composite.svg ../htdocs/
+	cp ../css_gui/loading_composite.png ../htdocs/
+	cp ../slim_gui/* ../htdocs/
+	cp ../alpha/index.html ../htdocs/index.html
+	sed -i -e 's/\.\.\/css_gui\///g' \
+	  -e 's/\.\.\/src\///g' ../htdocs/index.html
+
 clean::
 	rm -f $(BUNDLES)
 

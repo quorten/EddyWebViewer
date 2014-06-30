@@ -11,7 +11,6 @@ Build the Website from the Sources
 make -C src install
 chmod go+r htdocs/*
 ln -s /project/expeditions/eddies_project_data/web_viewer htdocs/data
-ln -s ... htdocs/blue_marble
 rsync -kurpt htdocs/ USER@MACH.cs.umn.edu:/web/research/ucc.umn.edu/eddies/viewer
 # Verify the permissions on the files are correct.
 ~~~

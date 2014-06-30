@@ -38,3 +38,4 @@ clean::
 
 distclean: clean
 	rm -rf ../docs/jsdocs
+	rm -rf ../htdocs

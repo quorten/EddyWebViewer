@@ -1,5 +1,5 @@
 #! /bin/sh
 # Generate the SSH in all desired variations.
 
-FMT=jpg . sshproc.sh
-FMT=png . sshproc.sh
+FMT=jpg sh ./sshproc.sh
+FMT=png sh ./sshproc.sh

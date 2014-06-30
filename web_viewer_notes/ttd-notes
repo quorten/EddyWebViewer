@@ -1536,6 +1536,12 @@ Pending questions:
 
 Now, things are winding down:
 
+* NOTE: I need to handle eddies that span across the 360 mark
+  specially so that a line is not drawn traversing the entire map.
+
+* My location widget is broken.  It needs to be corrected for the
+  current projection.
+
 * Step forward and step backward
 
 * Display only tracks that have one eddy in current date

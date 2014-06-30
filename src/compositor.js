@@ -109,10 +109,10 @@ Compositor.init = function() {
     Compositor.ready = true;
     return Compositor.finishStartup();
   };
-  this.earthTex.src = "../blue_marble/land_ocean_ice_2048.jpg";
-  // this.earthTex.src = "../blue_marble/land_shallow_topo_2048.jpg";
-  // this.earthTex.src = "../blue_marble/world.200408.3x5400x2700.jpg";
-  // this.earthTex.src = "../blue_marble/world.200402.3x5400x2700.jpg";
+  this.earthTex.src = "../data/blue_marble/land_ocean_ice_2048.jpg";
+  // this.earthTex.src = "../data/blue_marble/land_shallow_topo_2048.jpg";
+  // this.earthTex.src = "../data/blue_marble/world.200408.3x5400x2700.jpg";
+  // this.earthTex.src = "../data/blue_marble/world.200402.3x5400x2700.jpg";
 
   return this.finishStartup();
 };

@@ -8,7 +8,7 @@ node_modules/jshint
 node_modules/load-grunt-tasks
 
 # User-specific files
-conf.json
+# conf.json
 
 # Generated files
 test/tutorials/out

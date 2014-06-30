@@ -1590,3 +1590,27 @@ http://en.wikipedia.org/wiki/Nofollow
 Serious repo cleanup work:
 
 http://www.git-scm.com/book/ch9-7.html
+
+# Check the data size before:
+git count-objects -v
+
+git filter-branch --index-filter \
+  'git rm --cached --ignore-unmatch -r blue_marble coolssh pngssh jpgssh' \
+  -- 44eda1370d302206ee404024362dc400cfe9706a
+git remote rm origin
+rm -Rf .git/refs/original
+rm -Rf .git/logs/
+git gc
+git prune --expire now
+git remote add origin https://mako0042@github.umn.edu/faghm001/EddyWebViewer.git
+git push --force
+
+# Check the data size after:
+git count-objects -v
+
+Then, for finally wiping out the contents of the remote, do this:
+git push --force
+
+For a safe push instead, do this:
+git branch pruned
+git push origin pruned

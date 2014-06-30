@@ -18,21 +18,14 @@ TracksLayer = new RenderLayer();
 TracksLayer.dispCyc = false;
 TracksLayer.dispAcyc = false;
 
-// Minimum track length in weeks
+// Minimum track length in seconds
 TracksLayer.minLength = 0;
 
-// Maximum track length in weeks, -1 for any
+// Maximum track length in seconds, -1 for any
 TracksLayer.maxLength = -1;
 
 TracksLayer.setCacheLimits = function(dataCache, renderCache) {
 };
-
-/*
-
-Okay, take it slow.  Yes, I'm taking it so, and so will my viewer be
-slow.
-
-*/
 
 TracksLayer.acLoad = new XHRLoader("../data/tracks/acyc_bu_tracks.json",
 				   execTime);
@@ -246,7 +239,7 @@ TracksLayer.render = (function() {
 	  if (renderPart == 2) { renderPart = 0; i++; }
 	  continue;
 	}
-	if (maxTrackLen != -1 && trackLen > TracksLayer.maxLength) {
+	if (TracksLayer.maxLength != -1 && trackLen > TracksLayer.maxLength) {
 	  renderPart++;
 	  if (renderPart == 2) { renderPart = 0; i++; }
 	  continue;

@@ -33,7 +33,7 @@ Dates.procData = function(httpRequest) {
       var fmtDate = [ year, month, day ].join("-");
       Dates.dateList[i] = fmtDate;
 
-      var realTime = +(new Date(fmtDate)) / (1000 * 60 * 60 * 24 * 7);
+      var realTime = +(new Date(fmtDate));
       Dates.realTimes.push(realTime);
     }
 

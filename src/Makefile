@@ -28,8 +28,7 @@ install: bundle.js
 	sed -i -e 's/\.\.\///g' ../htdocs/bundle.js
 	cp ../slim_gui/* ../htdocs/
 	cp ../alpha/index.html ../htdocs/index.html
-	sed -i -e 's/\.\.\/css_gui\///g' \
-	  -e 's/\.\.\/src\///g' ../htdocs/index.html
+	sed -i -e 's/\.\.\/src\///g' ../htdocs/index.html
 	-chmod go+r ../htdocs/*
 
 clean::

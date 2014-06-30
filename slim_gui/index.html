@@ -11,11 +11,16 @@
        browser colors, we add this with a script at a later time.  */
     /* body { color: white; background-color: #333348; } */
 
-    /* "wrap" is used to make sure that a vertical scrollbar never
-       appears on the page.  */
-    #wrap { position: absolute; width: 100%; height: 100%; overflow: hidden; }
+    /* The following style on "scriptWrapper" is used to make sure
+       that a vertical scrollbar never appears on the page.  */
+    /* #scriptWrapper { position: absolute;
+                     width: 100%; height: 100%; overflow: hidden; } */
 
-    #drawingContainer { position: relative; width: 100%; height: 100%;
+    /* "dcwrap" is used to get rid of a scrollbar that appears if a
+       website page disclaimer must be displayed underneath the CSS
+       GUI.  */
+    #dcwrap { height: 100%; overflow: hidden; }
+    #drawingContainer { position: absolute; width: 100%; height: 100%;
                         overflow: hidden; }
 
     /* Configuration option to change GUI scale factor?  */
@@ -123,15 +128,12 @@
     #help-btn { background-image: url("help.png"); }
     #help-btn:active { background-image: url("help_light.png");
                        outline: none; }
-
-    /* Remove non-functional buttons for the alpha version.  */
-    #play-btn, #rewind-btn, #ffwd-btn { display: none }
   </style>
 </head>
-<body id="topBody" style="height: auto" onload="bodyInit()">
+<body id="topBody" style="height: auto; margin: 0.5em"
+      onload="bodyInit()">
 
 <noscript>
-<div style="margin: 0.5em">
 
 <h1>Sorry</h1>
 
@@ -142,7 +144,6 @@ interactive web viewer.</p>
 ignore it, since it will be unusable to you.</p>
 
 <hr />
-</div>
 </noscript>
 
 <div id="scriptWrapper" style="display: none">
@@ -154,8 +155,7 @@ document.getElementById('scriptWrapper').style.cssText = '';
 //--><!]]>
 </script>
 
-<div id="wrap">
-
+<div id="dcwrap">
 <div id="drawingContainer">
 
   <p id="loadingScreen" style="text-align: center">
@@ -164,13 +164,13 @@ document.getElementById('scriptWrapper').style.cssText = '';
       <img src="loading_composite.png"
 	   alt="Decorative Loading Icon." />
     </object><br />
-    <strong>Loading&hellip; Alpha version takes about 16 seconds to
-    load, please wait.</strong>
+    <strong>Loading</strong>
   </p>
 
 </div>
+</div>
 
-<div id="popupInfo" style="display: none">
+<div id="popupInfo">
 <div id="popupClose"></div>
   <b>Eddy #43859</b><br />
   <br />
@@ -182,20 +182,20 @@ document.getElementById('scriptWrapper').style.cssText = '';
   </div>
 </div>
 
-<div id="configWrapper" style="display: none"><form id="configPanel">
+<div id="configWrapper" style="display: none"><form id="configPanel" action="">
   <fieldset>
     <legend>Eddy Filters</legend>
     <label for="cfg-showCyc">Cyclonic</label>
     <input id="cfg-showCyc" type="checkbox" /><br />
     <label for="cfg-showAntiCyc">Anticyclonic</label>
     <input id="cfg-showAntiCyc" type="checkbox" checked="checked" /><br />
-    <!-- <label for="cfg-showChelton">Chelton Tracks</label>
-    <input id="cfg-showChelton" type="checkbox" /><br /> -->
+    <label for="cfg-showChelton">Chelton Tracks</label>
+    <input id="cfg-showChelton" type="checkbox" /><br />
     <label for="cfg-lenRange" title="Format: min, max">
       Length (weeks):</label>
     <input id="cfg-lenRange" type="text" value="0, max"
 	   class="numinput" title="Format: min, max" />
-  </fieldset><br />
+  </fieldset><div><br /></div>
 
   <fieldset>
     <legend>Projection</legend>
@@ -206,7 +206,7 @@ document.getElementById('scriptWrapper').style.cssText = '';
       <option>Robinson</option>
       <option>Orthographic</option>
       <option>Perspective</option>
-    </select><br />
+    </select><div><br /></div>
 
     <label for="cfg-perspAltitude">Altitude (km):</label>
     <input id="cfg-perspAltitude" type="text" value="35786"
@@ -215,14 +215,14 @@ document.getElementById('scriptWrapper').style.cssText = '';
     <input id="cfg-perspFOV" type="text" value="17.5"
 	   disabled="disabled" class="numinput" />
 
-  </fieldset><br />
+  </fieldset><div><br /></div>
 
   <fieldset>
     <legend>Render Parameters</legend>
     <label for="cfg-landMass">Land Masses:</label>
     <select id="cfg-landMass">
       <option>None</option>
-      <!-- <option>Silhouettes</option> -->
+      <option>Silhouettes</option>
       <option selected="selected">Textured</option>
     </select><br />
     <label for="cfg-sshPal" title="Sea Surface Height Palette">
@@ -231,14 +231,14 @@ document.getElementById('scriptWrapper').style.cssText = '';
       <option>None</option>
       <option>Grayscale</option>
       <option selected="selected">MATLAB</option>
-      <!-- <option>Waters</option> -->
       <option>Contour Bands</option>
-    </select><!-- <br />
-    <div style="text-align: left">Render Style During Scrolling:</div> -->
-    <label style="display: none" for="cfg-wireRender">Wireframe</label>
-    <input style="display: none" id="cfg-wireRender" type="checkbox" /><br />
-    <label style="display: none" for="cfg-landScroll">Landmasses</label>
-    <input style="display: none" id="cfg-landScroll" type="checkbox" />
+      <option>Waters</option>
+    </select><br />
+    <div style="text-align: left">Render Style During Scrolling:</div>
+    <label for="cfg-wireRender">Wireframe</label>
+    <input id="cfg-wireRender" type="checkbox" /><br />
+    <label for="cfg-landScroll">Landmasses</label>
+    <input id="cfg-landScroll" type="checkbox" />
   </fieldset>
 </form></div>
 
@@ -293,17 +293,14 @@ element in the document.  -->
    </div>
 
    <div class="quickcfg">
-   <label style="display: none" for="cfg-graticule"
-	  title="Graticule (degrees/line)">
+   <label for="cfg-graticule" title="Graticule (degrees/line)">
      <img src="graticule.png" alt="G:" />
    </label>
-   <input style="display: none" id="cfg-graticule" type="text" value="15"
+   <input id="cfg-graticule" type="text" value="15"
 	  title="Graticule (degrees/line)" />
    </div>
 
 </form></div>
-
-</div> <!-- END wrap -->
 
 </div> <!-- END scriptWrapper -->
 
@@ -459,7 +456,7 @@ element in the document.  -->
 
     var cfg_curDate = document.getElementById('cfg-curDate');
     cfg_curDate.onchange = function(event) {
-      if (event == null) // ??? Must fix this.
+      if (event == null) // NEED DELAYED INITIALIZER
         return;
       var userDate = +(new Date(this.value));
 
@@ -467,7 +464,7 @@ element in the document.  -->
          date.  */
       var numDates = Dates.dateList.length;
       for (var i = 0; i < numDates; i++) {
-        if (+(new Date(Dates.dateList[i])) > userDate) {
+        if (Dates.realTimes[i] > userDate) {
           var dateStr = Dates.dateList[i-1];
           this.value = dateStr;
           Dates.curDate = i - 1;
@@ -547,12 +544,13 @@ element in the document.  -->
 
     var cfg_lenRange = document.getElementById('cfg-lenRange');
     cfg_lenRange.onchange = function(event) {
+      var weeksToSecs = 1000 * 60 * 60 * 24 * 7;
       var parts = this.value.split(', ');
-      TracksLayer.minLength = +parts[0];
+      TracksLayer.minLength = +parts[0] * weeksToSecs;
       if (parts[1] == 'max')
         TracksLayer.maxLength = -1;
       else
-        TracksLayer.maxLength = +parts[1];
+        TracksLayer.maxLength = +parts[1] * weeksToSecs;
       if (event != null) {
         TracksLayer.render.start();
         if (!Compositor.renderInProg)
@@ -562,8 +560,6 @@ element in the document.  -->
 
     var cfg_projMethod = document.getElementById('cfg-projMethod');
     cfg_projMethod.onchange = function(event) {
-      if (event == null) // ??? Must fix this.
-        return;
       var choice = this.options[this.selectedIndex].text;
       if (choice == 'Perspective') {
         Compositor.setProjector(Compositor.rayPersp);

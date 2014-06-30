@@ -70,6 +70,7 @@ Compositor.init = function() {
   this.backbuf = document.createElement("canvas");
   this.backbuf.id = "compositeBackbuf";
 
+  this.noDouble = false;
   this.ready = false;
 
   // Initialize the overlays.
@@ -125,6 +126,8 @@ Compositor.setProjector = function(projector) {
   } else
     this.projector = projector;
 
+  if (!Compositor.ready)
+    return;
   // Update projected land masses.
   this.projEarthTex.start();
   var width = 1440; height = 721;
@@ -246,7 +249,7 @@ Compositor.finishStartup = function() {
     return;
   if (!Compositor.ready)
     return;
-  Compositor.noDobule = true;
+  Compositor.noDouble = true;
   SSHLayer.loadData.notifyFunc = this.makeEventWrapper(Compositor, "finishRenderJobs");
 
   var width = 1440; var height = 721;

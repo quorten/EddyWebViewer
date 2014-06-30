@@ -1468,7 +1468,7 @@ Need:
 
 * Compositor class
 
-* Mandatory graticule rendering
+* Mandatory graticule rendering.  Currently, it is too slow.
 
 * All mouse handling code goes in GUI codebase.  No pointer
   calibration needed whatsoever for this project, just use clientX and

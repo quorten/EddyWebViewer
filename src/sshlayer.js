@@ -147,12 +147,6 @@ SSHLayer.setViewport = function(center, width, height,
   return RenderLayer.READY;
 };
 
-var backbufScale = 1;
-var minTrackLen = 0, maxTrackLen = -1;
-var numericDates = [];
-var dateIndex = 0;
-var inv_180 = 1 / 180, inv_360 = 1 / 360;
-
 SSHLayer.render = (function() {
   "use strict";
 

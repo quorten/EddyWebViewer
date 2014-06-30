@@ -10,6 +10,6 @@ Build the Website from the Sources
 ~~~
 make -C src install
 ln -s /project/expeditions/eddies_project_data/web_viewer htdocs/data
-rsync -kurpt htdocs/ USER@MACH.cs.umn.edu:/web/research/ucc.umn.edu/eddies/viewer
+rsync -kurpt --delete-after htdocs/ USER@MACH.cs.umn.edu:/web/research/ucc.umn.edu/eddies/viewer
 # Verify the permissions on the files are correct.
 ~~~

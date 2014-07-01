@@ -1597,12 +1597,14 @@ Serious repo cleanup work:
 
 http://www.git-scm.com/book/ch9-7.html
 
+"GUI improvements, advanced codebase, and JavaScript build infrastructure."
+
 # Check the data size before:
 git count-objects -v
 
 git filter-branch --index-filter \
-  'git rm --cached --ignore-unmatch -r blue_marble coolssh pngssh jpgssh' \
-  -- 44eda1370d302206ee404024362dc400cfe9706a
+  'git rm --cached --ignore-unmatch -r blue_marble coolssh pngssh jpgssh docs/jsdocs' \
+  -- 0889fbbe6c98db3a6d6de072f8eaf9485ee099b4^..
 git remote rm origin
 rm -Rf .git/refs/original
 rm -Rf .git/logs/

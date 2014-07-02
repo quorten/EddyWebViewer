@@ -1,7 +1,27 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+
+<!--[if lt IE 7]>
+<html xmlns="http://www.w3.org/1999/xhtml"
+      lang="en" xml:lang="en" class="ie6">
+<![endif]-->
+<!--[if IE 7]>
+<html xmlns="http://www.w3.org/1999/xhtml"
+      lang="en" xml:lang="en" class="ie7">
+<![endif]-->
+<!--[if IE 8]>
+<html xmlns="http://www.w3.org/1999/xhtml"
+      lang="en" xml:lang="en" class="ie8">
+<![endif]-->
+<!--[if IE 9]>
+<html xmlns="http://www.w3.org/1999/xhtml"
+      lang="en" xml:lang="en" class="ie9">
+<![endif]-->
+<!--[if (gt IE 9)|!(IE)]><!-->
 <html xmlns="http://www.w3.org/1999/xhtml"
       lang="en" xml:lang="en">
+<!--<![endif]-->
+
 <head>
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
   <title>Ocean Eddies Web Viewer</title>
@@ -14,7 +34,7 @@
     /* The following style on "scriptWrapper" is used to make sure
        that a vertical scrollbar never appears on the page.  */
     /* #scriptWrapper { position: absolute;
-                     width: 100%; height: 100%; overflow: hidden; } */
+                        width: 100%; height: 100%; overflow: hidden; } */
 
     /* "dcwrap" is used to get rid of a scrollbar that appears if a
        website page disclaimer must be displayed underneath the CSS
@@ -28,7 +48,10 @@
     #bbwrap { position: absolute; bottom: 0px; width: 100%; text-align: center;
               min-height: 34px; overflow: hidden;
               margin: 0px; padding: 0px; vertical-align: top; }
-    #bottomBar { display: /* inline- */ block; overflow: hidden;
+    /* Although it would be nice to have the bottom bar be a centered
+       inline-block element with transparent surrounding sides, that
+       doesn't work very well.  */
+    #bottomBar { display: block; overflow: hidden;
                  margin: 0px auto; padding-left: 10px; padding-right: 10px;
                  background-color: #333348; }
 
@@ -46,16 +69,20 @@
                 -ms-user-select: none;
                 /* user-select: none; */ /* Doesn't validate */
                 cursor: default; }
+    .ie6 iconBtns, .ie7 iconBtns { display: inline; }
     .iconBtns img, .iconBtns .imgbtn { border-style: solid; border-width: 1px;
                      border-color: white; margin: 0px; padding: 0px;
                      vertical-align: top; }
     .iconBtns .imgbtn { display: inline-block; width: 32px; height: 32px; }
+    .ie6 .iconBtns .imgbtn, .ie7 .iconBtns .imgbtn { display: inline; }
     .spacer { display: inline-block; width: 10px; margin: 0px; padding: 0px; }
+    .ie6 .spacer, .ie7 .spacer { display: inline; }
 
     .quickcfg { display: inline-block; height: 32px;
                      vertical-align: top;
                      margin: 0px; margin-top: 1px; margin-bottom: 1px;
                      padding: 0px; }
+    .ie6 .quickcfg, .ie7 .quickcfg { display: inline; }
     .quickcfg input { width: 4em; text-align: center; }
     input#cfg-curDate { width: 7em; }
     input#cfg-latLon { width: 10em; }

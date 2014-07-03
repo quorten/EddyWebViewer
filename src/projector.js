@@ -170,29 +170,38 @@ RobinsonMapProjector.unproject = function(mapToPol) {
 /**
  * 3D map projectors.
  * @constructor
- * @param {integer} type - Projector type.  Zero for orthographic, one
- * for perspective.
  */
-var TDMapProjector = function(type) {
-  this.type = type;
+var TDMapProjector = function() {
 };
 
 TDMapProjector.prototype = new MapProjector();
 TDMapProjector.constructor = TDMapProjector;
 
-TDMapProjector.project = function(polToMap) {
+TDMapProjector.prototype.project = function(polToMap) {
   throw new Error("Not implemented!");
 };
 
-TDMapProjector.unproject = function(mapToPol) {
+// PARAMETERS: var tilt, lon_rot;
+
+var lon_rot = 0;
+var tilt = 45;
+var persp_fov = 17.5;
+var persp_altitude = 35786;
+
+/**
+ * @param mapToPol
+ * @param {integer} type - Projector type.  Zero for orthographic, one
+ * for perspective.
+ */
+TDMapProjector.prototype.unproject = function(mapToPol, projType) {
   /* 1. Get the 3D rectangular coordinate of the ray intersection
      with the sphere.  The camera is looking down the negative
      z axis.  */
   var r3src_x, r3src_y, r3src_z;
 
-  if (this.type == 0) { // Orthographic projection
-    r3src_y = mapToPol[0];
-    r3src_x = mapToPol[1];
+  if (projType == 0) { // Orthographic projection
+    r3src_y = mapToPol[1];
+    r3src_x = mapToPol[0];
     r3src_z = Math.sin(Math.acos(Math.sqrt(Math.pow(r3src_x, 2) +
 					   Math.pow(r3src_y, 2))));
     if (isNaN(r3src_z))
@@ -214,7 +223,7 @@ TDMapProjector.unproject = function(mapToPol) {
 
     r3src_z = (-b + Math.sqrt(Math.pow(b, 2) - 4 * a * c)) / (2 * a);
     if (isNaN(r3src_z))
-      continue;
+      { mapToPol[0] = NaN; mapToPol[1] = NaN; return; }
     r3src_x = x_pix / f * (-r3src_z + (r + d));
     r3src_y = y_pix / f * (-r3src_z + (r + d));
   }
@@ -233,20 +242,27 @@ TDMapProjector.unproject = function(mapToPol) {
   var longitude = RAD2DEG * Math.atan2(r3dest_x, r3dest_z);
 
   /* 4. Shift by the longitudinal rotation around the pole.  */
-  longitude += lon_rot;
+  longitude += 180 + lon_rot;
 
   /* 5. Verify that the coordinates are in bounds.  */
-  latitude += 90;
-  if (latitude < 0) latitude = 0;
-  if (latitude > 180) latitude = 180;
+  if (latitude < -90) latitude = -90;
+  if (latitude > 90) latitude = 90;
   longitude += (longitude < 0) * 360;
-  longitude = longitude % 360.0;
+  longitude = longitude % 360.0 - 180;
   mapToPol[0] = longitude;
   mapToPol[1] = latitude;
 };
 
+// TODO: Fix this projector member variable problem.
+
 /** Orthographic map projector.  */
-var OrthoMapProjector = new TDMapProjector(0);
+var OrthoMapProjector =  new TDMapProjector();
+OrthoMapProjector.unproject = function(mapToPol) {
+  return TDMapProjector.prototype.unproject(mapToPol, 0);
+};
 
 /** Perspective map projector.  */
-var PerspMapProjector = new TDMapProjector(1);
+var PerspMapProjector = new TDMapProjector();
+PerspMapProjector.unproject = function(mapToPol) {
+  return TDMapProjector.prototype.unproject(mapToPol, 1);
+};

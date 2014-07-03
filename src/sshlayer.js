@@ -139,10 +139,12 @@ SSHLayer.setViewport = function(center, width, height,
   // RenderLayer.call(center, width, height, projection);
   this.frontBuf.width = width;
   this.frontBuf.height = height;
-  this.aspectXY = aspectXY;
 
-  this.center = center;
-  this.projector = projector;
+  this.render.aspectXY = aspectXY;
+  this.render.center = center;
+  this.render.resizeFrontBuf();
+  this.render.projector = projector;
+  this.render.backBuf = { width: 1440, height: 721, data: SSHLayer.sshData };
 
   return RenderLayer.READY;
 };
@@ -226,10 +228,11 @@ SSHLayer.render = (function() {
 
     while (y < frontBuf_height) {
       while (x < frontBuf_width) {
-	var mapCoord = { x: (x / frontBuf_width) * 2 - 1,
-	y: ((y / frontBuf_height) * 2 - 1) * inv_aspectXY };
+	var mapCoord = [ (x / frontBuf_width) * 2 - 1,
+			 ((y / frontBuf_height) * 2 - 1) * inv_aspectXY ];
 	// NOTE: Object creation is slow.  Newer versions must avoid this.
-	var polCoord = projector_unproject(mapCoord);
+	var polCoord = {}; projector_unproject(mapCoord);
+	polCoord.lat = mapCoord[1]; polCoord.lon = mapCoord[0];
 	if (!isNaN(polCoord.lat) && !isNaN(polCoord.lon) &&
 	    polCoord.lat > -90 && polCoord.lat < 90 &&
 	    polCoord.lon > -180 && polCoord.lon < 180)
@@ -315,3 +318,56 @@ SSHLayer.render = (function() {
 
   return new Cothread(startExec, contExec);
 })();
+
+SSHLayer.render = new RayTracer(SSHLayer.frontBuf, null, 1, 8);
+
+SSHLayer.render.colorTbl = (function() {
+  var grad = [ [ 0x00, 0x00, 0x7f ],
+	       [ 0x00, 0x00, 0xff ],
+	       [ 0x00, 0x7f, 0xff ],
+	       [ 0x00, 0xff, 0xff ],
+	       [ 0x7f, 0xff, 0x7f ],
+	       [ 0xff, 0xff, 0x00 ],
+	       [ 0xff, 0x7f, 0x00 ],
+	       [ 0xff, 0x00, 0x00 ],
+	       [ 0x7f, 0x00, 0x00 ] ];
+
+  var colorTbl = [];
+  for (var i = 0; i < 256; i++) {
+    var value = i / 256 * 8;
+    var index =  ~~value;
+    var ix2 = index + 1;
+    if (ix2 > 8) ix2 = 8;
+    var interpol = value % 1;
+    colorTbl.push((1 - interpol) * grad[index][0] +
+		  interpol *  grad[ix2][0]);
+    colorTbl.push((1 - interpol) * grad[index][1] +
+		  interpol *  grad[ix2][1]);
+    colorTbl.push((1 - interpol) * grad[index][2] +
+		  interpol *  grad[ix2][2]);
+    colorTbl.push(255);
+  }
+  return colorTbl;
+})();
+
+SSHLayer.render.pixelPP = function(value, data, destIdx,
+				   osaFac, inv_osaFac) {
+  if (value == -128) {
+    data[destIdx+0] = ~~(data[destIdx+0] * inv_osaFac + 0 * osaFac);
+    data[destIdx+1] = ~~(data[destIdx+1] * inv_osaFac + 0 * osaFac);
+    data[destIdx+2] = ~~(data[destIdx+2] * inv_osaFac + 0 * osaFac);
+    data[destIdx+3] = ~~(data[destIdx+3] * inv_osaFac + 0 * osaFac);
+    return;
+  }
+  value /= 32;
+  if (value < -1) value = -1;
+  if (value > 1) value = 1;
+  value = ~~((value + 1) / 2 * 255);
+  data[destIdx+0] = ~~(data[destIdx+0] * inv_osaFac +
+		       this.colorTbl[value*4+0] * osaFac);
+  data[destIdx+1] = ~~(data[destIdx+1] * inv_osaFac +
+		       this.colorTbl[value*4+1] * osaFac);
+  data[destIdx+2] = ~~(data[destIdx+2] * inv_osaFac +
+		       this.colorTbl[value*4+2] * osaFac);
+  data[destIdx+3] = ~~(data[destIdx+3] * inv_osaFac + 255 * osaFac);
+};

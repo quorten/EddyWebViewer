@@ -140,16 +140,28 @@ RenderLayer.prototype.render = function() {
  *   array is a Number array.  {@linkcode RayTracer#pixelPP} is used
  *   to compute the color value of the pixel to display.
  *
+ * "maxOsaPasses" (this.maxOsaPasses) -- The maximum number of
+ * oversampling passes to perform before the raytrace is considered
+ * complete.  The current multipass progressive oversampling algorithm
+ * does not use extended precision for the intermediate samples, so a
+ * factor greater than 8 is effectively useless.
+ *
  * @constructor
  *
  * @param {Canvas} frontBuf
  * @param {ImageData} backBuf
+ * @param {integer} backBufType
+ * @param {integer} maxOsaPasses
  */
-var RayTracer = function(frontBuf, backBuf) {
+var RayTracer = function(frontBuf, backBuf, backBufType, maxOsaPasses) {
   this.frontBuf = frontBuf;
   this.backBuf = backBuf;
+  this.backBufType = backBufType;
+  this.maxOsaPasses = maxOsaPasses;
+
   if (this.frontBuf)
     this.resizeFrontBuf();
+  this.mapToPol = [ NaN, NaN ];
 };
 
 RayTracer.prototype = new Cothread();
@@ -162,7 +174,8 @@ RayTracer.constructor = RayTracer;
  */
 RayTracer.prototype.resizeFrontBuf = function() {
   var frontBuf = this.frontBuf;
-  if (frontBuf.width != this.destImg.width ||
+  if (!this.destImg ||
+      frontBuf.width != this.destImg.width ||
       frontBuf.height != this.destImg.height) {
     this.destImg = frontBuf.getContext("2d").
       getImageData(0, 0, frontBuf.width, frontBuf.height);
@@ -176,15 +189,20 @@ RayTracer.prototype.resizeFrontBuf = function() {
  * @param {Number} value - If the source data is a `Number` array,
  * then this is the numeric value of the input.
  * @param {ImageData} data - The destination data.
- * @param {ImageData} destIdx - Index into `data` of pixel to
+ * @param {ImageData} destIdx - Index into `data` of the RGBA pixel to
  * process.
+ * @param osaFac - See example code
+ * @param inv_osaFac - See example code
  */
-RayTracer.prototype.pixelPP = function(value, data, destIdx) {
+RayTracer.prototype.pixelPP = function(value, data, destIdx,
+				       osaFac, inv_osaFac) {
+  if (value < -1) value = -1;
+  if (value > 1) value = 1;
   value = ~~((value + 1) / 2 * 255);
-  data[destIdx++] = value;
-  data[destIdx++] = value;
-  data[destIdx++] = value;
-  data[destIdx++] = 255;
+  data[destIdx+0] = ~~(data[destIdx+0] * inv_osaFac + value * osaFac);
+  data[destIdx+1] = ~~(data[destIdx+1] * inv_osaFac + value * osaFac);
+  data[destIdx+2] = ~~(data[destIdx+2] * inv_osaFac + value * osaFac);
+  data[destIdx+3] = ~~(data[destIdx+3] * inv_osaFac + 255 * osaFac);
 };
 
 RayTracer.prototype.startExec = function() {
@@ -192,11 +210,7 @@ RayTracer.prototype.startExec = function() {
   this.destIdx = 0;
   this.x = 0;
   this.y = 0;
-  var osaPass = 1;
-  var osaFac = 1 / osaPass;
-  result = ~~(orig * (1 - osaFac) + add * osaFac);
-  if (osaPass > 1)
-    xj = 2;
+  this.osaPass = 1;
 };
 
 RayTracer.prototype.contExec = function() {
@@ -206,105 +220,108 @@ RayTracer.prototype.contExec = function() {
   var x = this.x;
   var y = this.y;
   var oldY = y;
+  var osaPass = this.osaPass;
 
+  var backBufType = this.backBufType;
   var backBuf_width = this.backBuf.width;
   var backBuf_height = this.backBuf.height;
-  var frontBuf_width = this.frontBuf.width;
-  var frontBuf_height = this.frontBuf.height;
+  var backBuf_data = this.backBuf.data;
+  var destImg_width = destImg.width;
+  var destImg_height = destImg.height;
+  var destImg_data = destImg.data;
   var aspectXY = this.aspectXY;
   var inv_aspectXY = 1 / aspectXY;
   var projector_unproject = this.projector.unproject;
+  var mapToPol = this.mapToPol;
+  var maxOsaPasses = this.maxOsaPasses;
+
+  var osaFac = 1 / osaPass;
+  var inv_osaFac = 1 - osaFac;
+  var wrapOver = false;
 
   var lDate_now = Date.now;
 
   var startTime = lDate_now();
   var timeout = this.timeout;
 
-  while (y < frontBuf_height) {
-    while (x < frontBuf_width) {
-      var mapCoord = { x: (x / frontBuf_width) * 2 - 1,
-		       y: ((y / frontBuf_height) * 2 - 1) * inv_aspectXY };
-      // NOTE: Object creation is slow.  Newer versions must avoid this.
-      var polCoord = projector_unproject(mapCoord);
-      if (!isNaN(polCoord.lat) && !isNaN(polCoord.lon) &&
-	  polCoord.lat > -90 && polCoord.lat < 90 &&
-	  polCoord.lon > -180 && polCoord.lon < 180)
-	;
-      else {
-	destImg.data[destIdx++] = 0;
-	destImg.data[destIdx++] = 0;
-	destImg.data[destIdx++] = 0;
-	destImg.data[destIdx++] = 0;
+  while (osaPass <= maxOsaPasses) {
+    while (x < destImg_width) {
+      var xj = 0, yj = 0; // X and Y jitter
+      if (osaPass > 1) {
+	xj = 0.5 - Math.random();
+	yj = 0.5 - Math.random();
+      }
+      mapToPol[0] = ((x + xj) / destImg_width) * 2 - 1;
+      mapToPol[1] = (((y + yj) / destImg_height) * 2 - 1) * inv_aspectXY;
+      projector_unproject(mapToPol);
+      if (isNaN(mapToPol[0]) ||
+	  mapToPol[1] < -90 || mapToPol[1] > 90 ||
+	  mapToPol[0] < -180 || mapToPol[0] >= 180) {
+	destImg_data[destIdx+0] = ~~(destImg_data[destIdx+0] * inv_osaFac +
+				     0 * osaFac);
+	destImg_data[destIdx+1] = ~~(destImg_data[destIdx+1] * inv_osaFac +
+				     0 * osaFac);
+	destImg_data[destIdx+2] = ~~(destImg_data[destIdx+2] * inv_osaFac +
+				     0 * osaFac);
+	destImg_data[destIdx+3] = ~~(destImg_data[destIdx+3] * inv_osaFac +
+				     0 * osaFac);
+	destIdx += 4;
 	x++;
 	continue;
       }
-      var latIdx = ~~((polCoord.lat + 90) / 180 * src_height);
-      var lonIdx = ~~((polCoord.lon + 180) / 360 * src_width);
-      var value = sshData[latIdx*src_width+lonIdx];
-      // var value = sshData[y*src_width+x];
+      var latIdx = ~~((mapToPol[1] + 90) / 180 * (backBuf_height - 1));
+      var lonIdx = ~~((mapToPol[0] + 180) / 360 * backBuf_width);
 
-      if (isNaN(value) || value == -128) {
-	destImg.data[destIdx++] = 0;
-	destImg.data[destIdx++] = 0;
-	destImg.data[destIdx++] = 0;
-	destImg.data[destIdx++] = 0;
-	x++;
-	continue;
+      if (backBufType == 1) {
+	var value = backBuf_data[latIdx*backBuf_width+lonIdx];
+	this.pixelPP(value, destImg_data, destIdx, osaFac, inv_osaFac);
+	destIdx += 4;
+      } else {
+	var backBufIdx = (latIdx * backBuf_width + lonIdx) * 4;
+	destImg_data[destIdx+0] = ~~(destImg_data[destIdx+0] * inv_osaFac +
+				     backBuf_data[backBufIdx++] * osaFac);
+	destImg_data[destIdx+1] = ~~(destImg_data[destIdx+1] * inv_osaFac +
+				     backBuf_data[backBufIdx++] * osaFac);
+	destImg_data[destIdx+2] = ~~(destImg_data[destIdx+2] * inv_osaFac +
+				     backBuf_data[backBufIdx++] * osaFac);
+	destImg_data[destIdx+3] = ~~(destImg_data[destIdx+3] * inv_osaFac +
+				     backBuf_data[backBufIdx++] * osaFac);
+	destIdx += 4;
       }
 
-      if (SSHLayer.shadeStyle == 1) { // MATLAB
-	value /= 32;
-	if (value > 1) value = 1;
-	if (value < -1) value = -1;
-	value = ~~((value + 1) / 2 * 255);
-	value <<= 2;
-	destImg.data[destIdx++] = colorTbl[value++];
-	destImg.data[destIdx++] = colorTbl[value++];
-	destImg.data[destIdx++] = colorTbl[value++];
-	destImg.data[destIdx++] = colorTbl[value++];
-      } else if (SSHLayer.shadeStyle == 2) { // Contour bands
-	value += 32;
-	value *= (1 << 5);
-	if (value & 0x100) value = ~value;
-	value &= 0xff;
-	destImg.data[destIdx++] = value;
-	destImg.data[destIdx++] = value;
-	destImg.data[destIdx++] = value;
-	destImg.data[destIdx++] = 255;
-      } else { // Grayscale
-	value /= 32;
-	if (value > 1) value = 1;
-	if (value < -1) value = -1;
-	value = ~~((value + 1) / 2 * 255);
-	destImg.data[destIdx++] = value;
-	destImg.data[destIdx++] = value;
-	destImg.data[destIdx++] = value;
-	destImg.data[destIdx++] = 255;
-      }
-
-      /* destImg.data[destIdx++] = value;
-	 destImg.data[destIdx++] = value;
-	 destImg.data[destIdx++] = value;
-	 destImg.data[destIdx++] = value; */
       x++;
       /* if (lDate_now() - startTime >= timeout)
 	 break; */
     }
-    if (x >= frontBuf_width) {
+    if (x >= destImg_width) {
       x = 0;
       y++;
+    }
+    if (y >= destImg_height) {
+      destIdx = 0;
+      y = 0;
+      osaPass++;
+      osaFac = 1 / osaPass;
+      inv_osaFac = 1 - osaFac;
+      wrapOver = true;
     }
     if (y % 32 == 0 && lDate_now() - startTime >= timeout)
       break;
   }
 
-  this.setExitStatus(y < frontBuf_height);
-  ctx.putImageData(destImg, 0, 0, 0, oldY, frontBuf_width, y - oldY);
+  this.setExitStatus(osaPass <= maxOsaPasses);
+  if (!wrapOver)
+    ctx.putImageData(destImg, 0, 0, 0, oldY, destImg_width, y - oldY);
+  else
+    ctx.putImageData(destImg, 0, 0, 0, 0, destImg_width, destImg_height);
   this.status.preemptCode = RenderLayer.FRAME_AVAIL;
-  this.status.percent = y * CothreadStatus.MAX_PERCENT / frontBuf_height;
+  this.status.percent = ((y + destImg_height * (osaPass - 1)) *
+			 CothreadStatus.MAX_PERCENT /
+			 (destImg_height * maxOsaPasses));
 
   this.destIdx = destIdx;
   this.x = x;
   this.y = y;
+  this.osaPass = osaPass;
   return this.status;
 };

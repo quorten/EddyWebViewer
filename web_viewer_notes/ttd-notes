@@ -52,10 +52,6 @@ Alright, let's break up the renderer and implement it:
 
 Almost finished, parts left TODO
 
-* UI input interception
-
-* 2D rendering
-
 * clipGeometry()
 
 * getClipBounds()
@@ -314,6 +310,9 @@ http://stackoverflow.com/questions/2337795/screen-coordinates-of-a-element-via-j
 
 http://www.quirksmode.org/dom/w3c_cssom.html#windowview
 
+Never mind, drawing area covers entire client area, no need to do
+this.  Just use clientX and clientY.
+
 ----------------------------------------
 
 Here's how to draw graticule:
@@ -559,6 +558,8 @@ http://www.htmlgoodies.com/tutorials/web_graphics/article.php/3479941
 Want to make a link open in a different window?
 
 Use <a href="..." target="resource window"></a> as one method.
+
+Use <a href="..." target="_blank"></a> to open in a new tab/window.
 
 ----------
 
@@ -1646,3 +1647,20 @@ JavaScript minification:
 Best: YUI compressor:
 
 http://yui.github.io/yuicompressor/
+
+----------------------------------------
+
+Time to put an end to ttd-notes
+
+These are the basic categories that I will sort ttd-notes into:
+
+* Mathematical Concepts
+
+* Implementation Center
+
+* Compatibility Center
+
+* Performance Center
+
+CSS compatibility: Avoid using both "top" and "bottom" or "left" and
+"right" to define the size of a CSS box.

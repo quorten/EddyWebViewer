@@ -978,8 +978,10 @@ reasons.</p>
   <li>Avoid inline styling: Using inline style information can sometimes
   trigger bugs in Internet Explorer that are not present when using
   stylesheets.</li>
-  <li>IE6 cannot properly render transparent PNG images.  Use GIF
-  images instead.</li>
+  <li>IE6 cannot properly render transparent PNG images.  Use 8 bit
+  PNG images with single color transparency instead.  Note that you
+  can also enable a transparency filter, but it is buggy and can cause
+  crashes.</li>
   <li>IE6 does not
   support <code>document.getElementByClassName()</code>.  Use
     <a href="http://robertnyman.com/2008/05/27/the-ultimate-getelementsbyclassname-anno-2008/">

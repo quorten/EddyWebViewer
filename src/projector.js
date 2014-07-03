@@ -44,16 +44,15 @@ MapProjector.constructor = MapProjector;
  * normalized before this function call.
  * @abstract
  *
- * @param {PolarPoint} polCoord - The latitude-longitude polar
- * coordinate to project.
- *
- * @returns {Point2D} relative map coordinates [-1..1] for both X and
- * Y, specifying where the projected point should appear on the map.
- * Quadrant I is in the upper right hand corner.  If the map
- * projection is non-square, then the maximum relative coordinates of
- * the shorter axis will not reach +/- 1.
+ * @param {Array} polToMap - Input array [ lon, lat ] that will be
+ * transformed into the outpt [ x, y ].  The output is in relative map
+ * coordinates [-1..1] for both X and Y, specifying where the
+ * projected point should appear on the map.  Quadrant I is in the
+ * upper right hand corner.  If the map projection is non-square, then
+ * the maximum relative coordinates of the shorter axis will not reach
+ * +/- 1.
  */
-MapProjector.prototype.project = function(polCoord) {
+MapProjector.prototype.project = function(polToMap) {
   throw new Error("Must be implemented by a subclass!");
 };
 
@@ -62,51 +61,46 @@ MapProjector.prototype.project = function(polCoord) {
  * coordinate.  The coordinates must be normalized before this
  * function call.  Quadrant I is in the upper right hand corner.
  * @abstract
+ *
+ * @param {Array} mapToPol - Input array [ x, y ] that will be
+ * transformed into the output [ lon, lat ].
  */
-MapProjector.prototype.unproject = function(mapCoord) {
+MapProjector.prototype.unproject = function(mapToPol) {
   throw new Error("Must be implemented by a subclass!");
 };
 
 /** Equirectangular map projector.  */
 var EquirectMapProjector = new MapProjector();
 
-EquirectMapProjector.project = function(polCoord) {
-  var mapCoord = {};
-  mapCoord.y = polCoord.lat / 180;
-  mapCoord.x = polCoord.lon / 180;
-  return mapCoord;
+EquirectMapProjector.project = function(polToMap) {
+  polToMap[1] = polToMap[1] / 180;
+  polToMap[0] = polToMap[0] / 180;
 };
 
-EquirectMapProjector.unproject = function(mapCoord) {
-  var polCoord = {};
-  polCoord.lat = mapCoord.y * 180;
-  polCoord.lon = mapCoord.x * 180;
-  return polCoord;
+EquirectMapProjector.unproject = function(mapToPol) {
+  mapToPol[1] = mapToPol[1] * 180;
+  mapToPol[0] = mapToPol[0] * 180;
 };
 
 /** Mercator map projector.  */
 var MercatorMapProjector = new MapProjector();
 
-MercatorMapProjector.project = function(polCoord) {
+MercatorMapProjector.project = function(polToMap) {
   var r = 1; // Radius
-  var mapCoord = {};
-  mapCoord.y = (r * Math.log(Math.tan(Math.PI / 4 +
-				      DEG2RAD * polCoord.lat / 2))) / Math.PI;
-  mapCoord.x = polCoord.lon / 180;
-  return mapCoord;
+  polToMap[1] = (r * Math.log(Math.tan(Math.PI / 4 +
+				       DEG2RAD * polToMap[1] / 2))) / Math.PI;
+  polToMap[0] = polToMap[0] / 180;
 };
 
-MercatorMapProjector.unproject = function(mapCoord) {
+MercatorMapProjector.unproject = function(mapToPol) {
   var r = 1; // Radius
-  var polCoord = {};
-  polCoord.lat = (2 * Math.atan(Math.exp(mapCoord.y * Math.PI / r)) -
-		  Math.PI / 2) * RAD2DEG;
-  polCoord.lon = mapCoord.x * 180;
-  return polCoord;
+  mapToPol[1] = (2 * Math.atan(Math.exp(mapToPol[1] * Math.PI / r)) -
+		 Math.PI / 2) * RAD2DEG;
+  mapToPol[0] = mapToPol[0] * 180;
 };
 
 /** Robinson map projector.  */
-RobinsonMapProjector = new MapProjector();
+var RobinsonMapProjector = new MapProjector();
 
 RobinsonMapProjector.table = [
 //  PLEN    PDFE         LAT
@@ -131,9 +125,9 @@ RobinsonMapProjector.table = [
   [ 0.5322, 1.0000 ]  // 90
 ];
 
-RobinsonMapProjector.project = function(polCoord) {
+RobinsonMapProjector.project = function(polToMap) {
   var table = RobinsonMapProjector.table;
-  var alat = Math.abs(polCoord.lat);
+  var alat = Math.abs(polToMap[1]);
   var tbIdx1 = ~~Math.floor(alat / 5);
   var tbIdx2 = ~~Math.ceil(alat / 5);
   var interpol = (alat % 5) / 5;
@@ -141,19 +135,18 @@ RobinsonMapProjector.project = function(polCoord) {
 	      (interpol * table[tbIdx2][0]));
   var pdfe = (((1 - interpol) * table[tbIdx1][1]) +
 	      (interpol * table[tbIdx2][1]));
-  var mapCoord = {};
-  mapCoord.x = polCoord.lon * plen / 180;
-  mapCoord.y = pdfe * 0.5072;
-  if (polCoord.lat < 0)
-    mapCoord.y = -mapCoord.y;
-  return mapCoord;
+  polToMap[0] = polToMap[0] * plen / 180;
+  if (polToMap[1] < 0)
+    polToMap[1] = -pdfe * 0.5072;
+  else
+    polToMap[1] = pdfe * 0.5072;
 };
 
-RobinsonMapProjector.unproject = function(mapCoord) {
+RobinsonMapProjector.unproject = function(mapToPol) {
   var table = RobinsonMapProjector.table;
-  var pdfe = Math.abs(mapCoord.y) / 0.5072;
+  var pdfe = Math.abs(mapToPol[1]) / 0.5072;
   if (pdfe > 1)
-    return { lat: NaN, lon: NaN };
+    { mapToPol[0] = NaN; mapToPol[1] = NaN; return; }
   var approxIndex = ~~(pdfe * 18);
   while (table[approxIndex][1] < pdfe) approxIndex++;
   while (table[approxIndex][1] > pdfe) approxIndex--;
@@ -161,34 +154,99 @@ RobinsonMapProjector.unproject = function(mapCoord) {
   var tbIdx2 = approxIndex + 1;
   var interpol = 0;
   if (tbIdx2 > 18) tbIdx2 = 18;
-  else
-    interpol = ((pdfe - table[tbIdx1][1]) /
-		(table[tbIdx2][1] - table[tbIdx1][1]));
+  else interpol = ((pdfe - table[tbIdx1][1]) /
+		   (table[tbIdx2][1] - table[tbIdx1][1]));
   var plen = table[tbIdx1][0] * (1 - interpol) + table[tbIdx2][0] * interpol;
-  var polCoord = {};
-  polCoord.lat = 5 * (tbIdx1 + interpol);
-  if (mapCoord.y < 0)
-    polCoord.lat = -polCoord.lat;
-  polCoord.lon = mapCoord.x / plen * 180;
-  if (polCoord.lon < -180 || polCoord.lon > 180)
-    return { lat: NaN, lon: NaN };
-  return polCoord;
+  if (mapToPol[1] < 0)
+    mapToPol[1] = -5 * (tbIdx1 + interpol);
+  else
+    mapToPol[1] = 5 * (tbIdx1 + interpol);
+  mapToPol[0] = mapToPol[0] / plen * 180;
+  if (mapToPol[0] < -180 || mapToPol[0] > 180) {
+    mapToPol[0] = NaN; mapToPol[1] = NaN;
+  }
 };
 
-/** Winkel tripel map projection (not usable).  */
-W3MapProjector = new MapProjector();
-
-W3MapProjector.project = function(polCoord) {
-  var mapCoord = {};
-  var a = Math.acos(Math.cos(polCoord.lat) * Math.cos(polCoord.lon / 2));
-  var sinc_a = Math.sin(a) / a;
-  mapCoord.y = 1 / 2 * (polCoord.lat + Math.sin(polCoord.lat) / sinc_a);
-  mapCoord.x = 1 / 2 * (polCoord.lon * Math.cos(polCoord.lat) +
-			2 * Math.cos(polCoord.lat) * sin(polCoord.lon / 2) /
-			sinc_a);
-  return mapCoord;
+/**
+ * 3D map projectors.
+ * @constructor
+ * @param {integer} type - Projector type.  Zero for orthographic, one
+ * for perspective.
+ */
+var TDMapProjector = function(type) {
+  this.type = type;
 };
 
-W3MapProjector.unproject = function(mapCoord) {
-  // Complicated reverse projection
+TDMapProjector.prototype = new MapProjector();
+TDMapProjector.constructor = TDMapProjector;
+
+TDMapProjector.project = function(polToMap) {
+  throw new Error("Not implemented!");
 };
+
+TDMapProjector.unproject = function(mapToPol) {
+  /* 1. Get the 3D rectangular coordinate of the ray intersection
+     with the sphere.  The camera is looking down the negative
+     z axis.  */
+  var r3src_x, r3src_y, r3src_z;
+
+  if (this.type == 0) { // Orthographic projection
+    r3src_y = mapToPol[0];
+    r3src_x = mapToPol[1];
+    r3src_z = Math.sin(Math.acos(Math.sqrt(Math.pow(r3src_x, 2) +
+					   Math.pow(r3src_y, 2))));
+    if (isNaN(r3src_z))
+      { mapToPol[0] = NaN; mapToPol[1] = NaN; return; }
+  } else { // Perspective projection
+    // r must be one: this simplifies the calculations
+    var r = 1; // 6371; // radius of the earth in kilometers
+    var d = persp_altitude / 6371; // altitude in kilometers
+    // focal length in units of the screen dimensions
+    var f = 1 / Math.tan(DEG2RAD * persp_fov / 2);
+    var x_pix = mapToPol[0];
+    var y_pix = mapToPol[1];
+
+    var w = (Math.pow(x_pix, 2) + Math.pow(y_pix, 2)) / Math.pow(f, 2);
+
+    var a = 1 + w;
+    var b = -2 * w * (r + d);
+    var c = w * Math.pow(r + d, 2) - 1 /* 1 == Math.pow(r, 2) */;
+
+    r3src_z = (-b + Math.sqrt(Math.pow(b, 2) - 4 * a * c)) / (2 * a);
+    if (isNaN(r3src_z))
+      continue;
+    r3src_x = x_pix / f * (-r3src_z + (r + d));
+    r3src_y = y_pix / f * (-r3src_z + (r + d));
+  }
+
+  /* 2. Inverse rotate this coordinate around the x axis by the
+     current globe tilt.  */
+  var i_tilt = -DEG2RAD * tilt;
+  var cos_tilt = Math.cos(i_tilt); var sin_tilt = Math.sin(i_tilt);
+  var r3dest_x, r3dest_y, r3dest_z;
+  r3dest_x = r3src_x;
+  r3dest_z = r3src_z * cos_tilt - r3src_y * sin_tilt;
+  r3dest_y = r3src_z * sin_tilt + r3src_y * cos_tilt;
+
+  /* 3. Measure the latitude and longitude of this coordinate.  */
+  var latitude = RAD2DEG * Math.asin(r3dest_y);
+  var longitude = RAD2DEG * Math.atan2(r3dest_x, r3dest_z);
+
+  /* 4. Shift by the longitudinal rotation around the pole.  */
+  longitude += lon_rot;
+
+  /* 5. Verify that the coordinates are in bounds.  */
+  latitude += 90;
+  if (latitude < 0) latitude = 0;
+  if (latitude > 180) latitude = 180;
+  longitude += (longitude < 0) * 360;
+  longitude = longitude % 360.0;
+  mapToPol[0] = longitude;
+  mapToPol[1] = latitude;
+};
+
+/** Orthographic map projector.  */
+var OrthoMapProjector = new TDMapProjector(0);
+
+/** Perspective map projector.  */
+var PerspMapProjector = new TDMapProjector(1);

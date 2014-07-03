@@ -274,7 +274,9 @@ objects!  So this is why assigning values to an array is so slow!
 
 Even simple table lookups on plain arrays are slow.
 
-Thus, avoid creating new objects via the new operator.
+Thus, avoid creating new objects via the new operator.  Also avoid
+nesting objects into hierarchies more than one level deep.  Also avoid
+the global namespace whenever possible.
 
 Moving variable declarations outside of a loop seems to have no effect
 on performance.
@@ -609,6 +611,10 @@ JavaScript checklist:
 
 * Always use document.x() and window.x() rather than the global
   namespace name.
+
+* Check all for() loops for where the `var' is initialized.
+
+* Check for single line comments styled as /* ... */
 
 ----------
 
@@ -1542,6 +1548,12 @@ Now, things are winding down:
 * My location widget is broken.  It needs to be corrected for the
   current projection.
 
+* Verify all my code is "use strict" safe.
+
+* Get the new code to work in Internet Explorer.
+
+* I need to do many things.
+
 * Step forward and step backward
 
 * Display only tracks that have one eddy in current date
@@ -1622,3 +1634,15 @@ git push --force
 For a safe push instead, do this:
 git branch pruned
 git push origin pruned
+
+----------
+
+IE6 IE7 display: inline-block
+
+http://stackoverflow.com/questions/6544852/ie7-does-not-understand-display-inline-block
+
+JavaScript minification:
+
+Best: YUI compressor:
+
+http://yui.github.io/yuicompressor/

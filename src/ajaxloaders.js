@@ -1,6 +1,7 @@
 /* Cothreaded base implementations of asynchronous XMLHttpRequest and
    Image loaders.  */
 
+import "compat";
 import "cothread";
 
 /**
@@ -33,14 +34,14 @@ import "cothread";
  *
  * * 0 (Zero) -- Not applicable `(returnType == CothreadStatus.FINISHED)`.
  *
- * * `TracksLayer.IOWAIT` -- The cothread is waiting for an
+ * * `CothreadStatus.IOWAIT` -- The cothread is waiting for an
  *   XMLHttpRequest to return more data.  This preemption code is
  *   useful in telling the cothread controller that more work will
  *   only arrive by waiting, so if the cothread controller has no
  *   other work to do, it can quit.  The notification function will
  *   resume it when there is more data to process.
  *
- * * `TracksLayer.PROC_DATA` -- The cothread has been preempted when it
+ * * `CothreadStatus.PROC_DATA` -- The cothread has been preempted when it
  *   was processing data rather than waiting for data.  This
  *   preemption code is only used when all data has been downloaded
  *   and only data processing remains.
@@ -57,8 +58,6 @@ var XHRLoader = function(url, notifyFunc) {
 
 XHRLoader.prototype = new Cothread();
 XHRLoader.constructor = XHRLoader;
-XHRLoader.IOWAIT = 1;
-XHRLoader.PROC_DATA = 2;
 
 (function() {
   var i = 0;
@@ -94,13 +93,6 @@ XHRLoader.prototype.alertContents = function() {
   }
 };
 
-/*  This function guarantees that the given event handler (such as
-    `alertContents()') will have `this' setup properly when being
-    called as an event handler.  */
-XHRLoader.prototype.makeEventWrapper = function(callObj, handler) {
-  return function() { return callObj[handler](); };
-};
-
 XHRLoader.prototype.startExec = function() {
   var httpRequest;
   if (window.XMLHttpRequest)
@@ -125,8 +117,7 @@ XHRLoader.prototype.startExec = function() {
   }
 
   if (this.notifyFunc) {
-    httpRequest.onreadystatechange =
-      this.makeEventWrapper(this, "alertContents");
+    httpRequest.onreadystatechange = makeEventWrapper(this, "alertContents");
   }
   httpRequest.open("GET", this.url, true);
   if (this.byteRange) {
@@ -151,7 +142,7 @@ XHRLoader.prototype.contExec = function() {
 
   } else if (httpRequest.readyState != 4) {
     this.status.returnType = CothreadStatus.PREEMPTED;
-    this.status.preemptCode = XHRLoader.IOWAIT;
+    this.status.preemptCode = CothreadStatus.IOWAIT;
 
     if (!this.reqLen && httpRequest.readyState >= 2) // HEADERS_RECEIVED
       this.reqLen = +httpRequest.getResponseHeader("Content-Length");
@@ -183,7 +174,7 @@ XHRLoader.prototype.contExec = function() {
 
   /* Process any remaining data that has not yet been processed.  */
   this.status.returnType = CothreadStatus.PREEMPTED;
-  this.status.preemptCode = XHRLoader.PROC_DATA;
+  this.status.preemptCode = CothreadStatus.PROC_DATA;
 
   /* The processing function following this point may be a synchronous
      function that cannot be interrupted, such as JSON parsing, so
@@ -278,14 +269,14 @@ XHRLoader.prototype.procData = function(httpRequest) {
  *
  * * 0 (Zero) -- Not applicable `(returnType == CothreadStatus.FINISHED)`.
  *
- * * `ImageLoader.IOWAIT` -- The cothread is waiting for more image
+ * * `CothreadStatus.IOWAIT` -- The cothread is waiting for more image
  *   data.  This preemption code is useful in telling the cothread
  *   controller that more work will only arrive by waiting, so if the
  *   cothread controller has no other work to do, it can quit.  The
  *   notification function will resume it when there is more data to
  *   process.
  *
- * * `ImageLoader.PROC_DATA` -- The cothread has been preempted when
+ * * `CothreadStatus.PROC_DATA` -- The cothread has been preempted when
  *   it was processing data rather than waiting for data.  This
  *   preemption code is only used when all data has been downloaded
  *   and only data processing remains.
@@ -302,8 +293,6 @@ var ImageLoader = function(url, notifyFunc) {
 
 ImageLoader.prototype = new Cothread();
 ImageLoader.constructor = ImageLoader;
-ImageLoader.IOWAIT = 1;
-ImageLoader.PROC_DATA = 2;
 
 (function() {
   var i = 0;
@@ -320,19 +309,6 @@ ImageLoader.prototype.alertContents = function() {
   this.retVal = ImageLoader.SUCCESS;
   if (this.notifyFunc)
     return this.notifyFunc();
-};
-
-/*  This function guarantees that the given event handler (such as
-    `alertContents()') will have `this' setup properly when being
-    called as an event handler.  */
-ImageLoader.prototype.makeEventWrapper = function(callObj, handler) {
-  return function() { return callObj[handler](); };
-};
-
-/*  This function guarantees that `alertContents()' will have `this'
-    setup properly when being called as an event handler.  */
-ImageLoader.prototype.alertContentsWrapper = function(callObj) {
-  return function() { return callObj.alertContents(); };
 };
 
 ImageLoader.prototype.alertError = function() {
@@ -361,9 +337,9 @@ ImageLoader.prototype.startExec = function() {
   this.readySyncProcess = false; // Non-preemptable data processing
   // image.onloadstart = this.alertLoadStart; // Works only on recent browsers
   // image.onprogress = this.alertProgress; // Works only on recent browsers
-  this.image.onload = this.alertContentsWrapper(this);
-  this.image.onerror = this.alertError;
-  this.image.onabort = this.alertAbort;
+  this.image.onload = makeEventWrapper(this, "alertContents");
+  this.image.onerror = makeEventWrapper(this, "alertError");
+  this.image.onabort = makeEventWrapper(this, "alertAbort");
   this.image.src = this.url;
 };
 
@@ -374,13 +350,13 @@ ImageLoader.prototype.contExec = function() {
     return this.status;
   } else if (!this.loaded) {
     this.status.returnType = CothreadStatus.PREEMPTED;
-    this.status.preemptCode = ImageLoader.IOWAIT;
+    this.status.preemptCode = CothreadStatus.IOWAIT;
     this.status.percent = 0;
     return this.status;
   }
   // (this.image.loaded == true)
   this.status.returnType = CothreadStatus.PREEMPTED;
-  this.status.preemptCode = ImageLoader.PROC_DATA;
+  this.status.preemptCode = CothreadStatus.PROC_DATA;
   this.status.percent = CothreadStatus.MAX_PERCENT;
 
   /* The processing function following this point may be a synchronous

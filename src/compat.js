@@ -6,6 +6,23 @@
    `detect.js' at startup.  */
 
 /********************************************************************/
+/* Generic Event Handling */
+
+/**
+ * Create a function wrapper for use when invoking object methods
+ * within an event handler.  The function wrapper guarantees that
+ * `this` points to the object that the method is being called from.
+ * No parameters are passed to the method.
+ *
+ * @param {Object} callObj - the object on which to call the method.
+ * @param {String} handler - a quoted string specifying the name of the
+ * function to call.
+ */
+function makeEventWrapper(callObj, handler) {
+  return function() { return callObj[handler](); };
+}
+
+/********************************************************************/
 /* Browser Detection
 
   BAD BAD BAD BAD BAD BAD BAD BAD BAD BAD BAD BAD BAD BAD BAD BAD BAD
@@ -39,7 +56,7 @@ function getMsieVersion() {
  * failure.  If this check is used, it should only be used once on the
  * first mouse pointer event.
  *
- * @param {MouseEvent} - The mouse event to check
+ * @param {MouseEvent} event - The mouse event to check
  */
 function MousePos_checkRead(event) {
   // var oldMsie = msieVersion <= 6 && msieVersion > 0;

@@ -4,12 +4,12 @@
 // Prevent errors, please...
 var execTime = null;
 
+import "compat";
 import "oevmath";
 import "projector";
 import "cothread";
 import "trackslayer";
 import "sshlayer";
-import "compat";
 
 // BAD variables that need updating
 
@@ -50,11 +50,6 @@ Compositor.dispLandMasses = true;
 // Display the SSH overlay?
 Compositor.dispSSH = true;
 
-// A function that should probably go in compat...
-Compositor.makeEventWrapper = function(callObj, handler) {
-  return function() { return callObj[handler](); };
-};
-
 /* Perform startup initialization for the whole web viewer.  */
 Compositor.init = function() {
   this.drawingContainer = document.getElementById("drawingContainer");
@@ -75,12 +70,12 @@ Compositor.init = function() {
 
   // Initialize the overlays.
   this.projEarthTex.timeout = 15;
-  Dates.notifyFunc = this.makeEventWrapper(Compositor, "finishStartup");
-  SSHLayer.loadData.notifyFunc = this.makeEventWrapper(Compositor, "finishStartup");
+  Dates.notifyFunc = makeEventWrapper(Compositor, "finishStartup");
+  SSHLayer.loadData.notifyFunc = makeEventWrapper(Compositor, "finishStartup");
   SSHLayer.loadData.timeout = 15;
   SSHLayer.render.timeout = 15;
-  TracksLayer.acLoad.notifyFunc = this.makeEventWrapper(Compositor, "finishStartup");
-  TracksLayer.cLoad.notifyFunc = this.makeEventWrapper(Compositor, "finishStartup");
+  TracksLayer.acLoad.notifyFunc = makeEventWrapper(Compositor, "finishStartup");
+  TracksLayer.cLoad.notifyFunc = makeEventWrapper(Compositor, "finishStartup");
   TracksLayer.loadData.timeout = 15;
   TracksLayer.render.timeout = 15;
 
@@ -242,15 +237,16 @@ Compositor.finishStartup = function() {
     if (tracksStatus.preemptCode == CothreadStatus.IOWAIT ||
 	sshStatus.preemptCode == CothreadStatus.IOWAIT)
       return;
-    return setTimeout(
-      Compositor.makeEventWrapper(Compositor, "finishStartup"), 300);
+    return setTimeout(makeEventWrapper(Compositor, "finishStartup"), 300);
   }
   if (Compositor.noDouble)
     return;
   if (!Compositor.ready)
     return;
   Compositor.noDouble = true;
-  SSHLayer.loadData.notifyFunc = this.makeEventWrapper(Compositor, "finishRenderJobs");
+  SSHLayer.loadData.notifyFunc = makeEventWrapper(Compositor, "finishRenderJobs");
+
+  /* If dates finished loading, then initialize curDate.  */
 
   var width = 1440; var height = 721;
   var projector;
@@ -290,6 +286,9 @@ Compositor.finishStartup = function() {
 };
 
 Compositor.renderInProg = false;
+
+Compositor.finishRenderJobs = function() {
+};
 
 /* Finish any render jobs that may be pending from TracksLayer or
    SSHLayer.  If the parameter "fast" is provided and set to true,
@@ -341,15 +340,14 @@ Compositor.finishRenderJobs = function(fast, noContinue) {
     return;
 
   /* var renderMethod;
-  this.makeEventWrapper(this, "renderMethod"); // ...
+  makeEventWrapper(this, "renderMethod"); // ...
   if (allocRenderJob(renderMethod))
     renderMethod(); */
 
   if (petStatus.returnType != CothreadStatus.FINISHED ||
       tracksStatus.returnType != CothreadStatus.FINISHED ||
       sshStatus.returnType != CothreadStatus.FINISHED)
-    return setTimeout(
-      Compositor.makeEventWrapper(Compositor, "finishRenderJobs"), 15);
+    return setTimeout(makeEventWrapper(Compositor, "finishRenderJobs"), 15);
   else {
     this.renderInProg = false;
     console.log("Done rendering.");
@@ -874,7 +872,7 @@ function zoomGlobe(event) {
   }
 
   // NOTE: allocRenderJob() messes up what `this' points to.
-  // if (allocRenderJob(this.makeEventWrapper(Compositor, "finishRenderJobs")))
+  // if (allocRenderJob(makeEventWrapper(Compositor, "finishRenderJobs")))
     Compositor.finishRenderJobs(true);
   event.preventDefault();
   return false;

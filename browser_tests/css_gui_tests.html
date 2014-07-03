@@ -5,7 +5,19 @@
 <html xmlns="http://www.w3.org/1999/xhtml"
       lang="en" xml:lang="en" class="ie6">
 <![endif]-->
-<!--[if !IE]><!-->
+<!--[if IE 7]>
+<html xmlns="http://www.w3.org/1999/xhtml"
+      lang="en" xml:lang="en" class="ie7">
+<![endif]-->
+<!--[if IE 8]>
+<html xmlns="http://www.w3.org/1999/xhtml"
+      lang="en" xml:lang="en" class="ie8">
+<![endif]-->
+<!--[if IE 9]>
+<html xmlns="http://www.w3.org/1999/xhtml"
+      lang="en" xml:lang="en" class="ie9">
+<![endif]-->
+<!--[if (gt IE 9)|!(IE)]><!-->
 <html xmlns="http://www.w3.org/1999/xhtml"
       lang="en" xml:lang="en">
 <!--<![endif]-->
@@ -31,7 +43,7 @@
     #sidewrapper { float: right; margin: 0px 6px 0px 6px; padding: 0px;
                    width: 30%; max-width: 3in; height: 100%; position: relative;
                    background-color: #77ff77; }
-    .ie6 #sidewrapper { display: inline; }
+    .ie6 #sidewrapper, .ie7 #sidewrapper { display: inline; }
 
     #topbar { margin: 6px; overflow: auto; }
     #sidebar, #drawingContainer { margin-bottom: 6px; }
@@ -50,10 +62,9 @@
     .cssbtn { display: inline-block;
               border-style: solid; border-color: black;
               width: 5em; height: 1.2em; margin: 0.5em; }
-    .ie6 .cssbtn { display: inline; }
+    .ie6 .cssbtn, .ie7 .cssbtn { display: inline; }
     .cssbtnin { display: block; width: 5em;
                 text-align: center; }
-    .ie6 .cssbtn { display: inline; }
     .green { background-color: green; }
     .red { background-color: red; }
     .blue { background-color: blue; }
@@ -70,7 +81,8 @@
                 cursor: default; }
 
     .cb-inline-block { display: inline-block; }
-    .ie6 .cb-inline-block { display: inline; }
+    .ie6 .cb-inline-block, .ie7 .cb-inline-block { display: inline;
+                                                   /* zoom: 1; */ }
   </style>
   <script type="text/javascript"
 	  src="getElementsByClassName-1.0.1.js"></script>

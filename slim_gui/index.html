@@ -26,6 +26,9 @@
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
   <title>Ocean Eddies Web Viewer</title>
   <style type="text/css">
+    /**************************************/
+    /* Top Level */
+
     html, body { margin: 0; padding: 0; height: 100%; }
     /* In order for the JavaScript-disabled screen to show in default
        browser colors, we add this with a script at a later time.  */
@@ -36,31 +39,12 @@
     /* #scriptWrapper { position: absolute;
                         width: 100%; height: 100%; overflow: hidden; } */
 
-    /* "dcwrap" is used to get rid of a scrollbar that appears if a
-       website page disclaimer must be displayed underneath the CSS
-       GUI.  */
-    #dcwrap { height: 100%; overflow: hidden; }
-    #drawingContainer { position: absolute; width: 100%; height: 100%;
-                        overflow: hidden; }
+    /**************************************/
+    /* General */
 
-    /* Configuration option to change GUI scale factor?  */
-
-    #bbwrap { position: absolute; bottom: 0px; width: 100%; text-align: center;
-              min-height: 34px; overflow: hidden;
-              margin: 0px; padding: 0px; vertical-align: top; }
-    /* Although it would be nice to have the bottom bar be a centered
-       inline-block element with transparent surrounding sides, that
-       doesn't work very well.  */
-    #bottomBar { display: block; overflow: hidden;
-                 margin: 0px auto; padding-left: 10px; padding-right: 10px;
-                 background-color: #333348; }
-
-    .iconBtns { display: inline-block; height: 34px;
-                vertical-align: top;
-                margin: 0px;
-                padding: 0px;
-
-                /* Warning: The following styles used for CSS buttons
+    .numinput { width: 4em; }
+    .wideinput { width: auto; }
+    .noSelect { /* Warning: The following styles used for CSS buttons
                    may have browser compatibility issues.  */
                 -webkit-touch-callout: none;
                 -webkit-user-select: none;
@@ -69,25 +53,35 @@
                 -ms-user-select: none;
                 /* user-select: none; */ /* Doesn't validate */
                 cursor: default; }
-    .ie6 iconBtns, .ie7 iconBtns { display: inline; }
-    .iconBtns img, .iconBtns .imgbtn { border-style: solid; border-width: 1px;
-                     border-color: white; margin: 0px; padding: 0px;
-                     vertical-align: top; }
-    .iconBtns .imgbtn { display: inline-block; width: 32px; height: 32px; }
-    .ie6 .iconBtns .imgbtn, .ie7 .iconBtns .imgbtn { display: inline; }
-    .spacer { display: inline-block; width: 10px; margin: 0px; padding: 0px; }
-    .ie6 .spacer, .ie7 .spacer { display: inline; }
 
-    .quickcfg { display: inline-block; height: 32px;
-                     vertical-align: top;
-                     margin: 0px; margin-top: 1px; margin-bottom: 1px;
-                     padding: 0px; }
-    .ie6 .quickcfg, .ie7 .quickcfg { display: inline; }
-    .quickcfg input { width: 4em; text-align: center; }
-    input#cfg-curDate { width: 7em; }
-    input#cfg-latLon { width: 10em; }
-    label img { vertical-align: middle; }
+    /**************************************/
+    /* Main Canvas */
 
+    /* "dcwrap" is used to get rid of a scrollbar that appears if a
+       website page disclaimer must be displayed underneath the CSS
+       GUI.  */
+    #dcwrap { height: 100%; overflow: hidden; }
+    #drawingContainer { position: absolute; width: 100%; height: 100%;
+                        overflow: hidden; }
+    #loadingScreen { text-align: center; }
+
+    /**************************************/
+    /* Popups */
+
+    /* Configuration option to change GUI scale factor?  */
+
+    #popupInfo { position: absolute; left: 8px; top: 8px;
+                 max-width: 10cm; background-color: rgba(0, 0, 0, 0.6);
+                 font-family: sans; font-size: 10pt;
+                 -moz-border-radius:16px; -webkit-border-radius:16px;
+                 border-radius: 16px; padding: 16px; }
+    #popupClose { position: absolute; right: 8px; top: 8px;
+                  width: 16px; height: 16px;
+                  background-image: url("close.png");
+                  /* background-color: red; */ /* Messes up intended effect */ }
+    #popupClose:active { background-image: url("close_light.png"); }
+    /* #popupTitle {} */
+    #popupInfo div { text-align: right; line-height: 138%; }
 
     #configWrapper { position: absolute; right: 0px; bottom: 0px;
                      width: 7.5cm; height: auto; max-height: 100%;
@@ -105,55 +99,71 @@
                    padding: 6px; }
     #configPanel fieldset { text-align: right; }
     #configPanel fieldset legend { text-align: left; color: white; }
+    #configPanel fieldset div { text-align: left; }
 
-    .numinput { width: 4em; }
-    .wideinput { width: auto; }
+    /**************************************/
+    /* Bottom Bar */
 
-    #popupInfo { position: absolute; left: 8px; top: 8px;
-                 max-width: 10cm; background-color: rgba(0, 0, 0, 0.6);
-                 font-family: sans; font-size: 10pt;
-                 -moz-border-radius:16px; -webkit-border-radius:16px;
-                 border-radius: 16px; padding: 16px; }
-    #popupClose { position: absolute; right: 8px; top: 8px;
-                  width: 16px; height: 16px;
-                  background-image: url("close.png");
+    #bbwrap { position: absolute; bottom: 0px; width: 100%; text-align: center;
+              min-height: 34px; overflow: hidden;
+              margin: 0px; padding: 0px; vertical-align: top; }
+    /* Although it would be nice to have the bottom bar be a centered
+       inline-block element with transparent surrounding sides, that
+       doesn't work very well.  */
+    #bottomBar { display: block; overflow: hidden;
+                 margin: 0px auto; padding-left: 10px; padding-right: 10px;
+                 background-color: #333348; }
 
-                /* Warning: The following styles used for CSS buttons
-                   may have browser compatibility issues.  */
-                -webkit-touch-callout: none;
-                -webkit-user-select: none;
-                -khtml-user-select: none;
-                -moz-user-select: none;
-                -ms-user-select: none;
-                /* user-select: none; */ /* Doesn't validate */
-                cursor: default; }
-    #popupClose:active { background-image: url("close_light.png"); }
+    .iconBtns { display: inline-block; height: 34px;
+                vertical-align: top;
+                margin: 0px; padding: 0px; list-style-type: none; }
+    .ie6 iconBtns, .ie7 iconBtns { display: inline; }
+    .iconBtns img, .iconBtns .imgbtn
+      { border-style: solid; border-width: 1px;
+        border-color: white; margin: 0px; padding: 0px;
+        vertical-align: top; }
+    .iconBtns .imgbtn { display: inline-block; width: 32px; height: 32px;
+                        background-color: red; list-style-type: none; }
+    .imgbtn span { display: none; }
+    .noborder { border-style: none; }
+    .ie6 .iconBtns .imgbtn, .ie7 .iconBtns .imgbtn { display: inline; }
+    .spacer { display: inline-block; width: 10px; margin: 0px; padding: 0px; }
+    .ie6 .spacer, .ie7 .spacer { display: inline; }
 
+    .quickcfg { display: inline-block; height: 32px;
+                     vertical-align: top;
+                     margin: 0px; margin-top: 1px; margin-bottom: 1px;
+                     padding: 0px; }
+    .ie6 .quickcfg, .ie7 .quickcfg { display: inline; }
+    .quickcfg input { width: 4em; text-align: center; }
+    input#cfg-curDate { width: 7em; }
+    input#cfg-latLon { width: 10em; }
+    label img { vertical-align: middle; }
 
     /* Note: Button highlight color is "#6a6a96".  */
 
-    #minimize-btn { background-image: url("minimize.png"); }
-    #minimize-btn:active { background-image: url("minimize_light.png"); }
-    #begin-btn { background-image: url("beginning.png"); }
-    #begin-btn:active { background-image: url("beginning_light.png"); }
-    #rewind-btn { background-image: url("rewind.png"); }
-    #rewind-btn:active { background-image: url("rewind_light.png"); }
-    #bstep-btn { background-image: url("step_back.png"); }
-    #bstep-btn:active { background-image: url("step_back_light.png"); }
-    #pause-btn { background-image: url("pause.png"); }
-    #pause-btn:active { background-image: url("pause_light.png"); }
-    #play-btn { background-image: url("play.png"); }
-    #play-btn:active { background-image: url("play_light.png"); }
-    #fstep-btn { background-image: url("step_fwd.png"); }
-    #fstep-btn:active { background-image: url("step_fwd_light.png"); }
-    #ffwd-btn { background-image: url("fast_forward.png"); }
-    #ffwd-btn:active { background-image: url("fast_forward_light.png"); }
-    #end-btn { background-image: url("end.png"); }
-    #end-btn:active { background-image: url("end_light.png"); }
-    #config-btn { background-image: url("config.png"); }
-    #config-btn:active { background-image: url("config_light.png"); }
-    #help-btn { background-image: url("help.png"); }
-    #help-btn:active { background-image: url("help_light.png");
+    #btn-minimize { background-image: url("minimize.png"); }
+    #btn-minimize:active { background-image: url("minimize_light.png"); }
+    #btn-begin { background-image: url("beginning.png"); }
+    #btn-begin:active { background-image: url("beginning_light.png"); }
+    #btn-rewind { background-image: url("rewind.png"); }
+    #btn-rewind:active { background-image: url("rewind_light.png"); }
+    #btn-bstep { background-image: url("step_back.png"); }
+    #btn-bstep:active { background-image: url("step_back_light.png"); }
+    #btn-pause { background-image: url("pause.png"); }
+    #btn-pause:active { background-image: url("pause_light.png"); }
+    #btn-play { background-image: url("play.png"); }
+    #btn-play:active { background-image: url("play_light.png"); }
+    #btn-fstep { background-image: url("step_fwd.png"); }
+    #btn-fstep:active { background-image: url("step_fwd_light.png"); }
+    #btn-ffwd { background-image: url("fast_forward.png"); }
+    #btn-ffwd:active { background-image: url("fast_forward_light.png"); }
+    #btn-end { background-image: url("end.png"); }
+    #btn-end:active { background-image: url("end_light.png"); }
+    #btn-config { background-image: url("config.png"); }
+    #btn-config:active { background-image: url("config_light.png"); }
+    #btn-help { background-image: url("help.png"); }
+    #btn-help:active { background-image: url("help_light.png");
                        outline: none; }
   </style>
 </head>
@@ -185,23 +195,25 @@ document.getElementById('scriptWrapper').style.cssText = '';
 <div id="dcwrap">
 <div id="drawingContainer">
 
-  <p id="loadingScreen" style="text-align: center">
+  <p id="loadingScreen">
     <object type="image/svg+xml"
 	    data="loading_composite.svg">
       <img src="loading_composite.png"
 	   alt="Decorative Loading Icon." />
     </object><br />
-    <strong>Loading</strong>
+    <strong>Loading</strong><br />
+    <br />
+    <!-- Loading diagnostics will be dynamically added here. -->
   </p>
 
 </div>
 </div>
 
 <div id="popupInfo">
-<div id="popupClose"></div>
-  <b>Eddy #43859</b><br />
+<div id="popupClose" class="noSelect"></div>
+  <b id="popupTitle">Eddy #43859</b><br />
   <br />
-  <div style="text-align: right; line-height: 138%">
+  <div id="popupDetail">
     Coordinates: 0 N 0 E<br />
     Amplitude: 1.0 cm<br />
     Area: 483 m^2<br />
@@ -209,7 +221,8 @@ document.getElementById('scriptWrapper').style.cssText = '';
   </div>
 </div>
 
-<div id="configWrapper" style="display: none"><form id="configPanel" action="">
+<div id="configWrapper" style="visibility: hidden">
+<form id="configPanel" action="">
   <fieldset>
     <legend>Eddy Filters</legend>
     <label for="cfg-showCyc">Cyclonic</label>
@@ -261,7 +274,7 @@ document.getElementById('scriptWrapper').style.cssText = '';
       <option>Contour Bands</option>
       <option>Waters</option>
     </select><br />
-    <div style="text-align: left">Render Style During Scrolling:</div>
+    <div>Render Style During Scrolling:</div>
     <label for="cfg-wireRender">Wireframe</label>
     <input id="cfg-wireRender" type="checkbox" /><br />
     <label for="cfg-landScroll">Landmasses</label>
@@ -273,33 +286,45 @@ document.getElementById('scriptWrapper').style.cssText = '';
 element in the document.  -->
 <div id="bbwrap"><form id="bottomBar" action="">
 
-   <div class="iconBtns">
-   <div class="imgbtn" id="minimize-btn" title="Auto-Hide"></div>
-   </div><!--
+   <ul class="iconBtns noSelect">
+   <li class="imgbtn" id="btn-minimize" title="Auto-Hide">
+   <span>Auto-Hide</span></li>
+   </ul><!--
 
 --><div class="spacer"></div><!--
 
---><div class="iconBtns">
-   <div class="imgbtn" id="begin-btn" title="Beginning"></div><!--
---><div class="imgbtn" id="rewind-btn" title="Backward faster"></div><!--
---><div class="imgbtn" id="bstep-btn" title="Step backward"></div><!--
---><div class="imgbtn" id="play-btn" title="Play"></div><!--
---><div class="imgbtn" id="fstep-btn" title="Step forward"></div><!--
---><div class="imgbtn" id="ffwd-btn" title="Forward faster"></div><!--
---><div class="imgbtn" id="end-btn" title="End"></div>
-   </div><!--
+--><ul class="iconBtns noSelect">
+   <li class="imgbtn" id="btn-begin" title="Beginning">
+   <span>Beginning</span></li><!--
+--><li class="imgbtn" id="btn-rewind" title="Backward faster">
+   <span>Backward faster</span></li><!--
+--><li class="imgbtn" id="btn-bstep" title="Step backward">
+   <span>Step backward</span></li><!--
+--><li class="imgbtn" id="btn-play" title="Play">
+   <span>Play</span></li><!--
+--><li class="imgbtn" id="btn-fstep" title="Step forward">
+   <span>Step forward</span></li><!--
+--><li class="imgbtn" id="btn-ffwd" title="Forward faster">
+   <span>Forward faster</span></li><!--
+--><li class="imgbtn" id="btn-end" title="End">
+   <span>End</span></li>
+   </ul><!--
 
 --><div class="spacer"></div><!--
 
---><div class="iconBtns">
-   <div class="imgbtn" id="config-btn"
-	title="Advanced Configuration"></div><!--
+--><ul class="iconBtns noSelect">
+   <li class="imgbtn" id="btn-config"
+	title="Advanced Configuration">
+   <span>Advanced Configuration</span></li>
+   </ul><!--
 
 --><div class="spacer"></div><!--
 
---><a class="imgbtn" id="help-btn" title="Help/About"
-      href="help.html"></a>
-   </div><!--
+--><ul class="iconBtns noSelect">
+   <li class="imgbtn noborder">
+     <a class="imgbtn" id="btn-help" title="Help/About" href="help.html">
+       <span>Help/About</span></a></li>
+   </ul><!--
 
 --><div class="spacer"></div><!--
 
@@ -313,7 +338,7 @@ element in the document.  -->
    <div class="quickcfg">
    <label for="cfg-scaleFac"
 	  title="Scale Factor">
-     <img src="scale.png" alt="S:" />
+     <img src="scale.png" alt="Scale Factor:" />
    </label>
    <input id="cfg-scaleFac" type="text" value="1.0"
 	  title="Scale Factor" />
@@ -321,7 +346,7 @@ element in the document.  -->
 
    <div class="quickcfg">
    <label for="cfg-graticule" title="Graticule (degrees/line)">
-     <img src="graticule.png" alt="G:" />
+     <img src="graticule.png" alt="Graticule (degrees/line):" />
    </label>
    <input id="cfg-graticule" type="text" value="15"
 	  title="Graticule (degrees/line)" />
@@ -335,7 +360,6 @@ element in the document.  -->
 <!--//--><![CDATA[//><!--
   // Preload the button images.
   function loadImages() {
-
     var files = [ "minimize_light.png", "beginning_light.png",
       "rewind_light.png", "step_back_light.png", "pause.png",
       "pause_light.png", "play_light.png", "step_fwd_light.png",
@@ -357,19 +381,40 @@ element in the document.  -->
   }
 
   function onplay(event) {
-    this.id = 'pause-btn';
+    this.id = 'btn-pause';
     this.title = 'Pause';
     this.onclick = onpause;
-  };
+  }
 
   function onpause(event) {
-    this.id = 'play-btn';
+    this.id = 'btn-play';
     this.title = 'Play';
     this.onclick = onplay;
   }
 
+  function applyCurDate(updateRenderLayers) {
+    var dateStr = Dates.dateList[Dates.curDate];
+    document.getElementById('cfg-curDate').value = dateStr;
+    if (updateRenderLayers) {
+      if (Compositor.dispSSH) {
+        SSHLayer.loadFrame = dateStr.replace('-', '').replace('-', '');
+        SSHLayer.loadData.start();
+        SSHLayer.render.start();
+      }
+      TracksLayer.render.start();
+      if (!Compositor.renderInProg)
+        return Compositor.finishRenderJobs();
+    }
+  }
+
+  /* This is a delayed initializer for Dates.curDate that is not
+     called until after the list of dates is loaded.  */
+  function initCurDate() {
+    return document.getElementById('cfg-curDate').onchange(null);
+  }
+
   function initGUIHooks() {
-    document.getElementById('minimize-btn').onclick = function(event) {
+    document.getElementById('btn-minimize').onclick = function(event) {
       var bbwrap = document.getElementById('bbwrap');
       if (this.style.cssText == '') {
         this.style.cssText = 'background-image: url("minimize_light.png")';
@@ -382,93 +427,49 @@ element in the document.  -->
       }
     };
 
-    document.getElementById('begin-btn').onclick = function(event) {
+    document.getElementById('btn-begin').onclick = function(event) {
       if (Dates.curDate == 0)
         return;
       Dates.curDate = 0;
-      var dateStr = Dates.dateList[Dates.curDate];
-      document.getElementById('cfg-curDate').value = dateStr;
-      if (event != null) {
-        if (Compositor.dispSSH) {
-          SSHLayer.loadFrame = dateStr.replace('-', '').replace('-', '');
-          SSHLayer.loadData.start();
-          SSHLayer.render.start();
-        }
-        TracksLayer.render.start();
-        if (!Compositor.renderInProg)
-          return Compositor.finishRenderJobs();
-      }
+      return applyCurDate(event != null);
     };
 
-    document.getElementById('rewind-btn').onclick = function(event) {
+    document.getElementById('btn-rewind').onclick = function(event) {
       alert('Rewind');
     };
 
-    document.getElementById('bstep-btn').onclick = function(event) {
+    document.getElementById('btn-bstep').onclick = function(event) {
       if (Dates.curDate <= 0)
         return;
       Dates.curDate--;
-      var dateStr = Dates.dateList[Dates.curDate];
-      document.getElementById('cfg-curDate').value = dateStr;
-      if (event != null) {
-        if (Compositor.dispSSH) {
-          SSHLayer.loadFrame = dateStr.replace('-', '').replace('-', '');
-          SSHLayer.loadData.start();
-          SSHLayer.render.start();
-        }
-        TracksLayer.render.start();
-        if (!Compositor.renderInProg)
-          return Compositor.finishRenderJobs();
-      }
+      return applyCurDate(event != null);
     };
 
-    document.getElementById('play-btn').onclick = onplay;
+    document.getElementById('btn-play').onclick = onplay;
 
-    document.getElementById('fstep-btn').onclick = function(event) {
+    document.getElementById('btn-fstep').onclick = function(event) {
       if (Dates.curDate >= Dates.dateList.length - 1)
         return;
       Dates.curDate++;
-      var dateStr = Dates.dateList[Dates.curDate];
-      document.getElementById('cfg-curDate').value = dateStr;
-      if (event != null) {
-        if (Compositor.dispSSH) {
-          SSHLayer.loadFrame = dateStr.replace('-', '').replace('-', '');
-          SSHLayer.loadData.start();
-          SSHLayer.render.start();
-        }
-        TracksLayer.render.start();
-        if (!Compositor.renderInProg)
-          return Compositor.finishRenderJobs();
-      }
+      return applyCurDate(event != null);
     };
 
-    document.getElementById('ffwd-btn').onclick = function(event) {
+    document.getElementById('btn-ffwd').onclick = function(event) {
       alert('Fast forward');
     };
 
-    document.getElementById('end-btn').onclick = function(event) {
+    document.getElementById('btn-end').onclick = function(event) {
       var endIdx = Dates.dateList.length - 1;
       if (Dates.curDate == endIdx)
         return;
       Dates.curDate = endIdx;
-      var dateStr = Dates.dateList[Dates.curDate];
-      document.getElementById('cfg-curDate').value = dateStr;
-      if (event != null) {
-        if (Compositor.dispSSH) {
-          SSHLayer.loadFrame = dateStr.replace('-', '').replace('-', '');
-          SSHLayer.loadData.start();
-          SSHLayer.render.start();
-        }
-        TracksLayer.render.start();
-        if (!Compositor.renderInProg)
-          return Compositor.finishRenderJobs();
-      }
+      return applyCurDate(event != null);
     };
 
-    document.getElementById('config-btn').onclick = function(event) {
+    document.getElementById('btn-config').onclick = function(event) {
       var configPanel = document.getElementById('configWrapper');
       if (configPanel.style.cssText == '') {
-        configPanel.style.cssText = 'display: none';
+        configPanel.style.cssText = 'visibility: hidden';
         this.style.cssText = '';
       } else {
         configPanel.style.cssText = '';
@@ -478,34 +479,23 @@ element in the document.  -->
 
     document.getElementById('popupClose').onclick = function(event) {
       var popupInfo = document.getElementById('popupInfo');
-      popupInfo.style.cssText = 'display: none';
+      popupInfo.style.cssText = 'visibility: hidden';
     };
 
     var cfg_curDate = document.getElementById('cfg-curDate');
     cfg_curDate.onchange = function(event) {
-      if (event == null) // NEED DELAYED INITIALIZER
+      if (!Dates.dateList)
         return;
       var userDate = +(new Date(this.value));
 
       /* Linear search for the closest match to the user-provided
          date.  */
       var numDates = Dates.dateList.length;
+      var Dates_realTimes = Dates.realTimes;
       for (var i = 0; i < numDates; i++) {
-        if (Dates.realTimes[i] > userDate) {
-          var dateStr = Dates.dateList[i-1];
-          this.value = dateStr;
+        if (Dates_realTimes[i] > userDate) {
           Dates.curDate = i - 1;
-          if (event != null) {
-            if (Compositor.dispSSH) {
-              SSHLayer.loadFrame = dateStr.replace('-', '').replace('-', '');
-              SSHLayer.loadData.start();
-              SSHLayer.render.start();
-            }
-            TracksLayer.render.start();
-            if (!Compositor.renderInProg)
-              return Compositor.finishRenderJobs();
-            return;
-          }
+          return applyCurDate(event != null);
         }
       }
 
@@ -517,20 +507,26 @@ element in the document.  -->
     var cfg_latLon = document.getElementById('cfg-latLon');
     cfg_latLon.onchange = function(event) {
       var parts = this.value.split(' ');
-      tilt = +parts[0];
+      var parseNum1 = +parts[0]; var parseNum2 = +parts[2];
+      if (isNaN(parseNum1) || isNaN(parseNum2)) return; // TODO reset value
+
+      tilt = parseNum1;
       if (parts[1] == 'S')
         tilt = -tilt;
-      lon_rot = +parts[2];
+      lon_rot = parseNum2;
       if (parts[3] == 'W')
         lon_rot = -lon_rot;
       lon_rot += 180;
+
       if (event != null)
         Compositor.finishRenderJobs(true);
     };
 
     var cfg_scaleFac = document.getElementById('cfg-scaleFac');
     cfg_scaleFac.onchange = function(event) {
-      scale = +this.value; // Convert string to float
+      var parseNum = +this.value;
+      if (isNaN(parseNum)) { this.value = scale.toFixed(3); return; }
+      scale = parseNum;
       if (event != null)
         Compositor.finishRenderJobs(true);
     };
@@ -688,7 +684,7 @@ element in the document.  -->
        event handlers for the FORM controls so that any settings that
        have been saved by the browser will be picked up by the
        internal code.  */
-    cfg_curDate.onchange(null);
+    // cfg_curDate.onchange(null); // Uses initCurDate() instead.
     cfg_latLon.onchange(null);
     cfg_scaleFac.onchange(null);
     cfg_graticule.onchange(null);
@@ -712,7 +708,7 @@ element in the document.  -->
   loadImages();
   /* Configure the "Help" button to prefer opening the link in a new
      window/tab.  */
-  document.getElementById('help-btn').target = '_blank';
+  document.getElementById('btn-help').target = '_blank';
 //--><!]]>
 </script>
 <script type="text/javascript"

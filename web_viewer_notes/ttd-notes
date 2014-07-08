@@ -50,6 +50,11 @@ test suite and the JavaScript language test suite.  (Reference
 renderings at 96 DPI.)  If it is possible to workaround a bug or
 issue, send a patch to us and we will include it in the web viewer.
 
+The viewer should have virtually no problems on all browsers that meet
+the minimum requirements.  See the list of browsers known to work, and
+drop a comment if you think this is not good enough.  For lighter
+weight systems, a native application written in C is also available.
+
 ----------------------------------------
 
 Questions answered.
@@ -90,157 +95,6 @@ Woodrow Keifenheim
 So two modes: one to show eddies in motion, another to see eddies
 static, then click on an eddy to get more information.  The first mode
 is critical in importance, the second mode, not so much.
-
-----------
-
-Need to check quirksmode compatibility tables for mobile devices.
-
-GLSL shaders?  Only for big machines.
-
-http://earthobservatory.nasa.gov/Features/BlueMarble/?src=ve
-
-Would streaming video allow SSH animations?
-
-http://willus.com/author/streaming2.shtml
-
-Here's how to track pinch events:
-
-http://stackoverflow.com/questions/11183174/simplest-way-to-detect-a-pinch
-https://developer.apple.com/library/safari/documentation/UserExperience/Reference/GestureEventClassReference/GestureEvent/GestureEvent.html
-
-This is also useful:
-
-http://quirksmode.org/dom/events/resize_mobile.html
-
-----------
-
-Performance
-
-Important root of a tree of performance oriented links:
-
-http://stackoverflow.com/questions/1246408/use-of-javascript-array-new-arrayn-declaration
-
-Right, function calls are actually slow, if using aligned native data
-is an option.
-
-Great!  This will dramatically help me with performance-oriented
-programming in this project: fast trigonometry:
-
-http://jacksondunstan.com/articles/1190
-http://en.wikipedia.org/wiki/Haxe
-
-Turns out that lookup table trigonometry was not as fast as I thought
-it would be.  It stabilizes performance when the browser's
-trigonometry does not provide conistent performance, though.
-
-Static variables incur significant overhead over local variables.
-
-Copying variables is cheap in JavaScript.
-
-Performance, performance...
-
-http://stackoverflow.com/questions/18221571/haxe-compiled-code-peformance
-
-Haxe might not be the best solution after all for compiling to
-C++/C.  However, it will provide very good optimization features for
-JavaScript programming, in addition to the Google Closure tools.
-
-http://www.html5rocks.com/en/tutorials/canvas/performance/
-
-So now what do I need to do?
-
-1. Implement a simple JavaScript code inliner.
-
-2. Set up a build process.
-
-3. Create the kd-tree and quadtree implementations.
-
-4. Get the C++ side working.
-
-5. Get the data to a place for testing.
-
-6. Finish the code modularization.
-
-7. Use the cross-browser shim for requestAnimationFrame.
-
-Slow canvas rendering?  Problem solved:
-
-https://code.google.com/p/chromium/issues/detail?id=170021
-
-Solution: break up a large texture into several small textures, each
-no larger than 4096x4096 in size.  Paint each tile individually, then
-use those as you need to.
-
-http://stackoverflow.com/questions/12405471/why-does-drawimage-perform-slightly-noticeably-better-than-createpattern-in
-
-Performance, performance...
-
-http://www.webreference.com/programming/javascript/jkm3/index.html
-
-Okay, let's try getting some performance data of my own.
-
-Do function calls really slow things down?  No, unless the function is
-block nested.  For some math functions, a lookup table function that
-you provide may be faster, but that's only because the math functions
-may not be implemented using fast math themselves.
-
-Table access and object member access are essentially identical in
-performance, at least in the simple cases.
-
-Are global variables really slower than local variables?  No.
-However, if I scale up the program to have a more crowded global
-namespace, then this might actually be true.
-
-Is property access really slower than direct local variable access?
-No, but there are some exceptions.  In particular, you should not
-access any properties that don't correspond to a real JavaScript
-property, such as is the case for a function's arguments array.  It is
-also probably a good idea to avoid using properties at the condition
-check of a loop.
-
-What about buffering?  I'll have to experiment with that, but luckily
-it will be easy for my code to be written to make such experimentation
-easy.
-
-So where do the real slowdowns happen?  Excess assignment.  Be sure to
-economize on assignment operations.
-
-Creation of dictionary objects is also very expensive.  For all
-practical purposes, creation of array objects is equally as expensive
-as creating a dictionary object.  In other words, don't create
-objects!  So this is why assigning values to an array is so slow!
-
-Even simple table lookups on plain arrays are slow.
-
-Thus, avoid creating new objects via the new operator.  Also avoid
-nesting objects into hierarchies more than one level deep.  Also avoid
-the global namespace whenever possible.
-
-Moving variable declarations outside of a loop seems to have no effect
-on performance.
-
-In conclusion, best software development practices for structuring
-large scale software should be able to scale well in JavaScript, even
-on outdated interpreters.
-
-Closure scoped variable performance?
-
-http://stackoverflow.com/questions/9248963/javascript-why-the-access-to-closure-variable-might-be-slow
-
-http://developer.nokia.com/community/wiki/JavaScript_Performance_Best_Practices
-
-http://updates.html5rocks.com/2012/08/When-milliseconds-are-not-enough-performance-now
-http://ejohn.org/blog/accuracy-of-javascript-time/
-http://www.sitepoint.com/javascript-fast-string-concatenation/
-
-https://developer.yahoo.com/performance/rules.html
-
-Minimize HTTP requests.  That means stream data to the client from the
-server in kd-tree order for the eddy tracks, and likewise stream the
-SSH background as video data.  Use one large tracks file that is
-random accessed like a memory mapped file.
-
-http://www.ibm.com/developerworks/library/wa-aj-jsajaxperf/index.html
 
 ----------------------------------------
 
@@ -1080,6 +934,10 @@ https://sites.google.com/a/umn.edu/mako-eddy-web-viewer/
 Performance optimization: Go through my code and change all constants
 to #define and likewise for inline functions.
 
+Web Workers will be of limited applicability, since passing data back
+and forth to a Web Worker is non-trivial and efficient data transfers
+are not available on Firefox 3.6.
+
 ----------------------------------------
 
 Gotta make multiple versions:
@@ -1609,9 +1467,6 @@ These are the basic categories that I will sort ttd-notes into:
 CSS compatibility: Avoid using both "top" and "bottom" or "left" and
 "right" to define the size of a CSS box.
 
-Embedding an SVG in an XHTML document: You cannot do this with an HTML
-document.
-
 Note W3 DOM specification.  innerHTML and outerHTML, though intuitive
 and easy, are nonstandard, notably introduced by IE5.5.
 
@@ -1657,3 +1512,49 @@ performance.now() on Windows systems.  Don't worry, it's a drop-in
 replacement for Date.now().
 
 Date.now() is newer than +new Date().
+
+Cite blue marble dataset.
+
+----------
+
+Video and Rendering
+
+Need to check quirksmode compatibility tables for mobile devices.
+
+GLSL shaders?  Only for big machines.
+
+http://earthobservatory.nasa.gov/Features/BlueMarble/?src=ve
+
+Would streaming video allow SSH animations?
+
+http://willus.com/author/streaming2.shtml
+
+Here's how to track pinch events:
+
+http://stackoverflow.com/questions/11183174/simplest-way-to-detect-a-pinch
+https://developer.apple.com/library/safari/documentation/UserExperience/Reference/GestureEventClassReference/GestureEvent/GestureEvent.html
+
+This is also useful:
+
+http://quirksmode.org/dom/events/resize_mobile.html
+
+----------------------------------------
+
+So now what do I need to do?
+
+1. Implement a simple JavaScript code inliner.
+
+2. Set up a build process.
+
+3. Create the kd-tree and quadtree implementations.
+
+4. Get the C++ side working.
+
+5. Get the data to a place for testing.
+
+6. Finish the code modularization.
+
+7. Use the cross-browser shim for requestAnimationFrame.
+
+The Google Closure tools are primarily a JavaScript minifier, not an
+optimizing compiler.

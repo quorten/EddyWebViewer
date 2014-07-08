@@ -991,6 +991,12 @@ there are a
   <a href="https://developer.mozilla.org/en-US/docs/Web/SVG/SVG_as_an_Image#Restrictions">
     variety of limitations applied to the SVG image.</a></p>
 
+<p>You cannot embed and SVG image within an HTML 4.01 page by
+inserting the SVG source code verbatim.  You must use XHTML in order
+to embed an SVG image by inserting the source code verbatim;
+otherwise, you should use a script to add the SVG image during
+document loading.</p>
+
 <h3>HTML Compatibility</h3>
 
 <p>Make sure your browser is sending the right charset in the HTTP
@@ -1200,7 +1206,261 @@ graphics refresh rate in Google Chrome.</p>
 <h2><a name="perf_center" id="perf_center">
     Performance Center</a></h2>
 
-<p>JavaScript performance tips will go here.</p>
+<p>Although there's a lot of advice on the Web on how to optimize
+JavaScript performance, and although most of the advice is correct,
+too much of the advice fails to factor in exactly how large or how
+little of a performance gain a certain technique will attain.  The
+following questions and answers came from first-hand experience
+testing performance optimizations relevant to this project that
+resulted in the largest gains.</p>
+
+<p><strong>Do function calls really slow things down?</strong>  No,
+not by a noticable amount, unless the function is block nested.  Math
+function calls tend to be well optimized even by old JavaScript
+runtimes.</p>
+
+<p><strong>Is using a lookup table for trigonometry in JavaScript
+faster than using the Math functions?</strong>  No.  However, if the
+browser was not compiled with fast math, then the performance of some
+trigonometric functions will be slower for some inputs than others.
+Using a lookup table in this case is only advantageous if performance
+needs to be stabilized so that the computation time is constant for
+all input values.</p>
+
+<p><strong>Is named object member access significantly slower than
+array element access?</strong>  No.  At least on Firefox 3.6, table
+access and object member access are essentially identical in
+performance, at least in simple cases.  Newer browsers might provide
+more performance optimizations for plain numeric arrays, though.</p>
+
+<p><strong>Are global variables really slower than local
+variables?</strong>  Not for simple programs.  However, it's always a
+good idea to use local variables when a value is read/written
+significantly many times more than once within a function, especially
+within loops.</p>
+
+<p><strong>Does moving variable declarations outside of a loop body
+reduce garbage accumulation?</strong>  No, this appears not to reduce
+garbage accumulation issues within long-running loops.</p>
+
+<p><strong>So where do the real slowdowns happen?</strong></p>
+
+<ul>
+  <li>Creation of dictionary and array objects</li>
+  <li>Assigning to an array element is slow, at least on Firefox
+  3.6.</li>
+  <li>Assigning to a named property is also likely to be just as
+  slow</li>
+  <li>Even simple table lookups on plain numeric arrays are slow, at
+  least on Firefox 3.6.  This might not be as true on newer browsers,
+  though.</li>
+</ul>
+
+<p>Thus, it is good to avoid creation of any objects, whether it be
+with the <code>new</code> operator or by array/dictionary
+initializers.  Creation of scalar local variables has no noticable
+overhead.  For performance-critical functions that needs to return an
+object, pass in a pre-created object as a parameter that will be
+manipulated to store the return value.</p>
+
+<p><strong>Is member property access from an object method
+(<code>this.property</code>) really slower than direct local variable
+access?</strong>  No, but there are some exceptions.  In particular,
+you should not access any properties that don't correspond to a real
+JavaScript property, such as is the case for a function's arguments
+array.  It is also probably a good idea to avoid using properties at
+the condition check of a loop.</p>
+
+<h3>General tips on writing more optimal JavaScript</h3>
+
+<ul>
+  <li>Since JavaScript is a garbage collected language, it will have a
+  lot of issues with excessive memory consumption.
+    <ul>
+      <li>The #1 best way to deal with these issues is to simply write
+      your web application so that it does not require a very large
+      working set.</li>
+      <li>After the first optimization has been verified, avoid
+      creating and deleting objects as a means to change the value of
+      a variable, since this increases memory fragmentation and waste.
+      Opt instead to reuse existing objects as much as possible.</li>
+      <li>On Google Chrome running on Windows, severely fragmented
+      memory can have dramatic performance penalties.  Additionally,
+      any memory wasted by the JavaScript runtime also reduces the
+      amount of the script's actual working set that can fit in the
+      cache, causing additional slowdowns.</li>
+      <li>Try to write your web application so that the user's browser
+      does not allocate more than 512 MB of memory.</li>
+    </ul>
+  </li>
+  <li>Do not write long-running loops that don't return after a couple
+  of seconds.  The garbage collector cannot run until the JavaScript
+  has returned control to the browser.  Even trivial long-running
+  loops can quickly exhast all of a browser's available memory.</li>
+  <li>Copying primitive variables is cheap in JavaScript.  The
+  relative expense of copying objects and arrays has not been
+  tested.</li>
+  <li>Avoid nesting objects into hierarchies more than one level deep.
+  There is a high fixed cost for each hash table lookup, but the
+  lookup time within a single hash table is essentially constant, even
+  on very large tables.</li>
+  <li>Avoid placing objects within the global namespace whenever
+  possible.</li>
+  <li>Always use <code>window.alert()</code>, etc. instead of
+  just <code>alert()</code>.</li>
+  <li>Access to closure-scoped variables is not significantly slower
+  than local variable access.<br />
+  <a href="http://stackoverflow.com/questions/9248963/javascript-why-the-access-to-closure-variable-might-be-slow">
+    http://stackoverflow.com/questions/9248963/javascript-why-the-access-to-closure-variable-might-be-slow</a></li>
+  <li>If using aligned native data is an option
+  (<code>FloatArray</code>, etc.), use it when reading input data.
+  Using function calls to process and convert input data will be
+  significantly slower in comparison.</li>
+  <li>Avoid DOM manipulations in performance-critical JavaScript.  For
+  one example, SVG DOM performance is said to be very poor when
+  working with a large number of nodes.</li>
+  <li>Some browsers optimize certain Web API calls more than others.
+  Avoid as many Web API calls as possible in performance-critical
+  JavaScript.</li>
+  <li>If function calls do prove to be an overhead, then you can
+  inline the functions where the call is a bottleneck.  Note that the
+  Google Closure Compiler is not an optimizing compiler in this
+  respect.</li>
+</ul>
+
+<h3>Minimizing Download Times</h3>
+
+<ul>
+  <li>To improve loading, minimize HTTP requests.  Download data in as
+  few streams as possible.  Smash together individual JavaScript
+  source files into bundles for your web page.</li>
+  <li>Use a JavaScript minifier on your JavaScript bundles to improve
+  JavaScript download time.
+    <ul>
+      <li>YUI Compressor (easiest to install and good compression):
+      <a href="http://yui.github.io/yuicompressor/">
+	http://yui.github.io/yuicompressor/</a></li>
+      <li>Google Closure Compiler:
+      <a href="https://developers.google.com/closure/compiler/">
+	https://developers.google.com/closure/compiler/</a></li>
+      <li>JSMin:
+      <a href="http://crockford.com/javascript/jsmin">
+	http://crockford.com/javascript/jsmin</a></li>
+    </ul>
+  </li>
+</ul>
+
+<h3>HTML Canvas Performance</h3>
+
+<ul>
+  <li>Avoid using very large HTML Canvas elements.  Never use an HTML
+  Canvas larger than 4096 &times; 4096 in size.  Since a canvas that
+  is that large is unlikely to fit in the texture memory of some GPUs,
+  canvas rendering is likely to end up happening on the CPU, which
+  will be unusally slow.  Some GPUs have significant performance
+  problems working with a canvas of 2880 &times; 1442 in size.  1440
+  &times; 721 is a safe size for all systems, though.  If you need to
+  work with a larger canvas, consider breaking it up into tiles and
+  painting each one individually.<br />
+  <a href="https://code.google.com/p/chromium/issues/detail?id=170021">
+    https://code.google.com/p/chromium/issues/detail?id=170021</a></li>
+  <li>If you need to pack pixels into an image,
+  use <code>putImageData()</code>, not a series
+  of <code>fillRect()</code> calls.</li>
+  <li>Use <code>drawImage()</code> whenever possible.  This function
+  is translated into a fast native bit block transfer, which is both
+  CPU optimized in software graphics layers and has universal video
+  card hardware acceleration for all computers built any time in the
+  last 18 years.</li>
+</ul>
+
+<h3>Performance Timers</h3>
+
+<p>Getting elapsed time in milliseconds in JavaScript was
+traditionally not a reliable or efficient process.  The earliest
+method, <code>+new Date()</code>, required creating a new object,
+which is expensive, especially within performance-critical code loops.
+The later <code>Date.now()</code> function solved this problem.
+However, both cases suffer from imprecise timing, especially when the
+system updates its time from the network.  The solution to these
+problems is to use <code>performance.now()</code>, when the browser
+supports it.  This function returns the elapsed times accurate to
+microseconds, and it does not jump when the system time is updated
+from the network.</p>
+
+<!-- <h3>Higher Level Languages</h3>
+
+<p>Although the web standards were designed to support more than one
+scripting language, only one language, ECMAScript (JavaScript), has
+gained both <em>de facto</em> and <em>de jure</em> standardization
+status.  If you want to use any other language for web development,
+you've got to use a JavaScript compiler to translate from that
+language to JavaScript.  Designed with performance in mind.</p>
+
+CoffeeScript
+Haxe
+
+Cjs -- Very minimalistic translator.
+
+<p>Like Perl, but performance.</p> -->
+
+<ul>
+  <li><a href="http://updates.html5rocks.com/2012/08/When-milliseconds-are-not-enough-performance-now">
+    http://updates.html5rocks.com/2012/08/When-milliseconds-are-not-enough-performance-now</a></li>
+  <li><a href="http://ejohn.org/blog/accuracy-of-javascript-time/">
+    http://ejohn.org/blog/accuracy-of-javascript-time/</a></li>
+  <li><a href="http://www.sitepoint.com/javascript-fast-string-concatenation/">
+    http://www.sitepoint.com/javascript-fast-string-concatenation/</a></li>
+</ul>
+
+<h3>Additional resources</h3>
+
+<p>The rest of the performance advice here details all the other best
+practice tips.  Some of the best resources are listed near the top of
+the list, and resources which only provide smaller gains are listed
+near the bottom.</p>
+
+<ol>
+  <li>Great performance article written by an experienced JavaScript
+  programmer and early web developer:
+  <a href="http://www.webreference.com/programming/javascript/jkm3/index.html">
+    http://www.webreference.com/programming/javascript/jkm3/index.html</a></li>
+  <li><a href="http://developer.nokia.com/community/wiki/JavaScript_Performance_Best_Practices">
+    http://developer.nokia.com/community/wiki/JavaScript_Performance_Best_Practices</a></li>
+  <li><a href="https://developer.yahoo.com/performance/rules.html">
+    https://developer.yahoo.com/performance/rules.html</a></li>
+  <li><a href="http://www.ibm.com/developerworks/library/wa-aj-jsajaxperf/index.html">
+    http://www.ibm.com/developerworks/library/wa-aj-jsajaxperf/index.html</a></li>
+  <li><a href="http://www.html5rocks.com/en/tutorials/canvas/performance/">
+      http://www.html5rocks.com/en/tutorials/canvas/performance/</a></li>
+  <li>Important root of a tree of performance-oriented links:
+  <a href="http://stackoverflow.com/questions/1246408/use-of-javascript-array-new-arrayn-declaration">
+    http://stackoverflow.com/questions/1246408/use-of-javascript-array-new-arrayn-declaration</a></li>
+  <li>ActionScript trigonometry lookup table implementation (you'll
+  have to convert it to JavaScript to use it):
+  <a href="http://jacksondunstan.com/articles/1190">
+    http://jacksondunstan.com/articles/1190</a></li>
+  <li>Haxe, a language with a multi-target optimizing compiler, one
+  of which targets is JavaScript:
+  <a href="http://en.wikipedia.org/wiki/Haxe">
+    http://en.wikipedia.org/wiki/Haxe</a></li>
+  <li><a href="http://stackoverflow.com/questions/18221571/haxe-compiled-code-peformance">
+  http://stackoverflow.com/questions/18221571/haxe-compiled-code-peformance</a></li>
+  <li><a href="http://stackoverflow.com/questions/12405471/why-does-drawimage-perform-slightly-noticeably-better-than-createpattern-in">
+    http://stackoverflow.com/questions/12405471/why-does-drawimage-perform-slightly-noticeably-better-than-createpattern-in</a></li>
+</ol>
+
+<p>Haxe might not be the best solution after all for compiling to
+C/C++.  However, it can provide very good optimization features for
+JavaScript programming.</p>
+
+<p>In conclusion, best software development practices for structuring
+large scale software should be able to scale well in JavaScript, even
+on outdated interpreters.</p>
+
+<!-- What about buffering?  I'll have to experiment with that, but
+luckily it will be easy for my code to be written to make such
+experimentation easy.  -->
 
 <hr />
 <!-- ________________________________________ -->
@@ -1210,8 +1470,6 @@ graphics refresh rate in Google Chrome.</p>
 
 <p>These are notes that are far less organized than the rest.</p>
 
-<p>Note oversampling.</p>
-
 <p>Note document all APIs and provide examples on basic usage
 throughout.</p>
 
@@ -1219,8 +1477,8 @@ throughout.</p>
 polyline, pixel interpolation (bilinear, bicubic), great circle
 subdivision.</p>
 
-<p>Fixed function pipeline, graphics card is not capable of performing
-general purpose non-linear computations.</p>
+<p>Fixed function pipeline when graphics card is not capable of
+performing general purpose non-linear computations.</p>
 
 <p>With CSS styling, never set a foreground color without also setting
 a background color.  You need to take into consideration that white
@@ -1237,6 +1495,9 @@ demonstrated in the HTML 4 reference on the W3C's website.</p>
 
 <p>Stay away from CSS transitions.  Opt instead to provide the user
 with a fast and snappy user interface.</p>
+
+<p>Provide a section where you explain why everything in the UI is the
+way it is.</p>
 
 <p>Hardly any browsers do not support JavaScript 1.5: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference">
     https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference</a></p>

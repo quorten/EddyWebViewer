@@ -44,6 +44,8 @@
       Implementation Center</a></li>
   <li><a href="#comp_center">
       Compatibility Center</a></li>
+  <li><a href="#perf_center">
+      Performance Center</a></li>
   <li><a href="#scratch_notes">
       Scratch Style Notes</a></li>
 </ul>
@@ -62,10 +64,13 @@ following hold true:</p>
 <ol>
   <li>The data can be accessed from a large variety of browsers, all
   the way down to Firefox 3.6, Internet Explorer 6, and versions of
-  Safari from 2004.</li>
-  <li>The viewer is easy to use.</li>
-  <li>The viewer has an attractive look, feel, and feature set.  Think
-  Google Earth: the viewer will have both 2D and 3D map views.</li>
+  Safari from 2004, provided that adding such support does not require
+  an unreasonable amount of effort.</li>
+  <li>The viewer will be easy to use.</li>
+  <li>The viewer will have an attractive look, feel, and feature set.
+  Think Google Earth: the viewer will have both 2D and 3D map views.
+  However, unlike Google Earth, you do not need to install a browser
+  plugin to use the viewer.</li>
   <li>The viewer has to be fast and responsive: high resolution images
   should be broken up into tiles and loaded individually.</li>
 </ol>
@@ -282,17 +287,17 @@ implementation of the Eddy Web Viewer.</p>
   <li>Icosahedron isosphere mesh equal angle subdivision (used only
   for native non-web viewer running on older graphics hardware with a
   fixed function pipeline)</li>
-  <li>Read and visualize large scale data in the web viewer.</li>
+  <li>Transforming lat/lon for additional map projections.</li>
+  <li>Add support for WebGL hardware accelerated rendering.</li>
+  <li>Encode the SSH as a compressed video.</li>
 </ul>
 
 <p>Work in progress:</p>
 
 <ul>
   <li>This info document</li>
-  <li>Browser feature test suite</li>
-  <li>Transforming lat/lon for additional map projections.</li>
   <li>Improve the organization the current code base.</li>
-  <li>Creating an improved CSS user interface.</li>
+  <li>Improve the memory efficiency of the current code base.</li>
 </ul>
 
 <p>Completed goals:</p>
@@ -303,7 +308,10 @@ implementation of the Eddy Web Viewer.</p>
   <li>Initial working implementation of the eddy web viewer.</li>
   <li>Transforming lat/lon for essential map projections.</li>
   <li>Built the CSS user interface.</li>
-  <li>Connect the CSS UI to the current code base.</li>
+  <li>Connected the CSS UI to the current code base.</li>
+  <li>Built and connected the improved slim CSS UI.</li>
+  <li>Read and visualized large scale data in the web viewer.</li>
+  <li>Browser feature test suite</li>
 </ul>
 
 <hr />
@@ -479,10 +487,10 @@ of this process is to determine a vector from the center of the globe
 to this point.  To keep things simple, assume this vector will be
 represented as a normalized 3-dimensional rectangular vector.  The
 coordinate system at this step will be assumed to have the X-Y plane
-coincide with the screen, with the 3D origin (0, 0, 0) at the center
-of the screen and quadrant I of the X-Y plane at the top-right corner.
-The camera will be looking down the negative Z-axis, and the center of
-the globe will lie on the Z-axis.</li>
+be parallel with the screen, with the 3D origin (0, 0, 0) at the
+center of the globe and quadrant I of the X-Y plane at the top-right
+corner.  The camera will be located somewhere on the Z-axis, looking
+down the negative direction toward the globe.</li>
 
 <li>Once a vector describing the point on the globe in relation to the
 center has been found, the vector should be inverse rotated by the
@@ -559,8 +567,8 @@ only a problem of solving for the intersection between a line and a
 hemicircle.  A system of two equations in two unknowns can be setup
 and the quadratic formula can be used on the resulting equation.
 Since only a hemicircle is considered, only one of the two solutions
-of the quadratic formula needs to be considered.  The solution process
-is mathematically written below:</p>
+of the quadratic formula needs to be considered.  The mathematical
+setup for the solution is written below:</p>
 
 <!-- BAD BAD!  Many old browsers have no way of figuring out the
 actual height of an embedded HTML object, so we must code in a
@@ -568,20 +576,57 @@ reasonable height manually.  Maybe there is some browser setting that
 I don't know about that limits the maximum intrinsic height of
 embedded objects. -->
 <p style="text-align: center">
-<object type="application/xhtml+xml" data="persp_math1.xhtml"
-	width="100%" height="678">
+<object id="persp_math1" type="application/xhtml+xml" data="persp_math1.xhtml"
+	width="100%" height="941">
 <img src="persp_math1.png" alt="[complicated math that spans multiple lines,
  don't even try to read this without raster image display]"
-     width="604" height="678" />
+     width="607" height="941" />
 </object>
 </p>
 
-<p>A similar equation can be derived for Y coordinates by substituting
-the relevant variables in the above solution.  Once the X and Y
-coordinates of the point on the generic globe have been found, the Z
-coordinate can be found by using <code>z = sin(acos(sqrt(x^2 +
-y^2)))</code>, the same equation given above for the orthographic
-projection.</p>
+<script type="text/javascript">
+/* Adjust the height of the object container to be the actual height
+   of its content, but only after the document has finished loading
+   AND MathJax processing has finished.  */
+
+window.setTimeout(function setupPM1() {
+  var persp_math1 = document.getElementById('persp_math1');
+  persp_math1.height = 300;
+  var pm1height = persp_math1.contentDocument.documentElement.scrollHeight;
+  persp_math1.height = pm1height;
+}, 10000);
+
+/* TODO: We need to somehow hook the following script in the nested
+   document structure:
+
+    MathJax.Hub.Register.StartupHook("End", function () {
+      // alert("The TeX input jax is loaded and ready!");
+      // Setup the height of the external container.
+    });
+
+*/
+</script>
+
+<p>Once the "Y" coordinate, which is actually the Z coordinate, of the
+near point is found, the near point's X coordinate can be found simply
+by substituting the "Y" coordinate into the ray equation (equation of
+a line) and solving for the X coordinate.  A similar solution can be
+derived for the real Y coordinates by substituting the relevant
+variables in the above solution.</p>
+
+<p class="image-flow">
+<object type="image/svg+xml" data="sphere_cross1.svg"
+	width="202" height="101">
+  <img src="sphere_cross1.png" alt="Cross section through equator of globe."
+       width="202" height="101" />
+</object>
+
+<object type="image/svg+xml" data="sphere_cross2.svg"
+	width="202" height="101">
+  <img src="sphere_cross2.png" alt="Tilted cross section through globe."
+       width="202" height="101" />
+</object>
+</p>
 
 <p>Unfortunately, the above simplification of considering the X and Y
 coordinates separately is incorrect.  Look at it this way: Suppose you
@@ -607,13 +652,36 @@ point on the sphere can be trivially found using the X and Y ray
 equations.</p>
 
 <p style="text-align: center">
-<object type="application/xhtml+xml" data="persp_math2.xhtml"
-	width="100%" height="647">
+<object id="persp_math2" type="application/xhtml+xml" data="persp_math2.xhtml"
+	width="100%" height="617">
 <img src="persp_math2.png" alt="[complicated math that spans multiple lines,
  don't even try to read this without raster image display]"
      width="540" height="617" />
 </object>
 </p>
+
+<script type="text/javascript">
+/* Adjust the height of the object container to be the actual height
+   of its content, but only after the document has finished loading
+   AND MathJax processing has finished.  */
+
+window.setTimeout(function setupPM2() {
+  var persp_math2 = document.getElementById('persp_math2');
+  persp_math2.height = 300;
+  var pm2height = persp_math2.contentDocument.documentElement.scrollHeight;
+  persp_math2.height = pm2height;
+}, 10000);
+
+/* TODO: We need to somehow hook the following script in the nested
+   document structure:
+
+    MathJax.Hub.Register.StartupHook("End", function () {
+      // alert("The TeX input jax is loaded and ready!");
+      // Setup the height of the external container.
+    });
+
+*/
+</script>
 
 <h3>Display Considerations</h3>
 
@@ -803,6 +871,21 @@ same zoom level.  In order for this to work well, a quadtree or
 kd-tree is also needed to quickly lookup only the eddies that are
 within the visible map area.</p>
 
+<p>Parts left TODO:</p>
+
+<ul>
+  <li>clipGeometry()</li>
+  <li>getClipBounds()</li>
+  <li>inverseZRot(x, y) -> { x, y }</li>
+  <li>rotateX, rotateY, rotateZ</li>
+  <li>Wireframe render</li>
+  <li>2D version: only one frontbuffer.  Bit-block images
+  verbatim.</li>
+  <li>For raytrace renders, start rendering 1/4 down from top of
+  screen, continue to bottom, finish top 1/4.</li>
+  <li>Highlight selected eddy.</li>
+</ul>
+
 <h3>Data I/O</h3>
 
 <p>This part of the web viewer handles loading of data that is
@@ -816,6 +899,20 @@ bandwidth optimized data downloading.  This would only be necessary if
 (1) the dataset needs to be parsed serially as opposed to random
 access and (2) low-level (HTTP) protocol control cannot be achieved by
 the web viewer.</p>
+
+<p>Parts left TODO:</p>
+
+<ul>
+  <li>Request data</li>
+  <li>Write data</li>
+  <li>Format detection</li>
+  <li>Format handlers</li>
+</ul>
+
+<p>--Avoid complicated OOP, this can really slow down compilers and
+static implementations.  Try to stick to fast-style coding when
+possible.</p>
+
 <hr />
 <!-- ________________________________________ -->
 
@@ -953,28 +1050,34 @@ reasons.</p>
   declaration.</li>
   <li>You probably cannot go further back in time to support DHTML and
   JavaScript on a browser earlier than Internet Explorer 5.5.</li>
-  <li>The display style "inline-block" is incomplete and buggy in IE6.
-  Often times, you can get the intended effect if you use "inline"
-  instead, but only if you use it in a stylesheet definition, not an
-  inline definition.</li>
-  <li>Horizontal and vertical centering that is cross-browser to IE6
-  requires the techniques described in the following link:<br />
+  <li>The display style "<code>inline-block</code>" is incomplete and
+  buggy in IE6.  Often times, you can get the intended effect if you
+  use "<code>inline</code>" instead, but only if you use it in a
+  stylesheet definition, not an inline style definition.</li>
+  <li>Centering an element both horizontally and vertically in a way
+  that is cross-browser to IE6 requires the techniques described in
+  the following link:<br />
   <a href="http://stackoverflow.com/questions/396145/whats-the-best-way-of-centering-a-div-vertically-with-css">
     http://stackoverflow.com/questions/396145/whats-the-best-way-of-centering-a-div-vertically-with-css</a><br />
   Note that this will not work in IE5.5.
   </li>
-  <li>You cannot use both the "top" and "bottom" positioning
-  properties at the same time.  Same goes with "left" and "right".  If
-  you want to vertically expand a box to fill up its available space,
-  then you must write a JavaScript to do that.  Keep in mind the
-  differences of box layout between IE5 and IE6 when doing this.</li>
+  <li>You cannot use both the "<code>top</code>" and
+  "<code>bottom</code>" positioning properties at the same time.  Same
+  goes with "<code>left</code>" and "<code>right</code>".  If you want
+  to vertically expand a box to fill up its available space, then you
+  must either 1) set the width/height to 100% and avoid using borders
+  and margins or 2) write a JavaScript to expand the box.  Keep in
+  mind the differences of box layout between IE5 and IE6 when doing
+  this.</li>
   <li>All versions of IE that support scripting generally support it
   well.  Expect JavaScript 1.5 to be well supported.  However, you
   must take care not to use certain web API scripting idioms that
   won't be supported by IE, such as<br />
     element.setAttribute('style', 'styleText');<br />
   as opposed to<br />
-    element.style.cssText = 'styleText';</li>
+    element.style.cssText = 'styleText';<br />
+  Note, however, that old versions of Firefox may not support
+  object-oriented CSS style manipulation.</li>
   <li>Avoid inline styling: Using inline style information can sometimes
   trigger bugs in Internet Explorer that are not present when using
   stylesheets.</li>
@@ -1090,6 +1193,14 @@ such as a pointer motion handling code, in order to get good rendering
 performance in modern versions of Firefox.  Otherwise, the graphics
 refresh rate in Firefox is going to trail dramatically behind the
 graphics refresh rate in Google Chrome.</p>
+
+<hr />
+<!-- ________________________________________ -->
+
+<h2><a name="perf_center" id="perf_center">
+    Performance Center</a></h2>
+
+<p>JavaScript performance tips will go here.</p>
 
 <hr />
 <!-- ________________________________________ -->
@@ -1245,6 +1356,5 @@ http://stackoverflow.com/questions/826782/css-rule-to-disable-text-selection-hig
 
 <p><a href="http://www.creativebloq.com/css3/seven-things-still-missing-css-1126553">
     http://www.creativebloq.com/css3/seven-things-still-missing-css-1126553</a></p>
-
 </body>
 </html>

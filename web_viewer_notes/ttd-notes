@@ -40,58 +40,6 @@ system as a whole still needs timing, of course.
 http://randomascii.wordpress.com/2013/07/08/windows-timer-resolution-megawatts-wasted/
 http://lwn.net/Articles/549580/
 
-Good, I should be in good shape for performance counting when I use
-performance.now() on Windows systems.  Don't worry, it's a drop-in
-replacement for Date.now().
-
-----------------------------------------
-
-Code base plans
-
-Alright, let's break up the renderer and implement it:
-
-Almost finished, parts left TODO
-
-* clipGeometry()
-
-* getClipBounds()
-
-* inverseZRot(x, y) -> { x, y }
-
-* rotateX, rotateY, rotateZ
-
-* Wireframe render
-
-Data I/O:
-
-* Request data
-
-* Write data
-
-* Format detection
-
-* Format handlers
-
---Avoid complicated OOP, this can really slow down compilers
-and static implementations.  Try to stick to fast-style coding
-when possible.
-
-2D version: only one frontbuffer.  Bit-block images verbatim.
-
-Highlight selected eddy.
-
-Start rendering 1/4 down from top of screen, continue to bottom,
-finish top 1/4.
-
-Unit testing: JsUnit, QUnit
-
-(Avoid the above frameworks, they do not maintain faithful
-cross-browser compatibility.)
-
-Discovery, design, component implementation/testing, composition.
-
-Need to have table of acronyms and abbreviations
-
 ----------------------------------------
 
 About box
@@ -132,18 +80,12 @@ Need two modes in the Eddy Web Viewer.
 9. Web hosting?  Maybe move to Amazon Web Services, we'll figure that
    out later.
 
-10. I'll need pointer locking and the "calibrate, please!" screen
-    needs to be removed.
-
 Important!  SSH data directory:
   /project/expeditions/eddies_project_data/web_viewer
 
 keifenhe
 
 Woodrow Keifenheim
-
-Maybe I'll have to write a script from my CS account that remote
-logins to.
 
 So two modes: one to show eddies in motion, another to see eddies
 static, then click on an eddy to get more information.  The first mode
@@ -1652,6 +1594,8 @@ http://yui.github.io/yuicompressor/
 
 Time to put an end to ttd-notes
 
+Memory overhead
+
 These are the basic categories that I will sort ttd-notes into:
 
 * Mathematical Concepts
@@ -1664,3 +1608,52 @@ These are the basic categories that I will sort ttd-notes into:
 
 CSS compatibility: Avoid using both "top" and "bottom" or "left" and
 "right" to define the size of a CSS box.
+
+Embedding an SVG in an XHTML document: You cannot do this with an HTML
+document.
+
+Note W3 DOM specification.  innerHTML and outerHTML, though intuitive
+and easy, are nonstandard, notably introduced by IE5.5.
+
+http://www.w3.org/DOM/
+
+http://stackoverflow.com/questions/6790512/button-padding-width-problem
+
+http://social.msdn.microsoft.com/Forums/sharepoint/en-US/131670eb-e08c-4ee6-9575-fe9ff1ef2561/no-focus-rectangle-on-checkboxes-or-radiobuttons?forum=sharepointdevelopmentlegacy
+
+ASCII Art rendering backend.
+
+Why does not use d3.js?  Short answer: copy and modify.  d3.js is not
+already written to run on the GPU via a WebGL shader, so its best to
+work with code that I can manage rewriting for that task.
+
+Since the resolution will always be 1440x721 for this project, there
+will be no need to break up images into tiles: the resolution is low
+enough for such additional software complexity to be unjustified.
+
+Compatibility: push, pop, innerHTML, outerHTML
+
+List of JavaScript processors and their practical use.
+
+
+----------------------------------------
+
+Code base plans
+
+Alright, let's break up the renderer and implement it:
+
+Unit testing: JsUnit, QUnit
+
+(Avoid the above frameworks, they do not maintain faithful
+cross-browser compatibility.)
+
+Discovery, design, component implementation/testing, composition.
+
+Need to have table of acronyms and abbreviations
+
+
+Good, I should be in good shape for performance counting when I use
+performance.now() on Windows systems.  Don't worry, it's a drop-in
+replacement for Date.now().
+
+Date.now() is newer than +new Date().

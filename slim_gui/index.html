@@ -118,12 +118,13 @@
                 vertical-align: top;
                 margin: 0px; padding: 0px; list-style-type: none; }
     .ie6 iconBtns, .ie7 iconBtns { display: inline; }
-    .iconBtns img, .iconBtns .imgbtn
-      { border-style: solid; border-width: 1px;
-        border-color: white; margin: 0px; padding: 0px;
-        vertical-align: top; }
-    .iconBtns .imgbtn { display: inline-block; width: 32px; height: 32px;
-                        background-color: red; list-style-type: none; }
+    .iconBtns .imgbtn
+      { border: solid white 1px; margin: 0px; padding: 0px;
+        vertical-align: top;
+        -moz-box-sizing: content-box; -webkit-box-sizing: content-box;
+        box-sizing: content-box;
+        display: inline-block; width: 32px; height: 32px;
+        background-color: red; list-style-type: none; }
     .iconBtns .nbimgbtn { display: inline-block; width: 32px; height: 32px;
                           background-color: red; list-style-type: none; }
     .ie6 .iconBtns .imgbtn, .ie7 .iconBtns .imgbtn { display: inline; }
@@ -198,10 +199,10 @@ document.getElementById('scriptWrapper').style.cssText = '';
 <div id="drawingContainer">
 
   <p id="loadingScreen">
-    <object type="image/svg+xml"
-	    data="loading_composite.svg">
-      <img src="loading_composite.png"
-	   alt="Decorative Loading Icon." />
+    <object type="image/svg+xml" data="loading_composite.svg"
+	    width="170" height="170">
+      <img src="loading_composite.png" alt="Decorative Loading Icon."
+	   width="170" height="170"/>
     </object><br />
     <strong>Loading</strong><br />
     <br />
@@ -213,7 +214,7 @@ document.getElementById('scriptWrapper').style.cssText = '';
 
 <div id="popupInfo">
 <div id="popupClose" class="noSelect"></div>
-  <b id="popupTitle">Eddy #43859</b><br />
+  <strong id="popupTitle">Eddy #43859</strong><br />
   <br />
   <div id="popupDetail">
     Coordinates: 0 N 0 E<br />

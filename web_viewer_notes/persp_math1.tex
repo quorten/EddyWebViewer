@@ -39,28 +39,31 @@ y = mx + b
 \[ %% New blahtexml run.
 \begin{aligned}
 m &= -f/p \\
-b &= r + d
+b &= r + d \\
+x &= \frac{y - b}{m} \\
+x &= -\frac{p}{f} (y - (r + d)) \\
+x &= \frac{p}{f} (-y + (r + d))
 \end{aligned}
 \]
 
 \[ %% New blahtexml run.
 \begin{aligned}
-x^2 + \left(-\frac{f}{p}x + (r + d)\right)^2 &= r^2 \\
-x^2 + \left(\frac{f}{p}\right)^2 x^2 - 2\left(\frac{f}{p}\right)(r + d)x +
-  (r + d)^2 &= r^2 \\
-\left(1 + \left(\frac{f}{p}\right)^2\right)x^2 -
-  2\left(\frac{f}{p}\right)(r + d)x +
-  (r^2 - r^2 + 2rd + d^2) &= 0
+\left(\frac{p}{f} (-y + (r + d))\right)^2 + y^2 &= r^2 \\
+\left(\frac{p}{f}\right)^2 (-y + (r + d))^2 + y^2 &= r^2 \\
+\left(\frac{p}{f}\right)^2 (y^2 - 2(r + d)y + (r + d)^2) + y^2 &= r^2 \\
+\left(1 + \left(\frac{p}{f}\right)^2\right)y^2 -
+  2 \left(\frac{p}{f}\right)^2 (r + d)y +
+  \left(\frac{p}{f}\right)^2 (r + d)^2 - r^2 &= 0
 \end{aligned}
 \]
 
 \[ %% New blahtexml run.
 \begin{aligned}
-a &= 1 + \left(\frac{f}{p}\right)^2 \\
-b &= -2\left(\frac{f}{p}\right)(r + d) \\
-c &= 2rd + d^2 \\
-x &= \frac{-b \pm \sqrt{b^2 - 4ac}}{2a} \\
-x &= \frac{-b + \sqrt{b^2 - 4ac}}{2a}
+a &= 1 + \left(\frac{p}{f}\right)^2 \\
+b &= -2\left(\frac{p}{f}\right)^2 (r + d) \\
+c &= \left(\frac{p}{f}\right)^2 (r + d)^2 - r^2 \\
+y &= \frac{-b \pm \sqrt{b^2 - 4ac}}{2a} \\
+y &= \frac{-b + \sqrt{b^2 - 4ac}}{2a}
 \end{aligned}
 \]
 

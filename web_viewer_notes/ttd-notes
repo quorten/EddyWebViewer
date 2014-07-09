@@ -1538,6 +1538,8 @@ This is also useful:
 
 http://quirksmode.org/dom/events/resize_mobile.html
 
+todo add rendering for outline
+
 ----------------------------------------
 
 So now what do I need to do?
@@ -1558,3 +1560,14 @@ So now what do I need to do?
 
 The Google Closure tools are primarily a JavaScript minifier, not an
 optimizing compiler.
+
+----------------------------------------
+
+Compatibility libraries, s
+
+Say how you compiled the information, i.e. miscellaneous talk on
+websearches, personal benchmarking, looking at the source code for
+fast and efficient WebGL libraries.
+
+It would have been nice had someone told me all the reasons why modern
+web browsers and websites require so much memory.  Now I know why.

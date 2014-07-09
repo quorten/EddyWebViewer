@@ -1109,7 +1109,53 @@ reasons.</p>
       http://www.webcredible.com/blog-reports/css/internet-explorer.shtml</a></li>
 </ul>
 
-<h3>JavaScript Events and Web App Provisions</h3>
+<h3>JavaScript Compatibility</h3>
+
+<p>First of all, some background information will help.  ECMAScript
+(JavaScript) benefits from being a well standardized language that has
+undergone very few changes over the years.  The major changes that are
+relevant to web apps are only changes within the <em>Web APIs</em>,
+the JavaScript host objects provided by the browser for the
+JavaScript.  However, there are a few notable changes in the native
+JavaScript language since the very first version:</p>
+
+<ul>
+  <li>The <code>push()</code> and <code>pop()</code> Array methods did
+  not exist in the first version of JavaScript.</li>
+  <li>Strict mode was added to later versions of JavaScript, which is
+  the mandatory mode for newer features introduced by newer
+  specifications.</li>
+  <li>Later JavaScript runtimes feature the typed array
+  extensions.</li>
+</ul>
+
+<p>This makes JavaScript similar to C in that although the language
+syntax is fairly standardized, the features available on the system
+vary drastically.  In C, this has prompted the creation of ahead of
+compile-time feature detection scripts to determine if the software is
+being compiled in a suitable development environment.  Likewise, one
+would expect that all good JavaScript programs would use similar
+feature detection: Since JavaScript is not a compiled language, the
+standard mechanism would be to use a feature detection framework
+before the main body of the script executes, and if the required
+features are not available, the main body of the script will not be
+executed.</p>
+
+<p>Unfortunately, this has not been the case for the mass majority of
+JavaScript programs.  Why?  In case you have forgotten, JavaScript is
+a language used by many people who would not be considered skilled
+programmers, so the most popular method of implementing JavaScript
+programs involves simply assuming that the user is using a "reasonably
+new" browser that is similar enough to the developer's browser for
+things to run smoothly.  When this is not the case, the script simply
+crashes without any meaningful communication to the user that their
+browser is unsupported.</p>
+
+<p>This even applies to the most popular JavaScript libraries: JQuery,
+Sizzle, Dojo, d3.js, you name it.  They're all "sizzle without solid
+substance," as the author of My Library put it.</p>
+
+<h3>Web API Event Compatibility</h3>
 
 <h4>Mouse Pointer Coordinates Compatibility</h4>
 
@@ -1404,7 +1450,7 @@ language to JavaScript.  Designed with performance in mind.</p>
 CoffeeScript
 Haxe
 
-Cjs -- Very minimalistic translator.
+Cjs - Very minimalistic translator.
 
 <p>Like Perl, but performance.</p> -->
 

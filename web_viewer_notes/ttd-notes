@@ -98,37 +98,9 @@ is critical in importance, the second mode, not so much.
 
 ----------------------------------------
 
-Here's they way to get rid of screen coordinate calibration screens:
-just make sure there is no vertical scrollbar, and use the clientLeft
-and clientTop properties.
-
-http://stackoverflow.com/questions/2337795/screen-coordinates-of-a-element-via-javascript
-
-http://www.quirksmode.org/dom/w3c_cssom.html#windowview
-
-Never mind, drawing area covers entire client area, no need to do
-this.  Just use clientX and clientY.
-
-----------------------------------------
-
 Here's how to draw graticule:
 
-First, start out simple.  Looking at a globe equator-on-center,
-parallels are straight lines and longitudinal lines are ellipses.
-This can be drawn with ease.  Then, looking at the globe
-pole-on-center, parallels are concentric circles around the pole, and
-longitudinal lines are straight lines intersecting at the pole.
 
-The next trick is to figure out how to render the graticule
-orthograpically at positions in between these extremes.  When tilting
-the globe from equator to pole, the 2D distance between the north and
-south pole decrease from the pole separation to zero, exactly by the
-cos() function for computing rotations.  Each circle, even when
-deformed, always has its center at the core of the Earth, even in all
-possible 2D orthographic projections.  Also, looking at the
-longitudinal circles when tilting the globe without any rotation
-around the pole, the maximum x extent of every longitudinal circle is
-always the same.
 
 * Parellels get stretched around the center from being a straight line
   equator on to being a circle pole-on.
@@ -185,6 +157,10 @@ Longitude lines?  You need to determine the intersection of the
 longitude line with the outline of the sphere.  The outline of the
 sphere is a great circle line.  How do you parameterize this at
 non-trivial rotations?
+
+----------------------------------------
+
+Equation of a Great Circle in Polar Coordinates
 
 Think about the trivial case of the raytracing algorithms for
 orthographic projection.  First you start with a screen coordinate.
@@ -482,6 +458,9 @@ Up to three digits before the decimal point.
 Get an older version of Opera for compatibility testing:
 
 http://arc.opera.com/pub/opera/linux/754/final/en/i386/static/
+
+Oh yeah, Opera was proprietary software, so I'm not allowed to modify
+it so that it works on my system.  Too bad, no go then.
 
 Great high performance JavaScript CSV parser:
 
@@ -867,19 +846,6 @@ That will do it.  But wow, that sure is a strange way to do it, very
 non-CSS like in order to get the IE-style box model to work.
 
 NOTE: Object oriented code has a tendency to be slower.
-
-----------------------------------------
-
-Useful cross-browser links:
-
-http://www.cinsoft.net/mylib.html
-https://github.com/rassie/jessie
-http://michaux.ca/articles/feature-detection-state-of-the-art-browser-scripting
-http://www.fortybelow.ca/Projects/JavaScript/Utils/
-
-And for simulating colorblind vision:
-
-http://vischeck.com/
 
 ----------------------------------------
 
@@ -1464,6 +1430,8 @@ These are the basic categories that I will sort ttd-notes into:
 
 * Performance Center
 
+* Thoughts, decisions, questions, answers
+
 CSS compatibility: Avoid using both "top" and "bottom" or "left" and
 "right" to define the size of a CSS box.
 
@@ -1571,3 +1539,42 @@ fast and efficient WebGL libraries.
 
 It would have been nice had someone told me all the reasons why modern
 web browsers and websites require so much memory.  Now I know why.
+
+And for simulating colorblind vision:
+
+http://vischeck.com/
+
+Web development resources:
+
+developer.mozilla.org
+
+Microsoft Platform SDK for Windows Server 2003 R2.  Useful for
+information on web development for Internet Explorer versions 4-6.
+Since this information has been removed from the current web version
+of the MSDN library, you'll have to download the above Windows PSDK to
+gain access to the information.  I can't provide a URL to the download
+since Microsoft's keeps changing/deleting content from their website.
+You might have to download from a third party, or buy a used CD
+version of the PSDK from Ebay.  Once you've got access to a copy of
+the information, to actually view the information, you'll need a
+sufficiently Windows-compatible environment to run the help viewers
+that come with the PSDK.  Tough luck, but that's Microsoft for you.
+
+The most reliable link I can recommend at the present (which is also
+the link that Wikipedia currently recommends) is the CNET link to the
+ISO image of the SDK.
+
+Provide citation link to a web 3D graphics math reference, for
+completeness.  If not possible, provide a book citation.
+
+Use kd-tree instead of quadtree because memory is extremely expensive
+for JavaScript programs.
+
+I've just had an idea: w3m can be extended so that it can display
+images as ASCII art.
+
+"trademark" continuous variable value adjuster.  I'll have to see if
+time permits me to add this or not.
+
+Need developer center hub of links to good sites, then the rest of the
+information follows.

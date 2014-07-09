@@ -40,6 +40,8 @@
       Mathematically Build an Icosahedron</a></li>
   <li><a href="#projections">
       Projections</a></li>
+  <li><a href="#draw_graticule">
+      Drawing an Orthographic Graticule as Ellipses</a></li>
   <li><a href="#imp_center">
       Implementation Center</a></li>
   <li><a href="#comp_center">
@@ -697,6 +699,171 @@ coordinate before backtracing it to the globe.</p>
 <hr />
 <!-- ________________________________________ -->
 
+<h2><a name="draw_graticule" id="draw_graticule">
+    Drawing an Orthographic Graticule as Ellipses</a></h2>
+
+<p>Intuitively, it seems it should be possible to draw an orthographic
+graticule by simply drawing a series of ellipses, but is
+it <em>really</em> possible?  If so, then how do you do it?</p>
+
+<p>Yes, it is really possible.  Although there's a
+<a href="http://commons.wikimedia.org/wiki/File:Sphere_wireframe.svg">
+C++ program that generates a wireframe graticule image from ellipses
+on Wikimedia commons</a>, the C++ program comes with the following
+warning: "The expressions in this code are not proven to be correct.
+Hence this code probably contains lots of bugs.  Be aware!"  The
+following explanations describe how to do it in a mathematically sound
+way.</p>
+
+<p>First, start out simple.  Assume a globe with a radius of unit
+length (1).  Looking at a globe equator-on-center, parallels are
+straight lines and meridians are ellipses.  This can be drawn with
+ease.  For the latitudes, just use <code>sin(latitude)</code> to
+determine the Y position to draw the parallels and
+<code>2 * cos(latitude)</code> to determine the length of the line.
+For the meridians, just use <code>sin(longitude)</code> to determine
+the X-axis radius of the meridians and "1" as the Y-axis radius,
+assuming that the rotation of the globe around its pole is such that
+the prime meridian is at the center of the viewport.  Note that
+drawing an ellipse draws both the positive and negative meridian at
+the same time.</p>
+
+<p>Then, looking at the globe pole-on-center, parallels are concentric
+circles around the pole, and longitudinal lines are straight lines
+intersecting at the pole.  The radius of the parallel circles can be
+found by using <code>cos(latitude)</code>, and the meridian lines are
+simply rays spaced by an equal rotational distance.</p>
+
+<p>The next trick is to figure out how to render the graticule
+orthograpically at positions in between these extremes.  First, think
+about drawing a line to connect the north and south poles on the
+globe.  When tilting the globe from equator-on-center to
+pole-on-center, the 2D distance between the north and south pole
+decreases from the diameter of the sphere to zero, exactly by
+the <code>cos()</code> function as used for computing rotations.  This
+makes mathematical sense, since tilting the globe is simply a rotation
+transformation.</p>
+
+<p>Now think about the parallels.</p>
+
+<ul>
+  <li>When looking at the globe equator-on-center, each parallel
+  intersects a position on the line connecting the poles.  The
+  intersected position indicates the parallel's height along the pole
+  axis, of course.</li>
+  <li>When the globe is tilted, the parallels go from being rendered
+  as simple lines to ellipses, and when the globe is tilted by 90
+  degrees, the parallels appear as circles.  The centers of all of
+  these circles/lines always lie somewhere on the pole line.  Since
+  rotating a line in orthographic projection squashes every point on
+  the line uniformly by a linear factor, the centers of the circles
+  can easily be computed by multiplying their height along the pole
+  axis by the 2D length of the orthographically-projected pole.</li>
+  <li>The width of the parallel ellipses is always the same.  Because
+  the axis of the ellipses pertaining to the width of the ellipses
+  always runs along the tilt axis, tilting the globe never
+  mathematically changes the width of the parallel ellipses.</li>
+  <li>The next challenge in drawing the parallels is determining what
+  the vertical height that the parallel ellipses must be.  However,
+  this is simply correlated with the rotational tilt of the
+  earth: <code>sin(tilt)</code> succintly describes the factor to
+  multiply the height by.  When the tilt is 90 degrees, the parallels
+  are rendered as circles (<code>sin(tilt)</code> equals 1), and when
+  the tilt is 0 degrees, the parallels are rendered as lines
+  (<code>sin(tilt)</code> equals 0).</li>
+</ul>
+
+<p>Now think about the meridians.</p>
+
+<ul>
+  <li>When tilting the globe from equator-on-center to pole-on-center,
+  the meridians get progressively squashed into straight lines.  Not
+  only do they get progressively squashed, the 2D vertical extent of
+  the squashed shapes also increases from zero to a maximum when
+  looking at the globe pole-on-center.</li>
+  <li>The lines seen when looking at the globe pole-on-center can be
+  thought of as squashed and sheared ellipses.  When looking at the
+  globe equator-on-center, the shear factor is zero and the elliptical
+  factor is one.</li>
+  <li>The ellipses will be sheared vertically.  The equation that
+  describes this shear transformation is as follows:
+  <code>y_new = y + x * shear_factor</code>.</li>
+  <li>At this point, one possible way to draw the meridians is to 1)
+  squash the meridian circles horizontally then 2) shear the ellipse
+  to get the target ellipse to draw.</li>
+  <li>One challenge: How do you parameterize the sheared ellipses?
+  First for shearing a circle, it turns out that sheared circles are
+  indeed ellipses, and the major axis of the sheared ellipse always
+  runs through the diagonals of the corresponding bounding rectangle.
+  I don't know how to mathematically prove this.  I've only visually
+  verified it in a drawing program, so you're going to have to just
+  trust me on this one.</li>
+  <li>Unfortunately, the above relation does not hold for sheared
+  ellipses, only sheared circles.  However, we can look at the process
+  of drawing the meridians in a different way: Instead of squashing
+  the meridians horizontally first and then shearing vertically, we
+  could perform the transformations in the opposite order and still
+  get the same result, provided that we change each step to use the
+  correct constants.</li>
+  <li>Think back to rendering meridians
+  equator-on-center.  <code>sin(longitude)</code> defines the squash
+  factor on a circle needed to render the meridian correctly.  After
+  the shear step, the ellipses will be horizontally squashed by this
+  factor.</li>
+  <li>First, the shear factor is dictated by the squash factor of the
+  parallel ellipses: the shear factor should be set such
+  that <code>sin(tilt)</code> defines the maximum Y coordinate on the
+  line running through the major axis of the ellipse.  This is the
+  reason why this makes mathematical sense: As was explained with
+  transformation of the pole line above, rotation changes the vertical
+  scale factor, which is defined by <code>sin(tilt)</code>, but
+  horizontal distances remain unchanged.  <em>Shearing</em> is used
+  instead of simple scaling so that the maximum Y coordinate of the
+  line running through the major axis of the ellipse can be adjusted
+  to the expected value.  If the circle were pre-squashed in the
+  horizontal direction, setting the shear factor would be
+  easy:<br />
+  <pre>
+  shear_factor =
+  /* Y extent scaling factor: */ sin(tilt) *
+  /* Y extent of major axis (tilt == 90): */ cos(longitude) /
+  /* X extent of major axis: */ sin(longitude)</pre>
+  However, the horizontal squash transformation cannot be applied
+  until after the shear transformation, so the shear factor must be
+  multiplied by the horizontal squash factor as a compensation, in
+  order to get the maximum Y extent of the major axis line to run to
+  the correct height:
+  <code>shear_factor = sin(tilt) * cos(longitude)</code>.</li>
+  <li>After the circle has been sheared, we can apply the horizontal
+  squash transformation given above: <code>sin(longitude)</code>.</li>
+  <li>Special cases that result in a divide-by-zero need to be handled
+  by simply drawing straight lines.</li>
+
+
+
+  <li>After shearing the circle, we know the angle of the major axis
+  of the sheared circle: it is the angle of one of the diagonal lines
+  through new bounding rectangle.
+  <code>angle = atan(max_y / 1)</code>.  Note that our shear
+  transformation does not change X coordinates, only Y coordinates.
+  Also note that at this step, this angle is not quite the desired
+  angle.</li>
+  <li>When we horizontally squash the ellipse, what we are essentially
+  doing is changing the angle of any non-vertical axis through the
+  ellipse by a factor that we know how to compute: .  When both of the
+  above shear and scale transformations are applied as given above, we
+  get a mathematically accurate rendering of the ellipse that should
+  be drawn corresponding to a meridian.  Note that these ellipses will
+  correspond to two longitudinal angles rather than just one.</li>
+</ul>
+
+Thus, we can now successfully figure out what the angle of squashed
+major axis must be.  The lengths of the axes can be figured out
+trivially from knowledge at this problem solving step.
+
+<hr />
+<!-- ________________________________________ -->
+
 <h2><a name="imp_center" id="imp_center">
     Implementation Center</a></h2>
 
@@ -1037,9 +1204,10 @@ in the next section.</p>
 many more problems for web developers than equivalent older versions
 of other browsers.  This is made worse by the fact that Internet
 Explorer is also a very popular browser.  Most people are likely using
-the latest version of Internet Explorer; however, a key older
-version, version 6, is still in use by many people for a variety of
-reasons.</p>
+the latest version of Internet Explorer; however, a key older version,
+version 6, is still in use by many people for a variety of reasons,
+which will not be detailed here.  Here is a list of the most important
+limitations in Internet Explorer 6:</p>
 
 <ul>
   <li>IE6 does not understand XHTML served with the
@@ -1132,14 +1300,14 @@ JavaScript language since the very first version:</p>
 <p>This makes JavaScript similar to C in that although the language
 syntax is fairly standardized, the features available on the system
 vary drastically.  In C, this has prompted the creation of ahead of
-compile-time feature detection scripts to determine if the software is
-being compiled in a suitable development environment.  Likewise, one
-would expect that all good JavaScript programs would use similar
-feature detection: Since JavaScript is not a compiled language, the
-standard mechanism would be to use a feature detection framework
-before the main body of the script executes, and if the required
-features are not available, the main body of the script will not be
-executed.</p>
+compile-time feature detection scripts (such as Autoconf) to determine
+if the software is being compiled in a suitable development
+environment.  Likewise, one would expect that all good JavaScript
+programs would use similar feature detection: Since JavaScript is not
+a compiled language, the standard mechanism would be to use a feature
+detection framework before the main body of the script executes, and
+if the required features are not available, the main body of the
+script will not be executed.</p>
 
 <p>Unfortunately, this has not been the case for the mass majority of
 JavaScript programs.  Why?  In case you have forgotten, JavaScript is
@@ -1152,8 +1320,55 @@ crashes without any meaningful communication to the user that their
 browser is unsupported.</p>
 
 <p>This even applies to the most popular JavaScript libraries: JQuery,
-Sizzle, Dojo, d3.js, you name it.  They're all "sizzle without solid
-substance," as the author of My Library put it.</p>
+Dojo, you name it.  They're all "sizzle without solid substance," as
+the author of My Library put it.</p>
+
+<p><em>Multi-browser</em> scripting refers to scripts that only work
+across a small range of modern and popular web browsers, excluding the
+time immediately after the release of the latest versions of popular
+browsers, which typically break multi-browser scripts.  Multi-browser
+scripts typically use browser detects (<code>isMSIE</code>,
+<code>isFirefox</code>, <code>isSafari</code>, <code>isChrome</code>,
+but no other browsers than those) and platform detects
+(<code>isWin</code>, <code>isMac</code>, but no other platforms than
+those) in order to achieve their desired functionality on the most
+popular browsers and platforms <em>of the current time</em>.
+<em>Cross-browser</em> scripts, on the other hand, use feature
+detection and testing techniques to determine what code can be run on
+the user's browser.  These scripts never, ever, ever, <em>ever</em>
+use browser or platform detects under any circumstances.  Thus, these
+scripts tend to work better on a larger range of non-Windows and
+non-Mac OS X platforms.  Cross-browser scripts remain cross
+browser <em>forever</em>.</p>
+
+<p><a href="http://en.wikipedia.org/wiki/Cross-browser">
+  http://en.wikipedia.org/wiki/Cross-browser</a></p>
+
+<p>So what are the useful cross-browser libraries out there?</p>
+
+<ul>
+  <li><a href="http://www.cinsoft.net/mylib.html">My Library</a>
+  &mdash; The earliest and a very highly recommended cross-browser
+  JavaScript library</li>
+  <li><a href="https://github.com/rassie/jessie">Jessie</a> &mdash;
+  Another newer cross-browser library, made by the same author of My
+  Library</li>
+  <li><a href="http://www.fortybelow.ca/Projects/JavaScript/Utils/">
+  Matt's DOM Utils</a> &mdash; Modular, general-purpose DOM library</li>
+</ul>
+
+<p>Note that the builders that come with the cross-browser libraries
+above are mostly there for web developers who are not using JavaScript
+minifiers that can automatically remove dead code.</p>
+
+<h4>Additional cross-browser articles</h4>
+
+<ul>
+  <li><a href="http://michaux.ca/articles/feature-detection-state-of-the-art-browser-scripting">
+    http://michaux.ca/articles/feature-detection-state-of-the-art-browser-scripting</a></li>
+  <li><a href="http://spoken.fortybelow.ca/Browser_Scripting_101/">
+    http://spoken.fortybelow.ca/Browser_Scripting_101/</a></li>
+</ul>
 
 <h3>Web API Event Compatibility</h3>
 
@@ -1190,10 +1405,22 @@ write browser detection code to handle that browser specially.</p>
 use <code>event.clientX</code> and <code>event.clientY</code>
 directly.</p>
 
-<p>See the following link for more information:</p>
+<p>Sometimes, it may be useful to
+subtract <code>element.clientLeft</code>,
+<code>element.clientTop</code>, and possibly other quantities
+pertaining to a specific element if you are trying to determine the
+mouse position within an element.</p>
 
-<p><a href="http://www.quirksmode.org/js/events_properties.html#position">
-    http://www.quirksmode.org/js/events_properties.html#position</a></p>
+<p>See the following links for more information:</p>
+
+<ul>
+  <li><a href="http://www.quirksmode.org/js/events_properties.html#position">
+    http://www.quirksmode.org/js/events_properties.html#position</a></li>
+  <li><a href="http://www.quirksmode.org/dom/w3c_cssom.html#windowview">
+    http://www.quirksmode.org/dom/w3c_cssom.html#windowview</a></li>
+  <li><a href="http://stackoverflow.com/questions/2337795/screen-coordinates-of-a-element-via-javascript">
+    http://stackoverflow.com/questions/2337795/screen-coordinates-of-a-element-via-javascript</a></li>
+</ul>
 
 <h4>Mouse Wheel Events</h4>
 
@@ -1246,6 +1473,9 @@ performance in modern versions of Firefox.  Otherwise, the graphics
 refresh rate in Firefox is going to trail dramatically behind the
 graphics refresh rate in Google Chrome.</p>
 
+<p><a href="https://developer.mozilla.org/en-US/docs/Web/Events/resize">
+  https://developer.mozilla.org/en-US/docs/Web/Events/resize</a></p>
+
 <hr />
 <!-- ________________________________________ -->
 
@@ -1296,7 +1526,7 @@ garbage accumulation issues within long-running loops.</p>
   <li>Assigning to an array element is slow, at least on Firefox
   3.6.</li>
   <li>Assigning to a named property is also likely to be just as
-  slow</li>
+  slow.</li>
   <li>Even simple table lookups on plain numeric arrays are slow, at
   least on Firefox 3.6.  This might not be as true on newer browsers,
   though.</li>
@@ -1420,8 +1650,7 @@ the condition check of a loop.</p>
   <li>Use <code>drawImage()</code> whenever possible.  This function
   is translated into a fast native bit block transfer, which is both
   CPU optimized in software graphics layers and has universal video
-  card hardware acceleration for all computers built any time in the
-  last 18 years.</li>
+  card hardware acceleration for all computers built since 1996.</li>
 </ul>
 
 <h3>Performance Timers</h3>
@@ -1430,29 +1659,12 @@ the condition check of a loop.</p>
 traditionally not a reliable or efficient process.  The earliest
 method, <code>+new Date()</code>, required creating a new object,
 which is expensive, especially within performance-critical code loops.
-The later <code>Date.now()</code> function solved this problem.
-However, both cases suffer from imprecise timing, especially when the
-system updates its time from the network.  The solution to these
-problems is to use <code>performance.now()</code>, when the browser
-supports it.  This function returns the elapsed times accurate to
-microseconds, and it does not jump when the system time is updated
-from the network.</p>
-
-<!-- <h3>Higher Level Languages</h3>
-
-<p>Although the web standards were designed to support more than one
-scripting language, only one language, ECMAScript (JavaScript), has
-gained both <em>de facto</em> and <em>de jure</em> standardization
-status.  If you want to use any other language for web development,
-you've got to use a JavaScript compiler to translate from that
-language to JavaScript.  Designed with performance in mind.</p>
-
-CoffeeScript
-Haxe
-
-Cjs - Very minimalistic translator.
-
-<p>Like Perl, but performance.</p> -->
+The later <code>Date.now()</code> function alleviated this problem.
+However, both cases suffer from imprecise timing when the system
+updates its time from the network.  The solution to these problems is
+to use <code>performance.now()</code>, when the browser supports it.
+This function returns the elapsed times accurate to microseconds, and
+it does not jump when the system time is updated from the network.</p>
 
 <ul>
   <li><a href="http://updates.html5rocks.com/2012/08/When-milliseconds-are-not-enough-performance-now">
@@ -1461,6 +1673,27 @@ Cjs - Very minimalistic translator.
     http://ejohn.org/blog/accuracy-of-javascript-time/</a></li>
   <li><a href="http://www.sitepoint.com/javascript-fast-string-concatenation/">
     http://www.sitepoint.com/javascript-fast-string-concatenation/</a></li>
+</ul>
+
+<h3>Higher Level Languages</h3>
+
+<p>Although the web standards were designed to support more than one
+scripting language, only one language, ECMAScript (JavaScript), has
+gained both <em>de facto</em> and <em>de jure</em> standardization
+status.  If you want to use any other language for web development,
+you've got to use a JavaScript compiler to translate from that
+language to JavaScript.  Designed with performance in mind.</p>
+
+<ul>
+  <li><a href="http://coffeescript.org/">CoffeeScript</a> &mdash; The
+  most popular language to transcompile to JavaScript.  This language
+  primarily adds syntactic sugar to JavaScript.</li>
+  <li><a href="http://haxe.org/">Haxe</a> &mdash; A language with a
+  multi-target optimizing compiler, with JavaScript and C++ targets
+  available.</a></li>
+  <li>Cjs &mdash; Currently a sub-component of the Ocean Eddies Web
+  Viewer, this is a very minimalistic translator that can translate
+  JavaScript-like code to either C/C++ or JavaScript.</li>
 </ul>
 
 <h3>Additional resources</h3>
@@ -1504,9 +1737,9 @@ near the bottom.</p>
 C/C++.  However, it can provide very good optimization features for
 JavaScript programming.</p>
 
-<p>In conclusion, best software development practices for structuring
-large scale software should be able to scale well in JavaScript, even
-on outdated interpreters.</p>
+<!-- <p>In conclusion, best software development practices for
+structuring large scale software should be able to scale well in
+JavaScript, even on outdated interpreters.</p> -->
 
 <!-- What about buffering?  I'll have to experiment with that, but
 luckily it will be easy for my code to be written to make such

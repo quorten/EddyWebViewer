@@ -30,4 +30,6 @@ for date in $DATES; do
 
   # Also note that it is currently not possible for a web browser to
   # reliably read arbitrary data out of the alpha channel of an image.
+  # (In the future, web browsers might be fixed to support this,
+  # though.)
 done

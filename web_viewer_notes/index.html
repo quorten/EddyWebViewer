@@ -1274,8 +1274,238 @@ compatibility with older browsers.</p>
   <li>Always use document.x() and window.x() rather than the global
   namespace name.</li>
   <li>Check all for() loops for where the `var' is initialized.</li>
-  <li>Check for single line comments styled as /* ... */</li>
+  <li>Check for single line comments styled as
+  <code>/* ... */</code></li>
 </ul>
+
+<pre>----------------------------------------</pre>
+
+<p>Pre-load an image?  Just use JavaScript and HTML 5 image loading
+like so?</p>
+
+<p><a href="http://www.htmlgoodies.com/tutorials/web_graphics/article.php/3480001">
+http://www.htmlgoodies.com/tutorials/web_graphics/article.php/3480001</a></p>
+
+<p>Great!  Image flipping, pre-render and then flip at high speed.</p>
+
+<p><a href="http://www.htmlgoodies.com/tutorials/web_graphics/article.php/3479941">
+http://www.htmlgoodies.com/tutorials/web_graphics/article.php/3479941</a></p>
+
+<p>Want to make a link open in a different window?</p>
+
+<p>Use &lt;a href="..." target="resource window"&gt;&lt;/a&gt; as one
+method.</p>
+
+<p>Use &lt;a href="..." target="_blank"&gt;&lt;/a&gt; to open in a new
+tab/window.</p>
+
+<pre>
+----------------------------------------
+
+About box
+
+If you are having problems with the web viewer, check if your browser
+meets the minimum requirements and passes the browser CSS and Event
+test suite and the JavaScript language test suite.  (Reference
+renderings at 96 DPI.)  If it is possible to workaround a bug or
+issue, send a patch to us and we will include it in the web viewer.
+
+The viewer should have virtually no problems on all browsers that meet
+the minimum requirements.  See the list of browsers known to work, and
+drop a comment if you think this is not good enough.  For lighter
+weight systems, a native application written in C is also available.
+
+----------------------------------------
+
+(At first, I thought the reason for the latitude and longitude arrays
+was because the SSH data was encoded as a sparse array.  It turned out
+that it is just uniformly arranged image data.)
+
+The SSH data are just images of a reasonable size, no special handling
+required.
+
+Earlier, I was thinking about possibly using quadtrees in the viewer.
+However, since memory allocation is considerably expensive in
+JavaScript, I've changed my mind to instead opt on using kd-trees
+exclusively, since they have the best economization on both memory
+consumption and CPU performance.
+
+----------------------------------------
+
+Need new CSS GUI test suites:
+
+Box resize check
+
+Mouse wheel check
+
+CSS compatibility: Do not use periods in element IDs.
+
+Fast and efficient way to get the current time in milliseconds:
+
+if (!Date.now) {
+  Date.now = function now() {
+    return new Date.getTime();
+  };
+}
+
+Date.now;
+
+https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/now
+
+----------------------------------------
+
+Earlier I was thinking about downloading an older version of Opera for
+compatibility testing.  However, I didn't realize that Opera is
+proprietary software.  Thus, trying to test the older versions of the
+browsers won't do, since I'd need to make minor modifications to them
+to get them to work on my systems, but being proprietary software, no
+modifications are allowed.
+
+URL for one older version of Opera, but don't bother:
+
+http://arc.opera.com/pub/opera/linux/754/final/en/i386/static/
+
+----------------------------------------
+
+Great high performance JavaScript CSV parser:
+
+https://code.google.com/p/jquery-csv/
+
+JQuery?  JQuery?!!!!  No way.  I'm not using it after all, binary data
+will do much better.
+
+----------------------------------------
+
+IE6 IE7 display: inline-block
+
+http://stackoverflow.com/questions/6544852/ie7-does-not-understand-display-inline-block
+
+JavaScript minification:
+
+Best: YUI compressor:
+
+http://yui.github.io/yuicompressor/
+
+----------------------------------------
+
+I need to fix the current problem with memory overhead.
+
+Note W3 DOM specification.  innerHTML and outerHTML, though intuitive
+and easy, are nonstandard, notably introduced by IE5.5.
+
+http://www.w3.org/DOM/
+
+http://spoken.fortybelow.ca/Browser_Scripting_101/
+
+Once I tried switching the buttons in the CSS GUI to from list
+elements to FORM buttons.  I've encountered a box sizing problem:
+
+http://stackoverflow.com/questions/6790512/button-padding-width-problem
+
+http://social.msdn.microsoft.com/Forums/sharepoint/en-US/131670eb-e08c-4ee6-9575-fe9ff1ef2561/no-focus-rectangle-on-checkboxes-or-radiobuttons?forum=sharepointdevelopmentlegacy
+
+I also need to document a possibility for an ASCII Art rendering
+backend.
+
+Why not use d3.js?  Short answer: "copy and modify" source code.
+d3.js is not already written to run on the GPU via a WebGL shader, so
+its best to work with code that I can manage rewriting for that task.
+
+Since the resolution will always be 1440x721 for this project, there
+will be no need to break up images into tiles: the resolution is low
+enough for such additional software complexity to be unjustified.
+
+----------------------------------------
+
+Code base plans
+
+Alright, let's break up the renderer and implement it:
+
+Unit testing: JsUnit, QUnit
+
+(Avoid the above frameworks, they do not maintain faithful
+cross-browser compatibility.)
+
+Discovery, design, component implementation/testing, composition.
+
+Need to have table of acronyms and abbreviations
+
+
+Good, I should be in good shape for performance counting when I use
+performance.now() on Windows systems.  Don't worry, it's a drop-in
+replacement for Date.now().
+
+Date.now() is newer than +new Date().
+
+Cite blue marble dataset in credits.
+
+----------------------------------------
+
+Video and Rendering
+
+Need to check quirksmode compatibility tables for mobile devices.
+
+GLSL shaders?  Only for big machines.
+
+http://earthobservatory.nasa.gov/Features/BlueMarble/?src=ve
+
+Would streaming video allow SSH animations?
+
+http://willus.com/author/streaming2.shtml
+
+Here's how to track pinch events:
+
+http://stackoverflow.com/questions/11183174/simplest-way-to-detect-a-pinch
+https://developer.apple.com/library/safari/documentation/UserExperience/Reference/GestureEventClassReference/GestureEvent/GestureEvent.html
+
+This is also useful:
+
+http://quirksmode.org/dom/events/resize_mobile.html
+
+todo add rendering for outline land masses
+
+----------------------------------------
+
+So now what do I need to do?
+
+1. Implement a simple JavaScript code inliner. (Done: cjs)
+
+2. Set up a build process. (Done)
+
+3. Create the kd-tree and quadtree implementations.
+
+4. Get the C++ side working.
+
+5. Get the data to a place for testing. (Done)
+
+6. Finish the code modularization. (in progress)
+
+7. Use the cross-browser shim for requestAnimationFrame. (Done)
+
+----------------------------------------
+
+So what do I need to do in order to finish up the viewer?
+
+* Clean up the compatibility code.
+
+Should center be a projection property?
+
+What is a projection property?  It's whatever you want it to be.
+
+Affline transformations have nothing to do with the projection.
+
+HTTP 1.1 Specification for XMLHttpRequest headers:
+
+http://www.w3.org/Protocols/rfc2616/rfc2616.html
+
+I need use a white background rectangle in all of the SVG images for
+web_viewer_notes.
+
+Note: The JavaDocs currently don't automatically tell you what the
+base class of classes and the types of objects are, so I'll have to
+retrofit that information into the documentation comments manually.
+
+----------------------------------------</pre>
 
 <hr />
 <!-- ________________________________________ -->
@@ -1360,6 +1590,68 @@ inserting the SVG source code verbatim.  You must use XHTML in order
 to embed an SVG image by inserting the source code verbatim;
 otherwise, you should use a script to add the SVG image during
 document loading.</p>
+
+<h3>Image Compatibility</h3>
+
+<p>Images on the web traditionally has only two compatibility
+categories: PNG and JPEG.  Generally, no other image formats are
+widely supported by web browsers.</p>
+
+<p>Although the superior JPEG 2000 format, intended to replace
+traditional JPEG, is available, there has been very little support for
+it in browsers.  These are the main reasons:</p>
+
+<ol>
+  <li>The JPEG 2000 format is generally assumed to be
+  patent-encumbered.</li>
+  <li>Even when it may seem that certain portions of the JPEG 2000
+  format have no patent risk, random companies might rise up to sue
+  random people if browser developers were to include support for JPEG
+  2000.</li>
+  <li>The JPEG 2000 format is too complex: adding all the necessary
+  code to support JPEG 2000 images into web browsers would
+  dramatically increase the binary file size of a compiled web browser
+  executable.</li>
+  <li>Due to the complexity of the JPEG 2000 format, existing
+  implementations exhibit conflicting behavior when processing the
+  same image.</li>
+</ol>
+
+<p>That's all to say that JPEG 2000 is not widely supported by modern
+web browsers.  Just don't use it.  Period.</p>
+
+<ul>
+  <li><a href="http://blog.codinghorror.com/beyond-jpeg/">
+    http://blog.codinghorror.com/beyond-jpeg/</a></li>
+  <li><a href="http://blogs.loc.gov/digitalpreservation/2013/01/is-jpeg-2000-a-preservation-risk/">
+    http://blogs.loc.gov/digitalpreservation/2013/01/is-jpeg-2000-a-preservation-risk/</a></li>
+</ul>
+
+<h3>Video Compatibility</h3>
+
+<p>Videos on the web traditionally required a plugin such as Adobe
+Flash.  With HTML 5, however, web browsers themselves were extended to
+have internal support for video playback.</p>
+
+<p>Using plugins for videos is likely going to be insufficient for
+this project, since it requires that the video data be accessible by
+the JavaScript execution context or a WebGL fragment shader.</p>
+
+<p><strong>There are only two video formats available in HTML 5 that
+have <em>marginal</em> support across modern web brosers.</strong>
+For the very latest web browsers, one format has slightly better
+support than the other:</p>
+
+<ul>
+  <li>H.254 compressed video stream within an MP4 container
+  format:</li>
+  <li>WebM</li>
+</ul>
+
+<p>One last format, OGG Theora, no longer has much support in recent
+browsers.  WebM has made it obsolete.</p>
+
+<p>TODO finish this section.</p>
 
 <h3>HTML Compatibility</h3>
 
@@ -1853,6 +2145,15 @@ the condition check of a loop.</p>
   is translated into a fast native bit block transfer, which is both
   CPU optimized in software graphics layers and has universal video
   card hardware acceleration for all computers built since 1996.</li>
+  <li>Firefox 30's line rasterization performance is slower than that
+  of Google Chrome version 35.  The main reason for this is the fact
+  that Firefox's Web API call interface is not as well optimized as
+  Google Chrome's.  However, the pure JavaScript execution performance
+  seems to be nearly identical.  Thus, one way to stablize performance
+  between Firefox and Chrome is to use a software line rasterizer, if
+  doing so improves performance.  Here's the algorithm to use:<br />
+  <a href="http://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm">
+    http://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm</a></li>
 </ul>
 
 <h3>Performance Timers</h3>
@@ -1900,6 +2201,12 @@ language to JavaScript.  Designed with performance in mind.</p>
   Viewer, this is a very minimalistic translator that can translate
   JavaScript-like code to either C/C++ or JavaScript.</li>
 </ul>
+
+<p>Note that although the Google Closure Compiler is called
+a <em>compiler</em>, it is not intended to be an <em>optimizing
+compiler</em> that performs tasks such as function inlining
+for <em>maximum execution performance</em>.  Rather, it is primarily
+a <em>JavaScript minifier</em> that removes dead code.</p>
 
 <h3>Additional resources</h3>
 

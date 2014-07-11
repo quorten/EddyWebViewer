@@ -42,21 +42,6 @@ http://lwn.net/Articles/549580/
 
 ----------------------------------------
 
-About box
-
-If you are having problems with the web viewer, check if your browser
-meets the minimum requirements and passes the browser CSS and Event
-test suite and the JavaScript language test suite.  (Reference
-renderings at 96 DPI.)  If it is possible to workaround a bug or
-issue, send a patch to us and we will include it in the web viewer.
-
-The viewer should have virtually no problems on all browsers that meet
-the minimum requirements.  See the list of browsers known to work, and
-drop a comment if you think this is not good enough.  For lighter
-weight systems, a native application written in C is also available.
-
-----------------------------------------
-
 Questions answered.
 
 Need two modes in the Eddy Web Viewer.
@@ -95,80 +80,6 @@ Woodrow Keifenheim
 So two modes: one to show eddies in motion, another to see eddies
 static, then click on an eddy to get more information.  The first mode
 is critical in importance, the second mode, not so much.
-
-----------------------------------------
-
-Pre-load an image?  Just use JavaScript and HTML 5 image loading
-like so?
-
-http://www.htmlgoodies.com/tutorials/web_graphics/article.php/3480001
-
-Great!  Image flipping, pre-render and then flip at high speed.
-
-http://www.htmlgoodies.com/tutorials/web_graphics/article.php/3479941
-
-Want to make a link open in a different window?
-
-Use <a href="..." target="resource window"></a> as one method.
-
-Use <a href="..." target="_blank"></a> to open in a new tab/window.
-
-----------
-
-Build the packed quadtrees:
-
-1. Sort all the coordinates.
-2. Scan through the coordinates in order.
-3. Keep track of coordinate spacing.
-4. When large batches of similarly spaced coordinates
-   are found, bundle them into a packed structure.  Pad out
-   any uneven space with interpolation.
-5. Build the kd-tree on the packed coordinates.
-6. Build linear interpolation reduction trees on top of the
-   kd-tree.
-7. Provide a server-side image generator to assist in sending
-   pregenerated images straight to the client for video display.
-
-It turns out that no sparse array magic will be needed on the SSH
-data.  Just process it identical to how it is done in Google Earth.
-
-----------
-
-Need new CSS GUI test suites:
-
-Box resize check
-
-Mouse wheel check
-
-CSS compatibility: Do not use periods in element IDs.
-
-Fast and efficient way to get the current time in milliseconds:
-
-if (!Date.now) {
-  Date.now = function now() {
-    return new Date.getTime();
-  };
-}
-
-Date.now;
-
-https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/now
-
-----------------------------------------
-
-Get an older version of Opera for compatibility testing:
-
-http://arc.opera.com/pub/opera/linux/754/final/en/i386/static/
-
-Oh yeah, Opera was proprietary software, so I'm not allowed to modify
-it so that it works on my system.  Too bad, no go then.
-
-Great high performance JavaScript CSV parser:
-
-https://code.google.com/p/jquery-csv/
-
-JQuery?  JQuery?!!!!  No way.  I'm not using it after all, binary data
-will do much better.
 
 ----------------------------------------
 
@@ -328,21 +239,6 @@ For me:
 * Need to alpha in/out on the tracks.
 
 * Only load the data when needed.
-
-JPEG Quality levels to consider:
-
-... just use the default.  And don't even think about JPEG 2000.
-
-http://blog.codinghorror.com/beyond-jpeg/
-http://blogs.loc.gov/digitalpreservation/2013/01/is-jpeg-2000-a-preservation-risk/
-
-Need more consistent performance between Firefox and Chrome?  Use a
-JavaScript line rasterizer.
-
-http://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm
-
-NOTE: You cannot store arbitrary data in a PNG 32-bit image since it
-will not be preserved due to premultiplied alpha.
 
 Provide control over manual/automatic sea surface height scaling.
 
@@ -990,6 +886,17 @@ Pending questions:
   will also help in that I will be able to draw the regions of the
   current polar ice caps as white on the Earth.
 
+* FFMPEG on MSI?  We'll need a reliable way to convert the image
+  frames to video data.  Video data will have the best performance
+  since it will require the least HTTP requests.
+
+* Chelton tracks?  No, we don't care about Chelton tracks at all
+  anymore.
+
+* Note the branch created to cleanup the git repository.  Hung's old
+  viewer data causes the 6 of the 10 MB in the repo files.  I should
+  be able to permanently delete the excess data files for this, too.
+
 * Eddy ID, track ID, amplitude, area, geodesic speed?  These are going
   to have to be gotten from elsewhere.
 
@@ -1051,6 +958,8 @@ In Advanced configuration
 
 Add the viewer to the navbar.
 
+----------------------------------------
+
 Useful search engine information:
 
 http://www.feedthebot.com/
@@ -1088,23 +997,9 @@ For a safe push instead, do this:
 git branch pruned
 git push origin pruned
 
-----------
-
-IE6 IE7 display: inline-block
-
-http://stackoverflow.com/questions/6544852/ie7-does-not-understand-display-inline-block
-
-JavaScript minification:
-
-Best: YUI compressor:
-
-http://yui.github.io/yuicompressor/
-
 ----------------------------------------
 
 Time to put an end to ttd-notes
-
-Memory overhead
 
 These are the basic categories that I will sort ttd-notes into:
 
@@ -1118,113 +1013,17 @@ These are the basic categories that I will sort ttd-notes into:
 
 * Thoughts, decisions, questions, answers
 
-CSS compatibility: Avoid using both "top" and "bottom" or "left" and
-"right" to define the size of a CSS box.
-
-Note W3 DOM specification.  innerHTML and outerHTML, though intuitive
-and easy, are nonstandard, notably introduced by IE5.5.
-
-http://www.w3.org/DOM/
-
-http://stackoverflow.com/questions/6790512/button-padding-width-problem
-
-http://social.msdn.microsoft.com/Forums/sharepoint/en-US/131670eb-e08c-4ee6-9575-fe9ff1ef2561/no-focus-rectangle-on-checkboxes-or-radiobuttons?forum=sharepointdevelopmentlegacy
-
-ASCII Art rendering backend.
-
-Why does not use d3.js?  Short answer: copy and modify.  d3.js is not
-already written to run on the GPU via a WebGL shader, so its best to
-work with code that I can manage rewriting for that task.
-
-Since the resolution will always be 1440x721 for this project, there
-will be no need to break up images into tiles: the resolution is low
-enough for such additional software complexity to be unjustified.
-
-Compatibility: push, pop, innerHTML, outerHTML
-
-List of JavaScript processors and their practical use.
-
-
 ----------------------------------------
 
-Code base plans
-
-Alright, let's break up the renderer and implement it:
-
-Unit testing: JsUnit, QUnit
-
-(Avoid the above frameworks, they do not maintain faithful
-cross-browser compatibility.)
-
-Discovery, design, component implementation/testing, composition.
-
-Need to have table of acronyms and abbreviations
-
-
-Good, I should be in good shape for performance counting when I use
-performance.now() on Windows systems.  Don't worry, it's a drop-in
-replacement for Date.now().
-
-Date.now() is newer than +new Date().
-
-Cite blue marble dataset.
-
-----------
-
-Video and Rendering
-
-Need to check quirksmode compatibility tables for mobile devices.
-
-GLSL shaders?  Only for big machines.
-
-http://earthobservatory.nasa.gov/Features/BlueMarble/?src=ve
-
-Would streaming video allow SSH animations?
-
-http://willus.com/author/streaming2.shtml
-
-Here's how to track pinch events:
-
-http://stackoverflow.com/questions/11183174/simplest-way-to-detect-a-pinch
-https://developer.apple.com/library/safari/documentation/UserExperience/Reference/GestureEventClassReference/GestureEvent/GestureEvent.html
-
-This is also useful:
-
-http://quirksmode.org/dom/events/resize_mobile.html
-
-todo add rendering for outline
-
-----------------------------------------
-
-So now what do I need to do?
-
-1. Implement a simple JavaScript code inliner.
-
-2. Set up a build process.
-
-3. Create the kd-tree and quadtree implementations.
-
-4. Get the C++ side working.
-
-5. Get the data to a place for testing.
-
-6. Finish the code modularization.
-
-7. Use the cross-browser shim for requestAnimationFrame.
-
-The Google Closure tools are primarily a JavaScript minifier, not an
-optimizing compiler.
-
-----------------------------------------
-
-Compatibility libraries, s
+Compatibility libraries
 
 Say how you compiled the information, i.e. miscellaneous talk on
 websearches, personal benchmarking, looking at the source code for
 fast and efficient WebGL libraries.
 
 It would have been nice had someone told me all the reasons why modern
-web browsers and websites require so much memory.  Now I know why.
+web browsers and websites require so much memory.  Now I know why:
+HTML DOM and garbage collected memory are the main reasons.
 
 And for simulating colorblind vision:
 
@@ -1282,21 +1081,4 @@ ffmpeg -threads 2 -i vidgen/ssh_%05d.jpg -r 25 -s 1440x720 \
 Proportion of lawyers versus programmers, innovation versus
 litigation.  Race to television.  JPEG troubles.
 
-----------------------------------------
-
-So what do I need to do in order to finish up the viewer?
-
-* Clean up the compatibility code.
-
-Should center be a projection property?
-
-What is a projection property?  It's whatever you want it to be.
-
-Affline transformations have nothing to do with the projection.
-
-HTTP 1.1 Specification for XMLHttpRequest headers:
-
-http://www.w3.org/Protocols/rfc2616/rfc2616.html
-
-I need use a white background rectangle in all of the SVG images for
-web_viewer_notes.
+Need to include a short introduction for developers.  /Short/ is important.

@@ -4,7 +4,8 @@
 
    Two notable large scale transformations:
 
-   * Longitude zero is shifted to the center of the image.
+   * Longitude zero is shifted from the left of the image to the
+     center of the image.
 
    * The CSV data is ordered from latitude -90 to latitude 90, whereas
      the TGA is written out as a bottom-up TGA, effectively vertically
@@ -12,16 +13,27 @@
 
    Usage: csvtotga <INPUT.dat >OUTPUT.tga
 
-   Data must be 1440x721 in dimensions, equirectangular projection,
-   sea surface height measured in centimeters.  There should be no
-   space characters before or after the commas in the CSV, newlines
-   should be Unix-style, and there should be one newline character at
-   the end of last row in the file.
+   Data must be in equirectangular projection, sea surface height
+   measured in centimeters.  There should be no space characters
+   before or after the commas in the CSV, newlines should be
+   Unix-style, and there should be one newline character at the end of
+   last row in the file.
 
 */
 
 #include <stdio.h>
 #include <stdint.h>
+
+#ifndef WIDTH
+#define WIDTH 1440
+#define HEIGHT 721
+#define BPP 24
+#endif
+
+#ifndef BITS_AFT_DEC
+#define BITS_AFT_DEC 7
+#define BITS_BEF_DEC 8
+#endif
 
 int main(void) {
   /* Write the TGA header.  */
@@ -31,12 +43,6 @@ int main(void) {
 
   /* No color map specification.  */
   putchar(0); putchar(0); putchar(0); putchar(0); putchar(0);
-
-  /* `#define' is used so that `row_buffer' below is
-     compiler-friendly.  */
-#define WIDTH 1440
-#define HEIGHT 721
-#define BPP 24
 
   { /* Image specification.  16-bit integers are stored in little
        endian in the TGA header.  */
@@ -188,7 +194,7 @@ int main(void) {
 	ics = 0;
 
       /* Write the actual pixel value.  */
-      if (bbd + bad <= 8) {
+      if (BPP == 8 || bbd + bad <= 8) {
 	/* Write out a grayscale image.  */
 	green = (out_val >> chs) << ics;
 	row_buffer[col_pos++] = green;

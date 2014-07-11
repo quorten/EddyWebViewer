@@ -696,6 +696,82 @@ difficult math.  If there is any rotation along this axis, then an
 inverse rotation can simply be used to preprocess the screen
 coordinate before backtracing it to the globe.</p>
 
+<h3>Gracefully switch between different projections</h3>
+
+<p>When switching between different projections, it is convenient to
+have the viewer display the Earth in the new projection centered at
+the same latitude and longitude, along with a scale factor such that
+the new view is as similar as possible to the old view.  Maintaining
+the same latitude and longitude at center is easy.  The scale factor,
+however, requires some more forethought.</p>
+
+<p>How do you synchronize the scale factor between orthographic and
+equirectangular projection?  Think of things this way: pretend that to
+switch from orthographic to equirectangular projection, you just cut a
+slit in the globe across the international date line and unroll the
+Earth's surface equator-wise into a flat map.  This makes
+synchronizing the scale factor fairly easy: the length of the
+equirectangular map should equal 2&pi;r, r being the radius of the
+orthographic sphere.  This scale factor synchronization mechanism can
+be used for all cylindrical projections with ease.  Non-cylindrical
+projections and projections with interruptions will require a more
+complicated scale factor synchronization mechanism.</p>
+
+<p>How do you synchronize orthographic and perspective projections?
+The trick to synchronizing with perspective projection is to treat the
+altitude as a constant and use the field of view as a compatible
+replacement for the scale factor.  When the globe fills the entire
+screen, the scale factor of a compatible orthographic projection should
+be such that the degrees of latitude and longitude contained within
+the view are held nearly constant when switching back and forth.</p>
+
+<p>When the intersection of the furthest visible rays with the globe
+is NaN (the visible globe is smaller than the size of the viewport),
+then the scale factor of a compatible orthographic projection should
+be adjusted so that the amount of the earth visible in the perspective
+projection appears at the same size in the orthographic projection.
+When viewing the Earth at a very large field of view and a very low
+altitude, the visible disc of the Earth will be less than a full
+hemisphere.  Thus, switching to orthographic projection will result in
+a larger amount of the Earth appearing around what was visible in
+perspective projection.</p>
+
+<p>Now for the equations.  It turns out that these equations are just
+as effective when done in 2D with a ray and a circle, so that is how
+the solutions will be reached.</p>
+
+<p>First, when the globe fills the entire screen, you can just use the
+2D raytracing equations as solved for above to determine the range of
+longitudes that are visible.  Simply trace a ray that corresponds to
+the edge of the field of view.</p>
+
+<p>Next, when there is spare visible space around the globe, here's
+how to find the point on the globe that is the furthest visible point
+in perspective projection.  Think about drawing a line from the focal
+point to the globe such that the point intersected on the globe is
+tangent to the surface.  Now think about drawing a line from the
+intersected point to the core of the Earth.  The two lines should be
+perpendicular, or in other words, the product of the slopes should
+equal -1.  Now for the solution:</p>
+
+<pre>
+(x_g, y_g) = point on surface of globe
+(0, y_f) = focal point
+
+(y_g - y_f) / (x_g - 0) * y_g / x_g  = -1
+(y_g^2 - y_f * y_g) / x_g^2  = -1
+y_g^2 - y_f * y_g + x_g^2  = 0
+
+x_g^2 + y_g^2 = 1
+x_g^2 = 1 - y_g^2
+
+y_g^2 - y_f * y_g + 1 - y_g^2  = 0
+-y_f * y_g + 1 = 0
+y_g = 1 / y_f</pre>
+
+<p>One the y coordinate of the point on the globe has been found, the
+longitudinal range can be trivially derived.</p>
+
 <hr />
 <!-- ________________________________________ -->
 
@@ -712,31 +788,69 @@ C++ program that generates a wireframe graticule image from ellipses
 on Wikimedia commons</a>, the C++ program comes with the following
 warning: "The expressions in this code are not proven to be correct.
 Hence this code probably contains lots of bugs.  Be aware!"  The
-following explanations describe how to do it in a mathematically sound
-way.</p>
+following explanations describe how to draw an orthographic graticule
+as a series of ellipses in a mathematically sound way.</p>
 
-<p>First, start out simple.  Assume a globe with a radius of unit
-length (1).  Looking at a globe equator-on-center, parallels are
-straight lines and meridians are ellipses.  This can be drawn with
-ease.  For the latitudes, just use <code>sin(latitude)</code> to
-determine the Y position to draw the parallels and
+<p>The following explanations assume that you have a reasonable
+background knowledge of rotation transformations.  Just to be clear,
+though, the following equations briefly explain how to rotate a point
+by "&theta;" degrees (or radians):</p>
+
+<ul>
+  <li><code>x_new = x * cos(&theta;) - y * sin(&theta;)</code></li>
+  <li><code>y_new = y * cos(&theta;) + x * sin(&theta;)</code></li>
+</ul>
+
+<p>Intuitively, if the original point has one of the x or y
+coordinates set to zero such as (1, 0) or (0, 1), the equations
+simplify to be a coordinate multiplied by only a factor
+of <code>sin(&theta;)</code> or <code>cos(&theta;)</code>.  The
+concepts underlying rotation transformations are very important in
+understanding conversions between polar coordinates and rectangular
+coordinates.  You'll have to be vigilant in recognizing whether
+a <code>sin()</code> or <code>cos()</code> function is used as a
+rotation transformation, a polar coordinate conversion, or both.  For
+example, a special case of the above equations that specifies the
+parametric equations of a circle (or conversion from polar to
+rectangular coordinates) is as follows:</p>
+
+<ul>
+  <li><code>let r = x_0 = 1</code></li>
+  <li><code>x = r * cos(&theta;)</code></li>
+  <li><code>y = r * sin(&theta;)</code></li>
+</ul>
+
+<p>Now that review matters are out of the way, here's the solution.
+First, start out simple.  Assume a globe with a radius of unit length
+(1).  Looking at a globe equator-on-center, parallels are straight
+lines and meridians are ellipses.  This can be drawn with ease.  For
+the latitudes, just use <code>sin(latitude)</code> to determine the Y
+position to draw the parallels and
 <code>2 * cos(latitude)</code> to determine the length of the line.
 For the meridians, just use <code>sin(longitude)</code> to determine
 the X-axis radius of the meridians and "1" as the Y-axis radius,
 assuming that the rotation of the globe around its pole is such that
 the prime meridian is at the center of the viewport.  Note that
-drawing an ellipse draws both the positive and negative meridian at
-the same time.</p>
+drawing a full ellipse draws both the positive and negative meridian
+at the same time.  To finish off the drawing and make it look
+complete, a circle of radius 1 centered at the origin should be drawn
+to enclose all the parallels and meridians.</p>
 
 <p>Then, looking at the globe pole-on-center, parallels are concentric
 circles around the pole, and longitudinal lines are straight lines
 intersecting at the pole.  The radius of the parallel circles can be
 found by using <code>cos(latitude)</code>, and the meridian lines are
-simply rays spaced by an equal rotational distance.</p>
+simply rays spaced by an equal rotational distance, all of which
+extend from the pole to the outermost visible parallel by a length of
+one unit.</p>
+
+<p>In both of the above cases, rotation around the pole is trivial:
+just draw the meridians at a different starting angle.  The parallels
+will not change based off of the rotation around the pole.</p>
 
 <p>The next trick is to figure out how to render the graticule
-orthograpically at positions in between these extremes.  First, think
-about drawing a line to connect the north and south poles on the
+orthographically at globe tilts in between these extremes.  First,
+think about drawing a line to connect the north and south poles on the
 globe.  When tilting the globe from equator-on-center to
 pole-on-center, the 2D distance between the north and south pole
 decreases from the diameter of the sphere to zero, exactly by
@@ -782,84 +896,165 @@ transformation.</p>
   the squashed shapes also increases from zero to a maximum when
   looking at the globe pole-on-center.</li>
   <li>The lines seen when looking at the globe pole-on-center can be
-  thought of as squashed and sheared ellipses.  When looking at the
-  globe equator-on-center, the shear factor is zero and the elliptical
-  factor is one.</li>
-  <li>The ellipses will be sheared vertically.  The equation that
-  describes this shear transformation is as follows:
-  <code>y_new = y + x * shear_factor</code>.</li>
+  thought of as vertically squashed and sheared ellipses.  When
+  looking at the globe equator-on-center, the shear factor is zero and
+  the squash factor is one.</li>
   <li>At this point, one possible way to draw the meridians is to 1)
-  squash the meridian circles horizontally then 2) shear the ellipse
-  to get the target ellipse to draw.</li>
-  <li>One challenge: How do you parameterize the sheared ellipses?
-  First for shearing a circle, it turns out that sheared circles are
-  indeed ellipses, and the major axis of the sheared ellipse always
-  runs through the diagonals of the corresponding bounding rectangle.
-  I don't know how to mathematically prove this.  I've only visually
-  verified it in a drawing program, so you're going to have to just
-  trust me on this one.</li>
-  <li>Unfortunately, the above relation does not hold for sheared
-  ellipses, only sheared circles.  However, we can look at the process
-  of drawing the meridians in a different way: Instead of squashing
-  the meridians horizontally first and then shearing vertically, we
-  could perform the transformations in the opposite order and still
-  get the same result, provided that we change each step to use the
-  correct constants.</li>
-  <li>Think back to rendering meridians
-  equator-on-center.  <code>sin(longitude)</code> defines the squash
-  factor on a circle needed to render the meridian correctly.  After
-  the shear step, the ellipses will be horizontally squashed by this
-  factor.</li>
+  squash the meridian circles horizontally and vertically then 2)
+  vertically shear the ellipse to get the target ellipse to draw.</li>
+  <li>Think back to rendering meridians equator-on-center.
+  <code>sin(longitude)</code> defines the horizontal squash factor on
+  a circle needed to render the meridian correctly.  Adding globe tilt
+  into consideration, the vertical squash factor is simply
+  <code>cos(tilt)</code>.</li>
+  <li>The equation that describes the vertical shear transformation is
+  as follows:
+  <code>y_new = y + x * shear_factor</code>.</li>
   <li>First, the shear factor is dictated by the squash factor of the
-  parallel ellipses: the shear factor should be set such
-  that <code>sin(tilt)</code> defines the maximum Y coordinate on the
-  line running through the major axis of the ellipse.  This is the
+  <em>parallel</em> ellipses: the shear factor should be set such
+  that <code>sin(tilt)</code> defines the vertical squash factor on
+  the line running through the major axis of the ellipse.  This is the
   reason why this makes mathematical sense: As was explained with
   transformation of the pole line above, rotation changes the vertical
   scale factor, which is defined by <code>sin(tilt)</code>, but
   horizontal distances remain unchanged.  <em>Shearing</em> is used
   instead of simple scaling so that the maximum Y coordinate of the
   line running through the major axis of the ellipse can be adjusted
-  to the expected value.  If the circle were pre-squashed in the
-  horizontal direction, setting the shear factor would be
-  easy:<br />
+  to the expected value.  Since the circle pre-squashed in the
+  horizontal direction, setting the shear factor is as follows:<br />
   <pre>
   shear_factor =
   /* Y extent scaling factor: */ sin(tilt) *
-  /* Y extent of major axis (tilt == 90): */ cos(longitude) /
-  /* X extent of major axis: */ sin(longitude)</pre>
-  However, the horizontal squash transformation cannot be applied
-  until after the shear transformation, so the shear factor must be
-  multiplied by the horizontal squash factor as a compensation, in
-  order to get the maximum Y extent of the major axis line to run to
-  the correct height:
-  <code>shear_factor = sin(tilt) * cos(longitude)</code>.</li>
-  <li>After the circle has been sheared, we can apply the horizontal
-  squash transformation given above: <code>sin(longitude)</code>.</li>
-  <li>Special cases that result in a divide-by-zero need to be handled
-  by simply drawing straight lines.</li>
-
-
-
-  <li>After shearing the circle, we know the angle of the major axis
-  of the sheared circle: it is the angle of one of the diagonal lines
-  through new bounding rectangle.
-  <code>angle = atan(max_y / 1)</code>.  Note that our shear
-  transformation does not change X coordinates, only Y coordinates.
-  Also note that at this step, this angle is not quite the desired
-  angle.</li>
-  <li>When we horizontally squash the ellipse, what we are essentially
-  doing is changing the angle of any non-vertical axis through the
-  ellipse by a factor that we know how to compute: .  When both of the
-  above shear and scale transformations are applied as given above, we
-  get a mathematically accurate rendering of the ellipse that should
-  be drawn corresponding to a meridian.  Note that these ellipses will
-  correspond to two longitudinal angles rather than just one.</li>
+  /* Y extent of major axis when tilt = 90: */ cos(longitude) /
+  /* X extent of major axis: */ sin(longitude)</pre></li>
+  <li>Finally, one optimization that can be performed is to apply the
+  horizontal squash transformation <em>after</em> the shear
+  transformation.  This drops the X extent correctional factor from
+  the shear factor equation as follows: <code>shear_factor = sin(tilt) *
+  cos(longitude)</code>.  It also avoids a potential divide-by-zero.</li>
+  <li>Consider an alternate process to reaching the solution.  Instead
+  of starting with a view of the globe equator-on-center, think about
+  starting with a view of the globe pole-on-center.  Approaching the
+  problem from this perspective, the first problem solving steps would
+  be to draw the lines as appearing from above simply as straight
+  lines on the equatorial plane.  When viewing such a globe
+  equator-on-center, all of the lines should lie flat and be occluded
+  by the equatorial line.  By simply using only the line that
+  corresponds to the major axis of the elliptical process above, this
+  effect can easily be achieved.  Let's overview how this process
+  works for this simplified case:
+    <ol>
+      <li>Start by drawing a straight horizontal line of length 2,
+      centered at the origin.</li>
+      <li>Vertically shear this horizontal line with
+      <code>shear_factor = sin(tilt) * cos(longitude)</code>.</li>
+      <li>Horizontally squash the sheared line by
+      <code>sin(longitude)</code>.</li>
+    </ol>
+  It should now be easily obvious that the last step to transition
+  from the above partial meridian-drawing procedure to the full
+  procedure is to start by drawing a circle with radius 1, then
+  squashing the circle vertically as appropriate for the current tilt
+  angle, then performing the last two shearing and squashing steps
+  above verbatim.</li>
 </ul>
 
-Thus, we can now successfully figure out what the angle of squashed
-major axis must be.  The lengths of the axes can be figured out
-trivially from knowledge at this problem solving step.
+<p>Although the above explanations provide a pretty good graticule
+drawing method so far, there is still one problem: this method must
+draw both the front side and the back side of the globe's graticule.
+How do you clip the elliptical arcs that correspond to the back side
+of the graticule?</p>
+
+<p>Here's the overall strategy that will be used to approach this
+problem: 1) Find a way to parameterize the great circle that divides
+the front and back sides of the globe.  2) Use that equation to
+determine points along the parallels and meridians that lie on this
+boundary to divide the lines into front pieces and back pieces.</p>
+
+<h3>Equation of a Great Circle in Polar Coordinates</h3>
+
+<p>Start by thinking in 2D.  On a 2D orthographic projected globe,
+draw a straight line that runs through the center of the image.  You
+can see that the visual halves it divides the globe into are of equal
+area.  You can also imagine that the line it slices through on the
+invisible back side of the globe must be identical to the one on the
+front side of the globe.  Thus, this line is effectively a great
+circle, if only you could define it on the 3D globe rather than just
+the 2D projection of it.</p>
+
+<p>Lucky for you, you happen to have both the forward and reverse
+projections for orthographic projection handy with you.  You can take
+the equation of this 2D line and run it through the reverse
+orthographic projection equations to get an equation that defines a
+great circle line with a specific tilt angle.</p>
+
+<pre>
+lat = asin(y)
+lon = asin(x / cos(lat))
+
+y = m * x + b
+angle = atan(m)
+m = tan(angle)
+b = 0
+
+lat = asin(tan(angle) * x)
+sin(lat) = tan(angle) * x
+sin(lat) / tan(angle) = x
+
+lon = asin(x / cos(lat))
+sin(lon) = x / cos(lat)
+sin(lon) * cos(lat) = x
+
+sin(lat) / tan(angle) = sin(lon) * cos(lat)
+sin(lat) / cos(lat) = sin(lon) * tan(angle)
+tan(lat) / tan(angle) = sin(lon)
+sin(lon) = tan(lat) / tan(angle)
+lon = &plusmn;asin(tan(lat) / tan(angle))</pre>
+
+<p>The following equations will be more useful.  Most great circles
+cover all longitudes, but many great circles do not cover all
+latitudes.</p>
+
+<pre>
+tan(lat) / tan(angle) = sin(lon)
+tan(lat) = sin(lon) * tan(angle)
+lat = atan(sin(lon) * tan(angle))</pre>
+
+<p>The following reformulation of the above equation has the best
+numeric stability:</p>
+
+<pre>
+tan(lat) = sin(lon) * sin(angle) / cos(angle)
+lat = atan2(sin(lon) * sin(angle), cos(angle))</pre>
+
+<p>Perfect!  When a line is steep longitude-wise, that means it's almost
+a meridian, which means that it doesn't need as many samples on an
+equirectangular map since it it almost just a vertical line.  In
+between shallow and steep, a line gets a good number of samples.  The
+<code>atan2()</code> function allows absolute extreme vertical to also
+be handled gracefully.</p>
+
+<p>Note that these equations always draw the great circle line such
+that it intersects the equator at the prime
+meridian.  <code>angle</code> defines the rotation around this point.
+To shift the great circle pole away from the prime meridian, just add
+or subtract the desired longitudinal amount to shift to the input
+parameter of the equation as follows:<br />
+<code>lat = atan2(sin(lon + lon_rot) * sin(angle), cos(angle))</code></p>
+
+<p>For the equation of the great circle that bounds the visible side
+of the globe, <code>lon_rot</code> should be the view's rotation
+around the pole plus 90 degrees, and <code>angle</code> should be 90
+degrees minus the tilt angle, if positive.  If the tilt angle is
+negative, then the equation should be transformed to work similarly
+for negative numbers.  Using the above equations, the latitude of a
+parallel can be plugged in to determine the longitudes that intersect
+with the edge of the visible globe.  Likewise, the longitude of a
+meridian can be plugged in to determine the latitudes that intersect
+with the edge of the visible globe.  Determining which segments are on
+the front and back after the intersection computations is trivial:
+Pick a point somewhere on the segment and test whether it is within
+the visible range of latitudes or longitudes.</p>
 
 <hr />
 <!-- ________________________________________ -->
@@ -928,85 +1123,6 @@ panels: a top panel (topbar) and a side panel (sidebar).</p>
   <li>With as many widgets as there are going to be in the user
   interface, there also needs to be a way to iconify the grouping
   boxes.</li>
-</ul>
-
-<p>These are the required controls in the CSS user interface:</p>
-
-<h4>Top panel</h4>
-
-<ul>
-  <li>Land Mass Background [combo box]
-    <ul>
-      <li>None</li>
-      <li>Silhouettes</li>
-      <li>Textured</li>
-    </ul>
-  </li>
-  <li>Sea Surface Height Palette: [combo box]
-    <ul>
-      <li>None</li>
-      <li>MATLAB</li>
-      <li>Waters</li>
-      <li>Hatches</li>
-    </ul>
-  </li>
-  <li>Earth Projection: [combo box]
-    <ul>
-      <li>Equirectangular</li>
-      <li>Mercator</li>
-      <li>Orthographic</li>
-      <li>Perspective</li>
-    </ul>
-  </li>
-  <li>Grid Line Density: Latitude, Longitude: [text edit]
-  degrees/line</li>
-  <li>Eddy Track Length/Width Ratio [text edit]</li>
-  <li>[checkbox] Wireframe Render When Scrolling</li>
-  <li>[checkbox] Land Mass Outlines When Scrolling</li>
-  <li>Oversampling Factor: [text edit]</li>
-  <li>Max. Contiguous Loop Iterations: [text edit]</li>
-</ul>
-
-<h4>Side panel</h4>
-
-<ul>
-  <li>Pan and zoom GUI controls</li>
-  <li>Projection Properties [CSS box]
-    <ul>
-      <li>Perspective
-	<ul>
-	  <li>Altitude: [text edit] kilometers</li>
-	  <li>Field of View: [text edit] degrees</li>
-	</ul>
-      </li>
-      <li>Other projections: Zoom Factor: [text edit]</li>
-    </ul>
-  </li>
-  <li>Latitude, Longitude (degrees): [text edit]</li>
-  <li>Date selection box [CSS box]
-    <ul>
-      <li>Date: [text edit] [combo box]</li>
-      <li>Begin/Prev/Next/End buttons</li>
-    </ul>
-  </li>
-  <li>Eddy Filters [CSS box]
-    <ul>
-      <li>[checkbox] Cyclonic Eddies</li>
-      <li>[checkbox] Anticyclonic Eddies</li>
-      <li>[checkbox] Chelton Tracks</li>
-      <li>Length Range (min, max): [text edit]</li>
-    </ul>
-  </li>
-  <li>Eddy Information
-    <ul>
-      <li>Eddy ID</li>
-      <li>Latitude</li>
-      <li>Longitude</li>
-      <li>Amplitude</li>
-      <li>Area</li>
-      <li>Geodesic Speed</li>
-    </ul>
-  </li>
 </ul>
 
 <h3>Renderer</h3>
@@ -1079,6 +1195,82 @@ the web viewer.</p>
 <p>--Avoid complicated OOP, this can really slow down compilers and
 static implementations.  Try to stick to fast-style coding when
 possible.</p>
+
+<p>Great advice on getting ellipses to render with constant line
+width:</p>
+
+<p><a href="http://stackoverflow.com/questions/2172798/how-to-draw-an-oval-in-html5-canvas">
+  http://stackoverflow.com/questions/2172798/how-to-draw-an-oval-in-html5-canvas</a></p>
+
+<p>Clipping does not need to be performed manually, since it will be
+done by the underlying canvas implementation as needed.</p>
+
+<p>This leaves things up to tree lookup.</p>
+
+<p>Drawing clipped polygons.  For each polygon, first determine which
+clock-winding direction corresponds to the closed polygon.  Then use
+clock-winding rule to determine interior of polygon.  Once the
+interior of the polygon has been found, draw with the two points just
+off the screen and add vertices for each screen coordinate located
+within the polygon.</p>
+
+<p>Drawing other projections:</p>
+
+<ol>
+  <li>Initialize bitmap backbuffers via unprojection tracing from the
+   target buffer pixels.</li>
+  <li>While rendering any features, transform the point by the current
+   projection.</li>
+</ol>
+
+<p>Always store relatively large render caches as tiled image buffers, up
+to a maximum size.  Must keep this small in order to preserve
+compatibility with older browsers.</p>
+
+<p>Want to link zoom factor and field of view?  Here's how.</p>
+
+<p>Calculate the radius of the projected sphere.  Field of view.</p>
+
+<p>Map orthographic to perspective.</p>
+
+<h3>HTML Validity Checklist</h3>
+
+<ul>
+  <li>Verify void tags end with " />"</li>
+  <li>Run all documents through the CSS and markup validators.</li>
+  <li>Verify all inline scripts have polyglot wrapping markers.</li>
+  <li>Verify all documents use IE6 CSS fallbacks.</li>
+  <li>Verify all CSS layouts have IE6 CSS fallback scripts.</li>
+  <li>Do not use the SVG loading image by default.</li>
+  <li>Preload GUI icon images.</li>
+  <li>Check that all the "alt" tags have reasonable text.  Either use
+  brackets or periods to delimit the end of identifiers.</li>
+  <li>Check all webpages in Lynx and w3m.</li>
+</ul>
+
+<h3>JavaScript Checklist</h3>
+
+<ul>
+  <li>Keep the identifiers in camelCase.</li>
+  <li>Parse text fields more gracefully.</li>
+  <li>Always perform error checking whenever applicable.</li>
+  <li>Use parseInt() to parse user input numbers.</li>
+  <li>Add "use strict" to all production code and test.</li>
+  <li>Avoid over-object-orientation and try to test code quickly after
+  it is written.</li>
+  <li>Benchmark the memory consumption of having a certain number of
+  JavaScript objects around, gauge "stack" variables and garbage
+  collector leftover waste.</li>
+  <li>Check for "~~" and replace with "0|".</li>
+  <li>Verify that all HTML Canvas operations are structured so as to
+  be supported on all conforming browsers.</li>
+  <li>Always use parentheses with typeof operator?  `delete' operator
+  too?</li>
+  <li>Always use document.x() and window.x() rather than the global
+  namespace name.</li>
+  <li>Check all for() loops for where the `var' is initialized.</li>
+  <li>Check for single line comments styled as /* ... */</li>
+</ul>
 
 <hr />
 <!-- ________________________________________ -->
@@ -1292,7 +1484,9 @@ JavaScript language since the very first version:</p>
   not exist in the first version of JavaScript.</li>
   <li>Strict mode was added to later versions of JavaScript, which is
   the mandatory mode for newer features introduced by newer
-  specifications.</li>
+  specifications.<br />
+  <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Functions_and_function_scope/Strict_mode">
+    https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Functions_and_function_scope/Strict_mode</a></li>
   <li>Later JavaScript runtimes feature the typed array
   extensions.</li>
 </ul>
@@ -1567,6 +1761,10 @@ the condition check of a loop.</p>
       cache, causing additional slowdowns.</li>
       <li>Try to write your web application so that the user's browser
       does not allocate more than 512 MB of memory.</li>
+      <li>Use buffering techniques to optimize the chunk sizes that
+      data are processed in, as explained in the last part of this article:<br />
+      <a href="http://www.webreference.com/programming/javascript/jkm3/index.html">
+      http://www.webreference.com/programming/javascript/jkm3/index.html</a></li>
     </ul>
   </li>
   <li>Do not write long-running loops that don't return after a couple
@@ -1577,11 +1775,10 @@ the condition check of a loop.</p>
   relative expense of copying objects and arrays has not been
   tested.</li>
   <li>Avoid nesting objects into hierarchies more than one level deep.
-  There is a high fixed cost for each hash table lookup, but the
+  The fixed cost for each hash table lookup is not cheap, but the
   lookup time within a single hash table is essentially constant, even
   on very large tables.</li>
-  <li>Avoid placing objects within the global namespace whenever
-  possible.</li>
+  <li>Avoid placing objects within the global namespace.</li>
   <li>Always use <code>window.alert()</code>, etc. instead of
   just <code>alert()</code>.</li>
   <li>Access to closure-scoped variables is not significantly slower
@@ -1589,9 +1786,9 @@ the condition check of a loop.</p>
   <a href="http://stackoverflow.com/questions/9248963/javascript-why-the-access-to-closure-variable-might-be-slow">
     http://stackoverflow.com/questions/9248963/javascript-why-the-access-to-closure-variable-might-be-slow</a></li>
   <li>If using aligned native data is an option
-  (<code>FloatArray</code>, etc.), use it when reading input data.
-  Using function calls to process and convert input data will be
-  significantly slower in comparison.</li>
+  (<code>FloatArray</code>, etc.), use it when reading binary input
+  data.  Using function calls to process and convert input data will
+  be significantly slower in comparison.</li>
   <li>Avoid DOM manipulations in performance-critical JavaScript.  For
   one example, SVG DOM performance is said to be very poor when
   working with a large number of nodes.</li>
@@ -1687,10 +1884,13 @@ language to JavaScript.  Designed with performance in mind.</p>
 <ul>
   <li><a href="http://coffeescript.org/">CoffeeScript</a> &mdash; The
   most popular language to transcompile to JavaScript.  This language
-  primarily adds syntactic sugar to JavaScript.</li>
+  primarily adds syntactic sugar to JavaScript.  It is <em>not</em> an
+  optimizing compiler, but it is included in this list for
+  completeness.</li>
   <li><a href="http://haxe.org/">Haxe</a> &mdash; A language with a
   multi-target optimizing compiler, with JavaScript and C++ targets
-  available.</a></li>
+  available.  The C++ target, however does not yield code that is as
+  efficient as can be achieved from handwritten C++.</a></li>
   <li>Cjs &mdash; Currently a sub-component of the Ocean Eddies Web
   Viewer, this is a very minimalistic translator that can translate
   JavaScript-like code to either C/C++ or JavaScript.</li>
@@ -1705,7 +1905,7 @@ near the bottom.</p>
 
 <ol>
   <li>Great performance article written by an experienced JavaScript
-  programmer and early web developer:
+  programmer and early web developer:<br />
   <a href="http://www.webreference.com/programming/javascript/jkm3/index.html">
     http://www.webreference.com/programming/javascript/jkm3/index.html</a></li>
   <li><a href="http://developer.nokia.com/community/wiki/JavaScript_Performance_Best_Practices">
@@ -1716,15 +1916,15 @@ near the bottom.</p>
     http://www.ibm.com/developerworks/library/wa-aj-jsajaxperf/index.html</a></li>
   <li><a href="http://www.html5rocks.com/en/tutorials/canvas/performance/">
       http://www.html5rocks.com/en/tutorials/canvas/performance/</a></li>
-  <li>Important root of a tree of performance-oriented links:
+  <li>Important root of a tree of performance-oriented links:<br />
   <a href="http://stackoverflow.com/questions/1246408/use-of-javascript-array-new-arrayn-declaration">
     http://stackoverflow.com/questions/1246408/use-of-javascript-array-new-arrayn-declaration</a></li>
   <li>ActionScript trigonometry lookup table implementation (you'll
-  have to convert it to JavaScript to use it):
+  have to convert it to JavaScript to use it):<br />
   <a href="http://jacksondunstan.com/articles/1190">
     http://jacksondunstan.com/articles/1190</a></li>
   <li>Haxe, a language with a multi-target optimizing compiler, one
-  of which targets is JavaScript:
+  of which targets is JavaScript:<br />
   <a href="http://en.wikipedia.org/wiki/Haxe">
     http://en.wikipedia.org/wiki/Haxe</a></li>
   <li><a href="http://stackoverflow.com/questions/18221571/haxe-compiled-code-peformance">
@@ -1733,17 +1933,9 @@ near the bottom.</p>
     http://stackoverflow.com/questions/12405471/why-does-drawimage-perform-slightly-noticeably-better-than-createpattern-in</a></li>
 </ol>
 
-<p>Haxe might not be the best solution after all for compiling to
-C/C++.  However, it can provide very good optimization features for
-JavaScript programming.</p>
-
 <!-- <p>In conclusion, best software development practices for
 structuring large scale software should be able to scale well in
 JavaScript, even on outdated interpreters.</p> -->
-
-<!-- What about buffering?  I'll have to experiment with that, but
-luckily it will be easy for my code to be written to make such
-experimentation easy.  -->
 
 <hr />
 <!-- ________________________________________ -->

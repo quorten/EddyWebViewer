@@ -98,226 +98,6 @@ is critical in importance, the second mode, not so much.
 
 ----------------------------------------
 
-Here's how to draw graticule:
-
-
-
-* Parellels get stretched around the center from being a straight line
-  equator on to being a circle pole-on.
-
-* The x-width of parallels and longitudinal lines never changes.
-
-* Longitudinal lines get progresively squashed when rotating.
-
-* Totally squashed longitudinal lines are sheared up to the edge of
-  the outer boundary circle of the globe when looking pole on.
-
-Now the only trick is to compute the shear factor of the longitudinal
-lines such that the correct effect will be achieved.
-
-First compute the intended Z-axis transfer amount to the Y-axis.  This
-will give you a length.  Shear factors operate by multiplying an X
-coordinate by a shear factor and adding it to the Y coordinate.  So if
-you know the X extend of a coordinate and you want a shear factor to
-assign that X coordinate exactly a Y coordinate, the shear factor is
-the target Y amount divided by the current X amount.  So here are the
-equations.
-
-The next challenge is to draw only the "front" lines of the graticule.
-Again, this starts with simple observations.  Looking at a globe
-equator-on, there is.
-
-One challenge: How do you parameterize the sheared ellipses?  First
-for shearing a circle, it turns out that sheared circles are indeed
-ellipses, and the major axis of the sheared ellipse always runs
-through the diagonals of the corresponding bounding rectangle.  I
-don't know how to mathematically prove this.  I've only visually
-verified it in a drawing program, so you're going to have to just
-trust me on this one.
-
-But for sheared ellipses, this fact does not hold.  However, if we
-look at the problem in a different way, instead of squashing the
-longitude lines horizontally first and then shearing vertically, we
-could perform the transformations in the opposite order and still get
-the same result, provided that we calculate the shearing correctly
-with just a normal circle.  If so, we end up knowing the major axis of
-the sheared circle.  Then when we horizontally squash the ellipse,
-what we are essentially doing is changing the angle of any
-non-vertical axis through the ellipse by a factor that we know how to
-compute.  Thus, we can now successfully figure out what the angle of
-squashed major axis must be.  The lengths of the axes can be figured
-out trivially from knowledge at this problem solving step.
-
-How do you determine which parts of latitude lines are on the front
-and back of the sphere?  First determine if the entire latitude is on
-the front or back side of the sphere.  If it is on the back, don't
-render it.  This step is fairly easy.  The next step is to .
-
-Longitude lines?  You need to determine the intersection of the
-longitude line with the outline of the sphere.  The outline of the
-sphere is a great circle line.  How do you parameterize this at
-non-trivial rotations?
-
-----------------------------------------
-
-Equation of a Great Circle in Polar Coordinates
-
-Think about the trivial case of the raytracing algorithms for
-orthographic projection.  First you start with a screen coordinate.
-asin() on the Y coordinate determines the latitude.  The longitude
-depends on both the latitude and the X coordinate, since points on a
-longitude at higher and lower latitudes are pulled tigher into the
-north and south poles of the globe.  asin(x / cos(lat)) gives you the
-longitude.  A great circle line is essentially a form of a straight
-line on the globe.  When you view a great circle straight on in
-orthographic projection, the projected line is also straight.
-
-Thus, for starters, generate a great circle line by unprojecting a
-straight line drawn on top of an orthographic projection of a sphere.
-You will get an equation parametric to the projected line.  Remove the
-parameter to get an implicit equation.
-
-In the following equations, y = latitude, x = longitude.
-
-    // Used to sample a point on the line.
-    var stepper = (i / 36 - 0.5) * 2;
-    var angle = 45 * DEG2RAD; // Angle of the great circle line
-    var y = Math.asin(stepper * Math.sin(angle));
-    var x = Math.asin(stepper * Math.cos(angle) / Math.cos(y)) *
-      RAD2DEG / 180;
-
-sin(y) = stepper * sin(angle)
-stepper = sin(y) / sin(angle)
-define y to be a known latitude
-x = asin(sin(y) / sin(angle) * cos(angle) / cos(y))
-x = asin(sin(y) / tan(angle) / cos(y))
-x = asin(tan(y) / tan(angle))
-
-y = known latitude
-x = asin(tan(y) / tan(angle))
-sin(x) = tan(y) / tan(angle)
-
-More useful.  Most great circles cover all longitudes, but many great
-circles do not cover all latitudes.
-x = known longitude
-y = atan(sin(x) * tan(angle))
-tan(y) = sin(x) * tan(angle)
-
-It becomes numerically unstable near the poles, but you also don't
-need as much numeric stability near the poles, so it works out well.
-
-tan(y) = sin(x) * sin(angle) / cos(angle)
-y = atan2(sin(x) * sin(angle), cos(angle))
-
-Perfect!  When a line is steep longitude-wise, that means its almost a
-meridian, which means that it doesn't need as many samples on an
-equirectangular map since it it almost just a vertical line.  In
-between shallow and steep, a line gets a good number of samples.  The
-atan2() function allows absolute extreme vertical to also be handled
-gracefully, even with the same algorithm.  However, care will still
-have to be taken for correct wraparound drawing.  To shift the great
-circle pole away from the prime meridian, just add or subtract the
-desired longitude.
-
-Wait, not quite perfect.  How about use a parameterization along the
-distance of the great circle line instead?
-
-sin(y) / cos(y) = sin(x) * sin(angle) / cos(angle)
-sin(y) / sin(x) = cos(y) * sin(angle) / cos(angle)
-sin(y) / sin(x) = cos(y) / cos(angle) * sin(angle)
-sin(y) * sin(x) = cos(y) / cos(angle) * sin(angle)
-
-Those equations are elegant, but numerically instable.  Let's see if
-we can do better.
-
-x = asin(sin(y) / cos(y) * cos(angle) / sin(angle))
-x = asin(sin(y) / sin(angle) * cos(angle) / cos(y))
-x = asin(cos(angle) * sin(y) / (sin(angle) * cos(y)))
-
-sin(y) * cos(angle) = 1/2 * sin(y + angle) + sin(y - angle)
-sin(angle) * cos(y) = 1/2 * sin(y + angle) - sin(y - angle)
-
-cos(angle) * sin(y) / (sin(angle) * cos(y)) =
-  (sin(y + angle) + sin(y - angle)) / (sin(y + angle) - sin(y - angle))
-
-sin(x) = o / h
-
-o = sin(y + angle) + sin(y - angle)
-h = sin(y + angle) - sin(y - angle)
-a = sqrt(h^2 - o^2)
-
-Numerically stable?  Check which of o or a are greater than each
-other.  If steep, then invert and fix afterward.
-
-x = asin(cos(angle) * sin(y) / (sin(angle) * cos(y)))
-sin(x) = cos(angle) * sin(y) / (sin(angle) * cos(y))
-sin(angle) * sin(x) * cos(y) = cos(angle) * sin(y)
-
-----------------------------------------
-
-Great advice on getting ellipses to render with constant line width:
-
-http://stackoverflow.com/questions/2172798/how-to-draw-an-oval-in-html5-canvas
-
-Clipping does not need to be performed manually, since it will be done
-by the underlying canvas implementation as needed.
-
-This leaves things up to tree lookup.
-
-Drawing clipped polygons.  For each polygon, first determine which
-clock-winding direction corresponds to the closed polygon.  Then use
-clock-winding rule to determine interior of polygon.  Once the
-interior of the polygon has been found, draw with the two points just
-off the screen and add vertices for each screen coordinate located
-within the polygon.
-
-Drawing other projections:
-
-1. Initialize bitmap backbuffers via unprojection tracing from the
-   target buffer pixels.
-
-2. While rendering any features, transform the point by the current
-   projection.
-
-Always store relatively large render caches as tiled image buffers, up
-to a maximum size.  Must keep this small in order to preserve
-compatibility with older browsers.
-
-Want to link zoom factor and field of view?  Here's how.
-
-Calculate the radius of the projected sphere.  Field of view.
-
-Map orthographic to perspective.
-
-1. Computer disp_rad.
-
-2. Raytrace a point of disp_rad out to the plane.
-
-3. You'll get something with a radius too large.
-
-Try working backwards.
-
-1. Raytrace the edge of the globe.
-
-2. You'll get a screen position and therefore the scale.
-
-x / (r + d) = x_pix / f
-
-Wait, but there are two ways of doing this!
-
-At orthographic edge: Best for small fields of view entire Earth
-visible.
-At visible edge: less surprises at high zoom levels.
-
-So I need to be able to choose between the two.
-
-Detecting browser capabilities...
-[if canvas is found]
-Benchmarking rendering performance...
-Benchmark complete.  Optimal rendering parameters selected.
-Downloading initial dataset...
-Download complete.
-
 Pre-load an image?  Just use JavaScript and HTML 5 image loading
 like so?
 
@@ -332,62 +112,6 @@ Want to make a link open in a different window?
 Use <a href="..." target="resource window"></a> as one method.
 
 Use <a href="..." target="_blank"></a> to open in a new tab/window.
-
-----------
-
-HTML validity checklist:
-
-* Verify void tags end with " />"
-
-* Run all documents through the CSS and markup validators.
-
-* Verify all inline scripts have polyglot wrapping markers.
-
-* Verify all documents use IE6 CSS fallbacks.
-
-* Verify all CSS layouts have IE6 CSS fallback scripts.
-
-* Do not use the SVG loading image by default.
-
-* Preload GUI icon images.
-
-* Check that all the "alt" tags have reasonable text.  Either use
-  brackets or periods to delimit the end of identifiers.
-
-* Check all webpages in Lynx and w3m.
-
-JavaScript checklist:
-
-* Keep the identifiers in camelCase.
-
-* Parse text fields more gracefully.
-
-* Always perform error checking whenever applicable.
-
-* Use parseInt() to parse user input numbers.
-
-* Add "use strict" to all production code and test.
-
-* Avoid over-object-orientation and try to test code quickly after it
-  is written.
-
-* Benchmark the memory consumption of having a certain number of
-  JavaScript objects around, gauge "stack" variables and garbage
-  collector leftover waste.
-
-* Check for "~~" and replace with "0|".
-
-* Verify that all HTML Canvas operations are structured so as to be
-  supported on all conforming browsers.
-
-* Always use parentheses with typeof operator?  `delete' operator too?
-
-* Always use document.x() and window.x() rather than the global
-  namespace name.
-
-* Check all for() loops for where the `var' is initialized.
-
-* Check for single line comments styled as /* ... */
 
 ----------
 
@@ -432,29 +156,6 @@ https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects
 
 ----------------------------------------
 
-Efficiently encode the Sea Surface Height
-
-Up to eight digits after the decimal point.
-Up to three digits before the decimal point.
-
-96% +- 31.999999
-
-1 11111 111111111111111111
-
-31.00005
-
-// Run through each number.
-// If it exceeds +- 32, then clamp it to the maximum.
-// Or set it to NaN (-32).  Need a good way to encode this with JPEG.
-// Shift left by 2^18.
-// Convert to integer for fixed point.
-// Write three low order bytes, one at a time, into target byte order.
-// Write out image.
-// Send it through JPEG compressor.
-// Separate PNG compressed info map.
-
-----------------------------------------
-
 Get an older version of Opera for compatibility testing:
 
 http://arc.opera.com/pub/opera/linux/754/final/en/i386/static/
@@ -466,21 +167,10 @@ Great high performance JavaScript CSV parser:
 
 https://code.google.com/p/jquery-csv/
 
+JQuery?  JQuery?!!!!  No way.  I'm not using it after all, binary data
+will do much better.
+
 ----------------------------------------
-
-So what do I need to do in order to finish up the viewer?
-
-* Implement some render layers.  Do some testing.
-
-* Clean up the compatibility code.
-
-* Finish the slim GUI.
-
-Should center be a projection property?
-
-What is a projection property?
-
-Affline transformations have nothing to do with the projection.
 
 Questions to ask Woodrow and James:
 
@@ -491,7 +181,7 @@ Questions to ask Woodrow and James:
 * Do you want your SSH pixels nice and square or do you prefer
   bilinear interpolation smoothing?
 
-* Resolution?  720x1440 for the current SSH data.
+* Resolution?  1440x721 for the current SSH data.
 
 * How do the smallest size eddy tracks compare with the SSH
   resolution?
@@ -577,10 +267,6 @@ Things for me to do:
 * Multiple color schemes on the SSH RenderLayer.
 
 * Interlaced raytracer.
-
-HTTP 1.1 Specification for XMLHttpRequest headers:
-
-http://www.w3.org/Protocols/rfc2616/rfc2616.html
 
 Answers:
 
@@ -1578,3 +1264,36 @@ time permits me to add this or not.
 
 Need developer center hub of links to good sites, then the rest of the
 information follows.
+
+Why not use SSH image tiling?  Not enough data for that to be
+necessary.
+
+Video encode the SSH data:
+
+ffmpeg -threads 2 -i vidgen/ssh_%05d.jpg -r 25 -s 1440x720 \
+  -b 16000k ssh.ogv
+
+ffmpeg -threads 2 -i vidgen/ssh_%05d.jpg -r 25 -s 1440x720 \
+  -vcodec mpeg4 -b 16000k ssh.mp4
+
+* Since canvas is linked to window size, you can simply listen for
+  onresize events to repaint the canvas.
+
+Proportion of lawyers versus programmers, innovation versus
+litigation.  Race to television.  JPEG troubles.
+
+----------------------------------------
+
+So what do I need to do in order to finish up the viewer?
+
+* Clean up the compatibility code.
+
+Should center be a projection property?
+
+What is a projection property?  It's whatever you want it to be.
+
+Affline transformations have nothing to do with the projection.
+
+HTTP 1.1 Specification for XMLHttpRequest headers:
+
+http://www.w3.org/Protocols/rfc2616/rfc2616.html

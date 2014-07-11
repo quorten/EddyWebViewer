@@ -1,4 +1,4 @@
-CPP = cpp
+CPP = cpp # C preprocessor
 cjs_dir = ../libs/cjs
 SOURCES = triglut.js oevns.js oevmath.js cothread.js renderlayer.js \
 	projector.js trackslayer.js sshlayer.js csv.js compat.js \
@@ -21,6 +21,10 @@ docs: docbundle.js
 
 docbundle.js: doc.hjs
 	$(cjs_dir)/hjssmash.sh $< -o $@
+
+sshdata: ../data
+	FMT=jpg sh ./sshproc.sh
+	FMT=png sh ./sshproc.sh
 
 install: bundle.js
 	mkdir -p ../htdocs

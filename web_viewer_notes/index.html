@@ -1046,21 +1046,26 @@ parameter of the equation as follows:<br />
 of the globe, <code>lon_rot</code> should be the view's rotation
 around the pole plus 90 degrees, and <code>angle</code> should be 90
 degrees minus the tilt angle, if positive.  If the tilt angle is
-negative, then the equation should be transformed to work similarly
-for negative numbers.  Using the above equations, the latitude of a
-parallel can be plugged in to determine the longitudes that intersect
-with the edge of the visible globe.  Likewise, the longitude of a
-meridian can be plugged in to determine the latitudes that intersect
-with the edge of the visible globe.  Determining which segments are on
-the front and back after the intersection computations is trivial:
-Pick a point somewhere on the segment and test whether it is within
-the visible range of latitudes or longitudes.</p>
+negative, then the <code>angle</code> should be -90 degrees plus the
+tilt angle.  Using the above equations, the longitude of a meridian
+can be plugged in to determine the latitudes that intersect with the
+edge of the visible globe.  Likewise, the latitude of a parallel can
+be plugged in to determine the longitudes that intersect with the edge
+of the visible globe; however, special handling must be done for tilts
+of -90, 0, and 90 degrees.  Determining which segments are on the
+front and back after the intersection computations is trivial: Pick a
+point somewhere on the segment and test whether it is within the
+visible range of latitudes or longitudes.</p>
 
 <hr />
 <!-- ________________________________________ -->
 
 <h2><a name="imp_center" id="imp_center">
     Implementation Center</a></h2>
+
+<p>This is where helpful notes pertaining to the implementation are
+stored.  Some of these notes are only needed during the intermediate
+development stages of the implementation.</p>
 
 <p>Overall, the implementation of the web viewer is divided into three
 main areas: the CSS user interface (GUI), the renderer, and data

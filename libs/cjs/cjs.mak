@@ -11,13 +11,21 @@ TARGETS = $(SOURCES:.js=.hjs)
 .js.hjs:
 	$(cjs_dir)/hjsprep.sh $< -o $@
 
-%.hjs.d: %.hjs $(TARGETS)
-	@set -e; rm -f $@; \
-	  $(CPP) -M $< > $@; \
-	  sed -i -e 's,\($*\)\.hjs,\1.js,g' \
-	  -e 's,\($*\)\.o[ :]*,\1.hjs $@ : ,g' $@;
+.hjs.hjs.d: $(TARGETS)
+	@set -e; $(CPP) -M $< | \
+	  sed -e 's,\($*\)\.hjs,\1.js,g' \
+	    -e 's,\($*\)\.o[ :]*,\1.hjs $@ : ,g' >$@
 
+# Note: This include line only works in GNU Make.
 include $(TARGETS:.hjs=.hjs.d)
+
+# BSD Make uses the following alternate syntax:
+# .include "$(FILE1_HJSD)"
+# .include "$(FILE2_HJSD)"
+# ...
+
+# Additionally, non-GNU makes cannot automatically generate a missing
+# makefile.
 
 clean::
 	rm -f *.hjs *.hjs.d

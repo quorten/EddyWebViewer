@@ -42,6 +42,8 @@
       Projections</a></li>
   <li><a href="#draw_graticule">
       Drawing an Orthographic Graticule as Ellipses</a></li>
+  <li><a href="#tracks_format">
+      Optimized Eddy Tracks Storage Format</a></li>
   <li><a href="#imp_center">
       Implementation Center</a></li>
   <li><a href="#comp_center">
@@ -1060,6 +1062,141 @@ visible range of latitudes or longitudes.</p>
 <hr />
 <!-- ________________________________________ -->
 
+<h2><a name="tracks_format" id="tracks_format">
+    Optimized Eddy Tracks Storage Format</a></h2>
+
+<p>In the first version of the web viewer, the eddy tracks were stored
+as a simple series of nested arrays in JSON format.  This was the
+structure of the JSON files:</p>
+
+<ol>
+  <li>Top level: [ list of tracks ]</li>
+  <li>track: [ list of eddies ]</li>
+  <li>eddy: [ latitude, longitude, date_index, eddy_index ]</li>
+  <li>Date indexes start from one, not zero.</li>
+</ol>
+
+<p>Unfortunately, this had many problems associated with it.</p>
+
+<ul>
+  <li>The variable length JSON fields made for a file that could not
+  be accessed in random order.  The JSON file had to be read and
+  parsed in its entirety.</li>
+  <li>Optimized rendering is not possible without browser-side tree
+  building.</li>
+</ul>
+
+<p>However, the advantage at the time was that the format was easy and
+simple to put together.  Thus, it made it possible to push an alpha
+version of the web viewer before the viewer was actually finished.</p>
+
+<p>The easiest solution to the random access problem is to pad each
+field out to be an equal byte length.  Storing the data in a binary
+numeric format would help alleviate the burden on excess storage space
+and download time.  However, it would also make for tremendously slow
+data parsing on browsers that do not support the typed arrays
+JavaScript extensions.</p>
+
+<h3>Building the Tree</h3>
+
+<p>For the tree building problem, the analysis is a bit more
+complicated.  At a first glance, it seems that there are two
+possibilities: quadtrees/octrees and kd-trees.  Quadtrees/octrees can
+have O(1) lookup time, but kd-trees have O(log n) lookup time.  For
+memory consumption, quadtrees/octrees consume O(n + b) memory (the
+total memory consumed is the memory consumed from all the original
+data points plus the bucketing structure of the quadtree/octree),
+while kd-trees consume O(n) memory, exactly the same amount of memory
+it takes to store the data points literally.  Between the two general
+choices of quadtrees/octrees versus kd-trees, all hands are down for a
+kd-tree.  Why?  Because JavaScript is a garbage-collected language,
+any and all memory allocations are going to be considerably expensive.
+All minimizations on memory consumption are likely to translate
+directly to faster performance because of a twofold reason: 1) not as
+much garbage will accumulate in the program's working set and 2) a
+smaller overall working set will fit better in the CPU cache memory.
+For low-memory devices, a smaller working set translates to dramatic
+performance improvements, sometimes making the difference between
+having a usable program versus not being able to run the program at
+all.  Thus, even though kd-trees have longer lookup times, the lower
+memory consumption is their big win, and the lookup time is well
+justified at O(log n).</p>
+
+<p>Now that a tree building algorithm has been picked, how should the
+data be built into the tree?  The most natural choice would be to
+build the eddies into the tree, since they are just points.  Each eddy
+has a latitude, longitude, and date, so a three-dimensional kd-tree
+can be built using these metrics.</p>
+
+<p>However, this poses one problem: It would be nice to arrange the
+data such that chronologically-early data points are downloaded first.
+A kd-tree does not yield a perfect ordering in this regard.  The
+solution to this problem starts with sorting eddies by date.  All
+eddies on the same date will be grouped together.  Within each date
+grouping, build the eddies into a 2D kd-tree based off of the latitude
+and longitude.  Lookup time on this structure will be O(log(n) +
+log(n)) = O(log n).  Thus, performance of a group of 2D kd-trees
+sorted by date is identical to that of a 3D kd-tree, except that there
+may be a different constant on the asymptotic runtime.</p>
+
+<p>The kd-trees are stored as a binary-search style tree: The root
+element is approximately in the middle of the array.</p>
+
+<p>For efficient network transmission, the track connectivity
+information is stored as a singly-linked list as follows.  Each eddy
+has a "next" pointer that indicates the next eddy in the track.  If
+the pointer points backwards, than that indicates that the current
+eddy is the end of the track, and the "next" eddy is actually the
+beginning of the track.  All "pointers" are actually stored as indexes
+relative to the current eddy index, since this allows for smaller
+integers with less digits.  Once the data have been downloaded, "prev"
+pointers can be created and relative indexes can be converted to
+absolute indexes.</p>
+
+<h3>Rendering from the Tree</h3>
+
+<p>To render from the eddy tracks data structure, start by picking the
+kd-tree at the current date.  The next step is to do a kd-tree
+traversal until the selected partition in the kd-tree is the smallest
+possible partition that entirely surrounds the viewport rectangle.
+This partition of the kd-tree corresponds to the potentially visibile
+set of eddies to render at the current date.</p>
+
+<p>Proceed by traversing the forward and reverse pointers to find the
+eddies on the adjacent dates that are on the same tracks.  Once all
+the visible eddies are found, draw lines to connect the eddies in the
+visible tracks.</p>
+
+<p>Unfortunately, there are a few problems with the above simplified
+procedure:</p>
+
+<ul>
+  <li>Some of the eddies further forward or backward in time along the
+  track may not be within the visible bounding box.  These points can
+  be clipped if necessary.</li>
+  <li>Suppose there is a track with an eddy on the current date, but
+  not within the visible region.  Other eddies along the same track
+  might cross through the visible region, but they won't end up
+  getting rendered.  Perhaps the best way to solve this problem is to
+  use track-level bounding boxes.</li>
+  <li>Some track segments may be "oversized"; that is, both endpoints
+  of the segment are outside of the visible bounding box, yet the
+  segment crosses through the bounding box and thus should be visible.
+  In addition to the above solution of using track-level bounding
+  boxes, another solution would be to create a secondary tree that
+  lists oversized lines that cross through lower levels of the
+  kd-tree.</li>
+</ul>
+
+<p>Finally, one last option is to just avoid the entire optimized
+rendering tree build process and just generate a random-access index
+to prepend to the tracks data.  It will also be more convenient to
+have the tracks stored in only one file or format.  I guess I could
+use additional header data for that.</p>
+
+<hr />
+<!-- ________________________________________ -->
+
 <h2><a name="imp_center" id="imp_center">
     Implementation Center</a></h2>
 
@@ -1278,6 +1415,65 @@ compatibility with older browsers.</p>
   <code>/* ... */</code></li>
 </ul>
 
+<h3>Reference Documentation</h3>
+
+<p>These are the major reference documentation sources that I've
+consulted to put together.  Some of the information in the following
+sources is very hard to find on the general Internet.</p>
+
+<h4>Mozilla Developer Network: Web Platform</h4>
+
+<p><a href="https://developer.mozilla.org/en-US/docs/Web">
+  https://developer.mozilla.org/en-US/docs/Web</a></p>
+
+<p>Contains basically all documentation you'll ever need for modern
+web development.</p>
+
+<h4>HTTP 1.1 Specification</h4>
+
+<p><a href="http://www.w3.org/Protocols/rfc2616/rfc2616.html">
+    http://www.w3.org/Protocols/rfc2616/rfc2616.html</a></p>
+
+<p>The HTTP 1.1 Specification is useful for constructing
+XMLHttpRequest objects.</p>
+
+<h4>Microsoft Windows Server 2003 R2 Platform SDK.</h4>
+
+<p><a href="http://en.wikipedia.org/wiki/Microsoft_Windows_SDK">
+  http://en.wikipedia.org/wiki/Microsoft_Windows_SDK</a></p>
+
+<p>Useful for information on web development for Internet Explorer
+versions 4-6.  Since this information has been removed from the
+current web version of the MSDN library, you'll have to download the
+above Windows PSDK to gain access to the information.  I can't provide
+a URL to Microsoft's website since Microsoft's keeps changing/deleting
+content from their website.  Wikipedia is currently (as of 2014) the
+best online source for download links to reference.  You can also
+probably buy used CDs of the platform SDK from Ebay.  Once you've got
+access to a copy of the information, to actually view the information,
+you'll need a sufficiently Windows-compatible environment to run the
+help viewers that come with the PSDK, or you'll need to figure out how
+to extract the HTML from the bundled help file formats.  Tough luck,
+but that's Microsoft for you.</p>
+
+<h4>Computer Graphics Concepts and Technologies</h4>
+
+<p>Sorry, but I can't provide sources for this information.  The
+related parts of this program builds upon too many years of experience
+for me to recommend only a single source.  You're going to have to
+search for relevant books/documents yourself.  You should be familiar
+with the following concepts/technologies:</p>
+
+<ul>
+  <li>3D transformations, transformation matrices</li>
+  <li>Perspective projection</li>
+  <li>Hidden geometry culling/clipping</li>
+  <li>Binary Space Partitioning (BSP) trees</li>
+  <li>Quadtrees/octrees and kd-trees</li>
+  <li>OpenGL programming</li>
+  <li>OpenGL vertex shaders and fragment shaders</li>
+</ul>
+
 <pre>----------------------------------------</pre>
 
 <p>Pre-load an image?  Just use JavaScript and HTML 5 image loading
@@ -1354,19 +1550,6 @@ https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects
 
 ----------------------------------------
 
-Earlier I was thinking about downloading an older version of Opera for
-compatibility testing.  However, I didn't realize that Opera is
-proprietary software.  Thus, trying to test the older versions of the
-browsers won't do, since I'd need to make minor modifications to them
-to get them to work on my systems, but being proprietary software, no
-modifications are allowed.
-
-URL for one older version of Opera, but don't bother:
-
-http://arc.opera.com/pub/opera/linux/754/final/en/i386/static/
-
-----------------------------------------
-
 Great high performance JavaScript CSV parser:
 
 https://code.google.com/p/jquery-csv/
@@ -1376,33 +1559,14 @@ will do much better.
 
 ----------------------------------------
 
-IE6 IE7 display: inline-block
-
-http://stackoverflow.com/questions/6544852/ie7-does-not-understand-display-inline-block
-
-JavaScript minification:
-
-Best: YUI compressor:
-
-http://yui.github.io/yuicompressor/
-
-----------------------------------------
-
-I need to fix the current problem with memory overhead.
-
-Note W3 DOM specification.  innerHTML and outerHTML, though intuitive
-and easy, are nonstandard, notably introduced by IE5.5.
-
-http://www.w3.org/DOM/
-
-http://spoken.fortybelow.ca/Browser_Scripting_101/
-
 Once I tried switching the buttons in the CSS GUI to from list
 elements to FORM buttons.  I've encountered a box sizing problem:
 
 http://stackoverflow.com/questions/6790512/button-padding-width-problem
 
-http://social.msdn.microsoft.com/Forums/sharepoint/en-US/131670eb-e08c-4ee6-9575-fe9ff1ef2561/no-focus-rectangle-on-checkboxes-or-radiobuttons?forum=sharepointdevelopmentlegacy
+http://social.msdn.microsoft.com/Forums/sharepoint/en-US/
+131670eb-e08c-4ee6-9575-fe9ff1ef2561/
+no-focus-rectangle-on-checkboxes-or-radiobuttons?forum=sharepointdevelopmentlegacy
 
 I also need to document a possibility for an ASCII Art rendering
 backend.
@@ -1466,44 +1630,212 @@ todo add rendering for outline land masses
 
 ----------------------------------------
 
-So now what do I need to do?
+Want a nice, translucent background on a CSS element?
 
-1. Implement a simple JavaScript code inliner. (Done: cjs)
+http://robertnyman.com/2010/01/11/css-background-transparency-without-affecting-child-elements-through-rgba-and-filters/
 
-2. Set up a build process. (Done)
+Wow!  Here's another way to include images inline:
 
-3. Create the kd-tree and quadtree implementations.
+http://css-tricks.com/data-uris/
+http://css-tricks.com/32766/
+http://css-tricks.com/snippets/htaccess/active-gzip-compression/
 
-4. Get the C++ side working.
+Unfortunately, IE 5-7 does not support this.
 
-5. Get the data to a place for testing. (Done)
+If the user's browser doesn't support this, the data will have to be
+routed back to the user via the server.  Luckily, most people do not
+use browsers that are too old to have support, so this will not impose
+undue burden on the server.
 
-6. Finish the code modularization. (in progress)
+Great!  This is even better to finish things off:
 
-7. Use the cross-browser shim for requestAnimationFrame. (Done)
+http://www.xarg.org/2010/03/generate-client-side-png-files-using-javascript/
+http://www.xarg.org/download/pnglib.js
+
+Plus, it's even reported to have faster per-pixel manipulation than
+HTML Canvas!  Execpt at large sizes...
+
+Take note: For better speed, use brower's base64encode:
+
+this.getBase64 = function() {
+return window.btoa(this.getDump());
+}
+
+Plus, this also has the added advantage of an efficient 8-bit image
+copying mechanism.  So you could generate an image 8-bit inline and
+work with that with this library.  But... read from an 8-bit
+downloaded image?  Not so much.
+
+I should improve the library so that it includes fast single pass
+stream encoding.  Multiple loops incur extra overhead.
 
 ----------------------------------------
 
-So what do I need to do in order to finish up the viewer?
+Can you check the loading progress of an image created via new
+Image()?  Not quite... sort of, but only with modern browsers.
 
-* Clean up the compatibility code.
+http://stackoverflow.com/questions/14218607/javascript-loading-progress-of-an-image
 
-Should center be a projection property?
+----------------------------------------
 
-What is a projection property?  It's whatever you want it to be.
+Could this be the solution to the problem of Internet Explorer giving
+me extra space underneath the iconBtns?
 
-Affline transformations have nothing to do with the projection.
+http://bonrouge.com/br.php?page=faq#img-gap
+http://www.sitepoint.com/forums/showthread.php?249148-IE-puts-extra-space-at-bottom-of-image-in-a-div
 
-HTTP 1.1 Specification for XMLHttpRequest headers:
+That will do it.  But wow, that sure is a strange way to do it, very
+non-CSS like in order to get the IE-style box model to work.
 
-http://www.w3.org/Protocols/rfc2616/rfc2616.html
+----------------------------------------
 
-I need use a white background rectangle in all of the SVG images for
-web_viewer_notes.
+Web Workers can be used for multiprocessing.
 
-Note: The JavaDocs currently don't automatically tell you what the
-base class of classes and the types of objects are, so I'll have to
-retrofit that information into the documentation comments manually.
+However, Web Workers will be of limited applicability, since passing
+data back and forth to a Web Worker is non-trivial and efficient data
+transfers are not available on Firefox 3.6.
+
+----------------------------------------
+
+Performance optimization: Go through my code and change all constants
+to #define and likewise for inline functions.
+
+----------------------------------------
+
+Additions to the CSS GUI:
+
+* Use a page-turning calendar icon with a white top band for the
+  "current date" field.
+
+* Use a compass icon for the "Latitude, Longitude" field.
+
+* Add drop-down sliders to all numeric configurable fields.  The
+  drop-down slider allows both click-and-drag and arrow panning, like
+  a scrollbar.  Also add vertical precision slider too.
+
+** Do not waste screen space to add this advanced option.  Make the
+   user double-click on the label to get to this.
+
+** Start by displaying a blue shaded circle in the center of the
+   screen.  The popup info displays the modal status and allows the
+   user to exit by clicking on the X.  When the user clicks and drags
+   on the blue dot, the popup is updated with the scale, current
+   value, etc.
+
+* Separate min and max track lengths.
+
+"trademark" continuous variable value adjuster.  I'll have to see if
+time permits me to add this or not.
+
+----------------------------------------
+
+Just to reiterate.  These are the forms of progressive raytrace
+rendering that I need to implement:
+
+* "Interlaced" rendering: Starting at a minimum resolution, render at
+  progressively higher resolutions.  Must verify that browser can use
+  nearest pixel sampling, though.
+
+* "Center" rendering: Render a small portion of the center at full
+  resolution, then progressively render the surrounding areas.
+
+Perhaps I should also make the preemption interval user-configurable,
+though the default should be good for most people who have modern
+systems.
+
+I also must absolutely implement storing the configuration within the
+address bar hash fragment.  This feature proves to be invaluable for
+communicating with others.
+
+Think about how you would implement the GPU code... for each separate
+rendering projection, you would implement a separate fragment shader.
+Why be afraid to do the same with JavaScript.  Sure, you can have the
+modular implementation, slow but easy for development, and you can
+have the fast implementation, the one that uses only a dedicated
+projection method.  All of the projection methods would be implemented
+as macros for either way, of course.  Although math function calls are
+okay, try to minimize user-code function calls in inner loops.  Don't
+worry about scalar variable definitions, it will be okay as long as
+you periodically return from the code to allow the garbage collector
+to operate.
+
+----------------------------------------
+
+Need a coding scratch space?  Got one right here.
+
+Iterations to timeout algorithm:
+
+/* Dynamically determine a goal number of iterations to run in order to
+   reach the target timeout, based off of the number of iterations that
+   could be performed in the previous cothread duration.  */
+
+/* The main benefit of this cothreading mechanism is that it avoids
+   expensive calls to Date.now() during the inner loop.  */
+
+var timeout = this.timeout;
+var lastElapTime = this.lastElapTime;
+var lastNumIters = this.lastNumIters
+var numIters = lastNumIters * timeout / lastElapTime;
+var timeoutIter = this.i + numIters;
+
+lastTime = Date.now();
+
+for (; i < timeoutIter && condition; i++) {
+}
+
+lastElapTime = Date.now() - lastTime;
+lastNumIters = numIters;
+
+/* The above algorithm can also be nested within a loop that calls
+   Date.now() on every iteration.  */
+
+Buffering data:
+loadData() handles this.
+
+Cothread dispatcher:
+
+Note that it is possible to use an array of cothreads that still have
+work to do and only call those cothreads.  For simplicity, however,
+cothreads are a always called to continueCT() until there is no work
+left to do.  Only event handlers call start().
+
+cumStatus = CothreadStatus.FINISHED;
+renderReady = setViewport();
+addStatus = loadData.continueCT(maybeAddToBuffer);
+if (addStatus) cumStatus = addStatus;
+if (renderReady)
+  render.continueCT();
+
+if (cumStatus != CothreadStatus.FINISHED)
+  return setTimeout(browserTime);
+
+----------------------------------------
+
+Useful search engine information:
+
+http://www.feedthebot.com/
+http://googlewebmastercentral.blogspot.com/2007/02/discover-your-links.html
+http://en.wikipedia.org/wiki/Attention_economy
+http://en.wikipedia.org/wiki/Nofollow
+
+----------------------------------------
+
+Video encode the SSH data:
+
+ffmpeg -threads 2 -r 25 -i vidgen/ssh_%05d.jpg -r 25 -s 1440x720 \
+  -b 16000k ssh.ogv
+
+ffmpeg -threads 2 -r 25 -i vidgen/ssh_%05d.jpg -r 25 -s 1440x720 \
+  -vcodec mpeg4 -b 16000k ssh.mp4
+
+* Since canvas is linked to window size, you can simply listen for
+  onresize events to repaint the canvas.
+
+----------------------------------------
+
+And for simulating colorblind vision:
+
+http://vischeck.com/
 
 ----------------------------------------</pre>
 
@@ -1633,25 +1965,68 @@ web browsers.  Just don't use it.  Period.</p>
 Flash.  With HTML 5, however, web browsers themselves were extended to
 have internal support for video playback.</p>
 
-<p>Using plugins for videos is likely going to be insufficient for
-this project, since it requires that the video data be accessible by
-the JavaScript execution context or a WebGL fragment shader.</p>
+<p>Using plugins for video on older browsers is likely going to be
+insufficient for this project, since it requires that the video data
+be accessible by the JavaScript execution context or a WebGL fragment
+shader.</p>
 
 <p><strong>There are only two video formats available in HTML 5 that
 have <em>marginal</em> support across modern web brosers.</strong>
 For the very latest web browsers, one format has slightly better
-support than the other:</p>
+support than the rest:</p>
 
 <ul>
-  <li>H.254 compressed video stream within an MP4 container
-  format:</li>
+  <li>H.264 compressed video stream within an MP4 container</li>
   <li>WebM</li>
+  <li>OGG Theora</li>
 </ul>
 
-<p>One last format, OGG Theora, no longer has much support in recent
-browsers.  WebM has made it obsolete.</p>
+<p>H.264 is the only video codec supported by modern versions of
+Internet Explorer (IE 10 or later).  Compared to the other vieo
+formats, it has the best compression.  It also comes with the price of
+patents.  Thus, WebM was created as an open-source alternative to the
+patent encumbered H.264 video codec.  OGG Theora no longer has much
+support in recent browsers: WebM has made it obsolete.  However, it is
+the only video format supported by older versions of Firefox such as
+Firefox 3.6.</p>
 
-<p>TODO finish this section.</p>
+<h4>Patent Status</h4>
+
+<p>Business as usual, non-trivial multimedia formats are patent
+encumbered, and this includes <em>all</em> of the above video
+formats.</p>
+
+<p>The H.264 codec requires patent royalties for encoding and
+decoding.  The MPEG LA organization administers the royalties from
+this patent pool (and also handles litigation of infringers).
+However, these patents are primarily used to chase down large
+companies selling millions of copies of software: the price for an
+encoding license for one software unit is on the order
+of <strong>$2</strong>.  Thus, it's unlikely that this will create any
+problems for individual use by small time researchers in an
+oceanographer's niche subject.</p>
+
+<p>In the past, MPEG LA was claiming that the both WebM and OGG Theora
+has been infringing its patent pool.  However, in 2013, MPEG LA agreed
+to license the patents relevant to the WebM format to Google "under a
+'perpetual, transferable, royalty free license'.  This means,
+effectively, that all known patents on the WebM format are licensed to
+everyone for free."<br />
+<a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Supported_media_formats">
+    https://developer.mozilla.org/en-US/docs/Web/HTML/Supported_media_formats</a><br /></p>
+
+<p>The VP8 codec used in WebM is a newer version (i.e. enhanced
+derivative) of the Theora video codec.  Thus, for all practical
+purposes, the above patent licensure for WebM also applies to OGG
+Theora.</p>
+
+<p>To summarize, patents will not be an issue for encoding the SSH
+background as a video for the Eddy Web Viewer.</p>
+
+<ul>
+  <li><a href="http://en.wikipedia.org/wiki/MPEG_LA">
+  http://en.wikipedia.org/wiki/MPEG_LA</a></li>
+</ul>
 
 <h3>HTML Compatibility</h3>
 
@@ -1714,9 +2089,9 @@ limitations in Internet Explorer 6:</p>
   <li>You probably cannot go further back in time to support DHTML and
   JavaScript on a browser earlier than Internet Explorer 5.5.</li>
   <li>The display style "<code>inline-block</code>" is incomplete and
-  buggy in IE6.  Often times, you can get the intended effect if you
-  use "<code>inline</code>" instead, but only if you use it in a
-  stylesheet definition, not an inline style definition.</li>
+  buggy in IE6 and IE7.  Often times, you can get the intended effect
+  if you use "<code>inline</code>" instead, but only if you use it in
+  a stylesheet definition, not an inline style definition.</li>
   <li>Centering an element both horizontally and vertically in a way
   that is cross-browser to IE6 requires the techniques described in
   the following link:<br />
@@ -1760,6 +2135,8 @@ limitations in Internet Explorer 6:</p>
 <ul>
   <li><a href="http://stackoverflow.com/questions/4359848/in-ie6-what-are-the-alternatives-to-display-inline-block-table-table-row-ta">
       http://stackoverflow.com/questions/4359848/in-ie6-what-are-the-alternatives-to-display-inline-block-table-table-row-ta</a></li>
+  <li><a href="http://stackoverflow.com/questions/6544852/ie7-does-not-understand-display-inline-block">
+      http://stackoverflow.com/questions/6544852/ie7-does-not-understand-display-inline-block</a></li>
   <li><a href="http://www.positioniseverything.net/explorer/expandingboxbug.html">
       http://www.positioniseverything.net/explorer/expandingboxbug.html</a></li>
   <li><a href="http://www.webcredible.com/blog-reports/css/internet-explorer.shtml">
@@ -1851,6 +2228,24 @@ browser <em>forever</em>.</p>
 <p>Note that the builders that come with the cross-browser libraries
 above are mostly there for web developers who are not using JavaScript
 minifiers that can automatically remove dead code.</p>
+
+<h4>Miscellaneous</h4>
+
+<p>Note: The innerHTML and outerHTML properties, though intuitive and
+easy, are nonstandard, notably introduced by IE5.5.</p>
+
+<p><a href="http://spoken.fortybelow.ca/Browser_Scripting_101/">
+    http://spoken.fortybelow.ca/Browser_Scripting_101/</a></p>
+
+<p>Rather than using using these properties, consider using the
+standardized HTML DOM mechanism.  If, for example, you would like to
+add plain text within an element, you must first create a text node,
+then use <code>element.appendChild()</code> to insert the text node in
+the parent element.<br />
+  <a href="http://www.w3.org/DOM/">http://www.w3.org/DOM/</a></p>
+
+<p>(The information above is also available in Mozilla Developer
+Network.)</p>
 
 <h4>Additional cross-browser articles</h4>
 
@@ -2044,9 +2439,8 @@ the condition check of a loop.</p>
   <li>Since JavaScript is a garbage collected language, it will have a
   lot of issues with excessive memory consumption.
     <ul>
-      <li>The #1 best way to deal with these issues is to simply write
-      your web application so that it does not require a very large
-      working set.</li>
+      <li>The #1 best way to deal with these issues is to simply use
+      less memory.</li>
       <li>After the first optimization has been verified, avoid
       creating and deleting objects as a means to change the value of
       a variable, since this increases memory fragmentation and waste.
@@ -2055,7 +2449,7 @@ the condition check of a loop.</p>
       memory can have dramatic performance penalties.  Additionally,
       any memory wasted by the JavaScript runtime also reduces the
       amount of the script's actual working set that can fit in the
-      cache, causing additional slowdowns.</li>
+      CPU cache, causing additional slowdowns.</li>
       <li>Try to write your web application so that the user's browser
       does not allocate more than 512 MB of memory.</li>
       <li>Use buffering techniques to optimize the chunk sizes that
@@ -2088,7 +2482,9 @@ the condition check of a loop.</p>
   be significantly slower in comparison.</li>
   <li>Avoid DOM manipulations in performance-critical JavaScript.  For
   one example, SVG DOM performance is said to be very poor when
-  working with a large number of nodes.</li>
+  working with a large number of nodes.  Also, when changing CSS
+  inline styles, use the <code>style.cssText</code> property to change
+  multiple styles at once.</li>
   <li>Some browsers optimize certain Web API calls more than others.
   Avoid as many Web API calls as possible in performance-critical
   JavaScript.</li>
@@ -2107,8 +2503,8 @@ the condition check of a loop.</p>
   <li>Use a JavaScript minifier on your JavaScript bundles to improve
   JavaScript download time.
     <ul>
-      <li>YUI Compressor (easiest to install and good compression):
-      <a href="http://yui.github.io/yuicompressor/">
+      <li>YUI Compressor (easiest to install and good compression
+      ratio): <a href="http://yui.github.io/yuicompressor/">
 	http://yui.github.io/yuicompressor/</a></li>
       <li>Google Closure Compiler:
       <a href="https://developers.google.com/closure/compiler/">
@@ -2245,9 +2641,10 @@ near the bottom.</p>
     http://stackoverflow.com/questions/12405471/why-does-drawimage-perform-slightly-noticeably-better-than-createpattern-in</a></li>
 </ol>
 
-<!-- <p>In conclusion, best software development practices for
-structuring large scale software should be able to scale well in
-JavaScript, even on outdated interpreters.</p> -->
+<p>Thanks to the Mozilla Developer Network's WebGL page for providing
+links to high performance JavaScript libraries.  The source code of
+the libraries has helped me come to consensus on performance best
+practices.</p>
 
 <hr />
 <!-- ________________________________________ -->

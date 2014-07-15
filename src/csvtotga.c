@@ -10,32 +10,167 @@
    * The CSV data is ordered from latitude -90 to latitude 90, whereas
      the TGA is written out as a bottom-up TGA, effectively vertically
      reversing the SSH image.
-
-   Usage: csvtotga <INPUT.dat >OUTPUT.tga
-
-   Data must be in equirectangular projection, sea surface height
-   measured in centimeters.  There should be no space characters
-   before or after the commas in the CSV, newlines should be
-   Unix-style, and there should be one newline character at the end of
-   last row in the file.
-
 */
 
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <stdint.h>
+#include <alloca.h>
 
-#ifndef WIDTH
-#define WIDTH 1440
-#define HEIGHT 721
-#define BPP 24
-#endif
+int main(int argc, char *argv[]) {
+  unsigned int width = 1440, height = 721, bpp = 24;
+  unsigned int bbd, bad, overflow, chanflow, noise_margin = 0;
 
-#ifndef BITS_AFT_DEC
-#define BITS_AFT_DEC 7
-#define BITS_BEF_DEC 8
-#endif
+  /* The two most important user parameters.  */
+  bbd = 8; /* Bits Before Decimal */
+  bad = 7; /* Bits After Decimal.  18 for max detail (and worst JPEG
+	      compression due to high noise), 7 preferred for high
+	      detail.  */
 
-int main(void) {
+  { /* Check if the command line is valid.  */
+    int help = 0;
+    if (argc == 2 && (!strcmp(argv[1], "-h") || !strcmp(argv[1], "--help")))
+      help = 1;
+    if (argc > 4)
+      help = -1;
+    if (help == 1) {
+      printf("Usage: %s [WxHxD] [B.A] [OPTIONS] <INPUT.dat >OUTPUT.tga\n\n",
+	     argv[0]);
+      puts(
+"`[]' delimits optional parameters.  Capital letters represent the\n"
+"parameters described below:\n"
+"\n"
+"    W    Width of the input data (default 1440)\n"
+"    H    Height of the input data (default 721)\n"
+"    D    Bits per pixel of the output image (default 24)\n"
+"    B    Bits before decimal to store for each output SSH sample (default 8)\n"
+"    A    Bits after decimal to store for each output SSH sample (default 7)\n"
+"\n"
+"Options:\n"
+"  -mM    Noise margin to add to minimum SSH value.  Used to evade\n"
+"         JPEG noise problems when encoding NaN as absolute zero.\n"
+"\n"
+"Input data must be in equirectangular projection, sea surface height\n"
+"measured in centimeters.  There should be no space characters\n"
+"before or after the commas in the CSV, newlines should be\n"
+"Unix-style, and there should be one newline character at the end of\n"
+"last row in the file.");
+      return 0;
+    } else if (help == -1) {
+      fprintf(stderr,
+	      "%s: Invalid command line.\n"
+	      "Type `%s --help' for command line usage.\n",
+	      argv[0], argv[0]);
+      return 1;
+    }
+  }
+
+  /* Additional options:
+
+    -os -obbw -osw
+
+    -cbbw -csw
+
+    -r7-0:23-16 -g7-0:15-8 -b7-0:7-0
+  */
+
+  { /* Parse the command line arguments.  */
+    /* Variables that keep track of which segments were specified.  */
+    int dims_spec = 0, bits_spec = 0;
+    char *prog_name = *argv++;
+    while (--argc > 0) {
+      if ((*argv)[0] == '-') {
+  	switch ((*argv)[1]) {
+  	case 'm': noise_margin = atoi(*argv + 2); break;
+
+	case 'o':
+	  if (!strcmp(*argv + 2, "s"))
+	    overflow = 2;
+	  else if (!strcmp(*argv + 2, "bbw"))
+	    overflow = 1;
+	  else if (!strcmp(*argv + 2, "sw"))
+	    overflow = 0;
+	  else
+	    goto invalid_option;
+	  break;
+
+	case 'c':
+	  else if (!strcmp(*argv + 2, "bbw"))
+	    chanflow = 1;
+	  else if (!strcmp(*argv + 2, "sw"))
+	    chanflow = 0;
+	  else
+	    goto invalid_option;
+	  break;
+
+  	default: invalid_option:
+  	  fprintf(stderr, "%s: Error: Invalid option: %s\n",
+  		  prog_name, *argv);
+  	  return 1;
+  	}
+      }
+
+      else if (strchr(*argv, 'x') != NULL) {
+  	char *str_width = *argv;
+  	char *str_height = strchr(*argv, 'x') + 1;
+  	char *str_bpp = strchr(str_height, 'x');
+
+  	if (dims_spec) {
+  	  fprintf(stderr,
+  		  "%s: Error: Multiple dimension specifications found.\n",
+  		  prog_name);
+  	  return 1;
+  	}
+  	dims_spec = 1;
+
+  	*(str_height - 1) = '\0';
+  	width = atoi(str_width);
+
+  	if (str_bpp != NULL) {
+  	  *str_bpp++ = '\0';
+  	  bpp = atoi(str_bpp);
+  	}
+
+  	height = atoi(str_height);
+
+      } else if (strchr(*argv, '.') != NULL) {
+  	char *str_bbd = *argv;
+  	char *str_bad = strchr(*argv, '.');
+
+  	if (bits_spec) {
+  	  fprintf(stderr,
+  		  "%s: Error: Multiple precision specifications found.\n",
+  		  prog_name);
+  	  return 1;
+  	}
+  	bits_spec = 1;
+
+  	*str_bad++ = '\0';
+  	bbd = atoi(str_bbd);
+  	bad = atoi(str_bad);
+      }
+
+      argv++;
+    }
+
+    if (bbd + bad > bpp) {
+      fprintf(stderr,
+"%s: Error: The requested number of bits before and after decimal\n"
+"exceeds the bit depth.\n",
+	      prog_name);
+      return 1;
+    }
+
+    if (bpp != 8 && bpp != 24) {
+      fprintf(stderr, "%s: Error: Unsupported bit depth.\n", prog_name);
+      return 1;
+    }
+
+    if (bbd + bad <= 8)
+      bpp = 8;
+  }
+
   /* Write the TGA header.  */
   putchar(0); /* ID length */
   putchar(0); /* Color map type (none) */
@@ -49,8 +184,8 @@ int main(void) {
     uint16_t xorg = 0, yorg = 0;
 #define PUT_SHORT(var) putchar(var & 0xff); putchar((var >> 8) & 0xff)
     PUT_SHORT(xorg);  PUT_SHORT(yorg);
-    PUT_SHORT(WIDTH); PUT_SHORT(HEIGHT);
-    putchar(BPP);
+    PUT_SHORT(width); PUT_SHORT(height);
+    putchar(bpp);
     /* Image descriptor.  When this is just set to zero the first row
        of pixels start at the bottom of the TGA and continue upward.
        Add 32 for top-down TGA.
@@ -58,27 +193,20 @@ int main(void) {
     putchar(0);
   }
 
-  {
+  { /* Convert the data.  */
     float in_val;
 
     /* `row_buffer' is used so that we can shift longitude zero to be
        at the center of the image.  */
-#define ROWB_SIZE WIDTH * (BPP >> 3)
-    unsigned char row_buffer[ROWB_SIZE];
-    unsigned int col_start = (WIDTH / 2) * (BPP >> 3);
+    unsigned int rowb_size = width * (bpp >> 3);
+    unsigned char *row_buffer = (unsigned char*)alloca(rowb_size);
+    unsigned int col_start = (width / 2) * (bpp >> 3);
     unsigned int col_pos = col_start;
 
     while (scanf("%f", &in_val) != EOF) {
       unsigned int out_val;
-      unsigned int bad, bbd, overflow, chs, ics;
+      unsigned int overflow, chs, ics;
       unsigned char blue, green, red;
-
-      /* The two most important user parameters.  The sum of these
-	 parameters must not exceed 24.  */
-      bad = BITS_AFT_DEC; /* Bits After Decimal.  18 for max detail
-			     (and worst JPEG compression due to high
-			     noise), 7 preferred for high detail.  */
-      bbd = BITS_BEF_DEC; /* Bits Before Decimal */
 
       /* Shift the desired number of bits after the decimal to be
 	 before the decimal.  */
@@ -93,22 +221,20 @@ int main(void) {
 	int max = (1 << (bbd - 1 + bad)) - 1;
 	int min = -max; /* Reserve the largest negative for NaN.  */
 
-	/* 24 must be added to evade JPEG noise problems at the
-	   minimum.  */
-	min += 24;
-	/* As a compensatory measure, the value range will be shifted
-	   up by 12.  */
-	out_val += 12; tout_val = out_val;
+	/* The largest negative is reserved for NaN.  In order to
+	   avoid JPEG noise problems, move the minimum upward by the
+	   noise margin (if any).  */
+	/* NOTE: noise_margin is assumed to be only useful for 8-bit
+	   grayscale JPEG images that use saturating overflow.  */
+	min += noise_margin;
+	/* As a compensatory measure to make sure the range reduction
+	   in both the maximum and minimum values are equal, the
+	   stored value will be shifted up by half of the noise
+	   margin.  */
+	out_val += noise_margin / 2; tout_val = out_val;
 
 	if (tout_val > max) out_val = (unsigned int)max;
 	if (tout_val < min) out_val = (unsigned int)min;
-      }
-
-      if (overflow != 2) {
-	/* The largest negative is reserved for NaN.  In order to
-	   avoid JPEG noise problems, shift the entire value range up
-	   by 12.  */
-	/* out_val += 12; */
       }
 
       /* Shift value zero to be at the middle of the unsigned value
@@ -166,13 +292,16 @@ int main(void) {
 	chs = 0;
       } */
 
-      /* BounceBack Wrap: If the bit before a byte is 1, make the byte
-	 wrap from 255 downward to zero rather than wrap directly to
-	 zero for visual smoothness (better JPEG compression).  */
-      if (chs < 8 && green & 0x01)
-	blue = ~blue;
-      if (chs < 16 && red & 0x01)
-	green = ~green;
+      if (chanflow == 1) {
+	/* BounceBack Wrap: If the bit before a byte is 1, make the
+	   byte wrap from 255 downward to zero rather than wrap
+	   directly to zero for visual smoothness (better JPEG
+	   compression).  */
+	if (chs < 8 && green & 0x01)
+	  blue = ~blue;
+	if (chs < 16 && red & 0x01)
+	  green = ~green;
+      }
 
       /* Internal Channel Shift: If not all the bits in a channel are
 	 used, shift the partial bits of a channel to be the most
@@ -194,21 +323,17 @@ int main(void) {
 	ics = 0;
 
       /* Write the actual pixel value.  */
-      if (BPP == 8 || bbd + bad <= 8) {
-	/* Write out a grayscale image.  */
-	green = (out_val >> chs) << ics;
-	row_buffer[col_pos++] = green;
-	row_buffer[col_pos++] = green;
-	row_buffer[col_pos++] = green;
-	col_pos %= ROWB_SIZE;
+      if (bpp == 8) {
+	row_buffer[col_pos++] = (out_val >> chs) << ics;
+	col_pos %= rowb_size;
       } else {
 	row_buffer[col_pos++] = blue;
 	row_buffer[col_pos++] = green;
 	row_buffer[col_pos++] = red;
-	col_pos %= ROWB_SIZE;
+	col_pos %= rowb_size;
       }
       if (col_pos == col_start)
-	fwrite(&row_buffer, ROWB_SIZE, 1, stdout);
+	fwrite(row_buffer, rowb_size, 1, stdout);
 
       getchar(); /* Ignore the delimeter that follows.  */
     }

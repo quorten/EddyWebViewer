@@ -23,8 +23,7 @@ docbundle.js: doc.hjs
 	$(cjs_dir)/hjssmash.sh $< -o $@
 
 sshdata: ../data
-	FMT=jpg sh ./sshproc.sh
-	FMT=png sh ./sshproc.sh
+	CLASSES='jpgssh pngssh' ./sshproc.sh
 
 install: bundle.js
 	mkdir -p ../htdocs

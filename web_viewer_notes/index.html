@@ -1613,10 +1613,6 @@ GLSL shaders?  Only for big machines.
 
 http://earthobservatory.nasa.gov/Features/BlueMarble/?src=ve
 
-Would streaming video allow SSH animations?
-
-http://willus.com/author/streaming2.shtml
-
 Here's how to track pinch events:
 
 http://stackoverflow.com/questions/11183174/simplest-way-to-detect-a-pinch
@@ -1820,13 +1816,23 @@ http://en.wikipedia.org/wiki/Nofollow
 
 ----------------------------------------
 
+Would streaming video allow SSH animations?
+
+http://willus.com/author/streaming2.shtml
+
 Video encode the SSH data:
 
 ffmpeg -threads 2 -r 25 -i vidgen/ssh_%05d.jpg -r 25 -s 1440x720 \
   -b 16000k ssh.ogv
 
 ffmpeg -threads 2 -r 25 -i vidgen/ssh_%05d.jpg -r 25 -s 1440x720 \
-  -vcodec mpeg4 -b 16000k ssh.mp4
+  -b 16000k ssh.webm
+
+ffmpeg -threads 2 -r 25 -i vidgen/ssh_%05d.jpg -r 25 -s 1440x720 \
+  -vcodec libx264 -b 16000k ssh.mp4
+
+ffmpeg -threads 2 -r 25 -i vidgen/ssh_%05d.jpg -r 25 -s 1440x720 \
+  -vcodec h264 -b 16000k ssh.mp4
 
 * Since canvas is linked to window size, you can simply listen for
   onresize events to repaint the canvas.
@@ -1982,13 +1988,13 @@ support than the rest:</p>
 </ul>
 
 <p>H.264 is the only video codec supported by modern versions of
-Internet Explorer (IE 10 or later).  Compared to the other vieo
+Internet Explorer (IE 10 or later).  Compared to the other video
 formats, it has the best compression.  It also comes with the price of
-patents.  Thus, WebM was created as an open-source alternative to the
-patent encumbered H.264 video codec.  OGG Theora no longer has much
-support in recent browsers: WebM has made it obsolete.  However, it is
-the only video format supported by older versions of Firefox such as
-Firefox 3.6.</p>
+patents, though.  Thus, WebM was created as an open-source alternative
+to the patent encumbered H.264 video codec.  OGG Theora no longer has
+much support in recent browsers: WebM has made it obsolete.  However,
+it is the only video format supported by older versions of Firefox
+such as Firefox 3.6.</p>
 
 <h4>Patent Status</h4>
 
@@ -2001,10 +2007,9 @@ decoding.  The MPEG LA organization administers the royalties from
 this patent pool (and also handles litigation of infringers).
 However, these patents are primarily used to chase down large
 companies selling millions of copies of software: the price for an
-encoding license for one software unit is on the order
-of <strong>$2</strong>.  Thus, it's unlikely that this will create any
-problems for individual use by small time researchers in an
-oceanographer's niche subject.</p>
+encoding license for one software unit is on the order of $2.  Thus,
+it's unlikely that this will create any problems for individual use by
+small time researchers in an oceanographer's niche subject.</p>
 
 <p>In the past, MPEG LA was claiming that the both WebM and OGG Theora
 have been infringing its patent pool.  However, in 2013, MPEG LA

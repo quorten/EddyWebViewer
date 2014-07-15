@@ -1,27 +1,77 @@
 #! /bin/sh
 # Batch convert CSV SSH data to image-format SSH data.
 
-if [ -z "$FMT" ]; then
-    FMT=jpg
-fi
+setclass()
+{
+  # NOTE: From my experience, breaking up a number and storing its
+  # additional bits in separate color channels does not work very well
+  # with JPEG/video compression.  Thus, only 8-bit formats are used for
+  # JPEG and video targets.
 
-if [ "$FMT" = "png" ]; then
-    cc -DBITS_BEF_DEC=8 -DBITS_AFT_DEC=7 csvtotga.c -o csvtotga
-else # JPG
-    cc -DBITS_BEF_DEC=6 -DBITS_AFT_DEC=2 csvtotga.c -o csvtotga
-fi
+  # 7 bits after the decimal for SSH data points is the maximum useful
+  # level of detail for 1440x721 SSH images.  For higher resolution SSH
+  # images, though, a larger number of bits after the decimal would
+  # become relevant.
 
+  case "$CLASS" in
+    pngssh)
+      FMT=png
+    ;;
+    jpgssh)
+      FMT=jpg
+      BITS_BEF_DEC=6
+      BITS_AFT_DEC=2
+      NOISE_MARGIN=24
+    ;;
+    # Pre-Video SSH
+    pvssh)
+      FMT=png
+      BITS_BEF_DEC=6
+      BITS_AFT_DEC=2
+      NOISE_MARGIN=24
+    ;;
+    *) echo "$0: Unknown SSH conversion class." >/dev/stderr; exit 1 ;;
+  esac
+
+  if [ -z "$NOISE_MARGIN" ]; then
+    NOISE_MARGIN=0
+  fi
+}
+
+cc csvtotga.c -o csvtotga
 trap "rm csvtotga" EXIT
 
+if [ -z "$CLASSES" ]; then
+  CLASSES=pngssh
+fi
 if [ -n "$FAST" ]; then
   DATES=19921014
 else
   DATES=`cat ../data/dates.dat`
 fi
 
+# Write out the format files for each SSH conversion class.
+for CLASS in $CLASSES; do
+  setclass
+  mkdir -p ../data/${CLASS}ssh
+  cat >../data/${CLASS}ssh/format.json <<EOF
+{
+  "format": ${FMT},
+  "bitsBefDec": ${BITS_BEF_DEC},
+  "bitsAftDec": ${BITS_AFT_DEC},
+  "noiseMargin": ${NOISE_MARGIN}
+}
+EOF
+done
+
+# Convert each SSH frame for each conversion class.
 for date in $DATES; do
-  ./csvtotga <../data/SSH/ssh_${date}.dat | \
-    convert tga:- ../data/${FMT}ssh/ssh_${date}.${FMT}
+  for CLASS in $CLASSES; do
+    setclass
+    ./csvtotga $BITS_BEF_DEC.$BITS_AFT_DEC -m$NOISE_MARGIN \
+      <../data/SSH/ssh_${date}.dat | \
+      convert tga:- ../data/${CLASS}ssh/ssh_${date}.${FMT}
+  done
 
   # Note: Web browsers cannot reliably work with PNGs that has an
   # unassociated alpha channel, but this would be the option to

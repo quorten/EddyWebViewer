@@ -22,11 +22,11 @@
      pagecolor="#ffffff"
      bordercolor="#666666"
      borderopacity="1.0"
-     inkscape:pageopacity="1"
+     inkscape:pageopacity="0"
      inkscape:pageshadow="2"
-     inkscape:zoom="2"
-     inkscape:cx="55.3657"
-     inkscape:cy="40.165108"
+     inkscape:zoom="1.3069307"
+     inkscape:cx="97.196572"
+     inkscape:cy="67.759483"
      inkscape:document-units="px"
      inkscape:current-layer="layer1"
      showgrid="false"
@@ -35,7 +35,7 @@
      inkscape:guide-bbox="true"
      inkscape:window-width="1244"
      inkscape:window-height="768"
-     inkscape:window-x="24"
+     inkscape:window-x="0"
      inkscape:window-y="0"
      inkscape:window-maximized="0"
      inkscape:snap-global="true"
@@ -61,6 +61,13 @@
      inkscape:groupmode="layer"
      id="layer1"
      transform="translate(0,-951.36218)">
+    <rect
+       style="fill:#ffffff;fill-opacity:1;stroke:none"
+       id="rect3012"
+       width="202"
+       height="101"
+       x="0"
+       y="951.36218" />
     <path
        sodipodi:type="arc"
        style="fill:none;stroke:#808080;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none"

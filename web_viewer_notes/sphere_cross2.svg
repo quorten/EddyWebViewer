@@ -22,7 +22,7 @@
      pagecolor="#ffffff"
      bordercolor="#666666"
      borderopacity="1.0"
-     inkscape:pageopacity="1"
+     inkscape:pageopacity="0"
      inkscape:pageshadow="2"
      inkscape:zoom="2"
      inkscape:cx="99.926847"
@@ -35,7 +35,7 @@
      inkscape:guide-bbox="true"
      inkscape:window-width="1244"
      inkscape:window-height="768"
-     inkscape:window-x="24"
+     inkscape:window-x="0"
      inkscape:window-y="0"
      inkscape:window-maximized="0"
      inkscape:snap-global="true"
@@ -62,6 +62,14 @@
      inkscape:groupmode="layer"
      id="layer1"
      transform="translate(0,-951.36218)">
+    <rect
+       style="fill:#ffffff;fill-opacity:1;stroke:none"
+       id="rect3799"
+       width="202"
+       height="101"
+       x="0"
+       y="0"
+       transform="translate(0,951.36218)" />
     <path
        style="fill:none;stroke:#808080;stroke-width:1px;stroke-linecap:round;stroke-linejoin:round;stroke-opacity:1"
        d="M 17.875,50.50002 184.125,50.5"

@@ -22,22 +22,22 @@
      pagecolor="#ffffff"
      bordercolor="#666666"
      borderopacity="1.0"
-     inkscape:pageopacity="1"
+     inkscape:pageopacity="0"
      inkscape:pageshadow="2"
      inkscape:zoom="2"
      inkscape:cx="105.50102"
-     inkscape:cy="111.32648"
+     inkscape:cy="110.32648"
      inkscape:document-units="px"
      inkscape:current-layer="layer1"
      showgrid="false"
      objecttolerance="20"
      showguides="true"
      inkscape:guide-bbox="true"
-     inkscape:window-width="1280"
-     inkscape:window-height="742"
+     inkscape:window-width="1268"
+     inkscape:window-height="744"
      inkscape:window-x="0"
-     inkscape:window-y="0"
-     inkscape:window-maximized="1"
+     inkscape:window-y="24"
+     inkscape:window-maximized="0"
      inkscape:snap-global="true"
      inkscape:object-paths="false"
      inkscape:object-nodes="false" />
@@ -57,6 +57,13 @@
      inkscape:groupmode="layer"
      id="layer1"
      transform="translate(0,-826.36218)">
+    <rect
+       style="fill:#ffffff;fill-opacity:1;stroke:none"
+       id="rect3012"
+       width="226"
+       height="226"
+       x="0"
+       y="826.36218" />
     <g
        id="g2819"
        transform="matrix(0.95108312,0.30893511,-0.30893511,0.95108312,310.84979,3.3352214)">

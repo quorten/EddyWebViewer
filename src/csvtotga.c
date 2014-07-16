@@ -10,6 +10,13 @@
    * The CSV data is ordered from latitude -90 to latitude 90, whereas
      the TGA is written out as a bottom-up TGA, effectively vertically
      reversing the SSH image.
+
+   Input data must be in equirectangular projection, sea surface
+   height measured in centimeters.  There should be no space
+   characters before or after the commas in the CSV, newlines should
+   be Unix-style, and there should be one newline character at the end
+   of last row in the file.
+
 */
 
 #include <stdio.h>
@@ -20,15 +27,17 @@
 
 int main(int argc, char *argv[]) {
   unsigned int width = 1440, height = 721, bpp = 24;
-  unsigned int bbd, bad, overflow, chanflow, noise_margin = 0;
 
   /* The two most important user parameters.  */
-  bbd = 8; /* Bits Before Decimal */
-  bad = 7; /* Bits After Decimal.  18 for max detail (and worst JPEG
-	      compression due to high noise), 7 preferred for high
-	      detail.  */
+  unsigned int bbd = 8; /* Bits Before Decimal */
+  unsigned int bad = 7; /* Bits After Decimal.  18 for max detail (and
+			   worst JPEG compression due to high noise),
+			   7 preferred for high detail.  */
 
-  { /* Check if the command line is valid.  */
+  unsigned int overflow = 2, noise_margin = 0, chs = 1, ics = 1,
+    bitsplit = 0, chanflow = 1;
+
+  { /* Check if the command line is valid, or display help.  */
     int help = 0;
     if (argc == 2 && (!strcmp(argv[1], "-h") || !strcmp(argv[1], "--help")))
       help = 1;
@@ -43,19 +52,17 @@ int main(int argc, char *argv[]) {
 "\n"
 "    W    Width of the input data (default 1440)\n"
 "    H    Height of the input data (default 721)\n"
-"    D    Bits per pixel of the output image (default 24)\n"
+"    D    Bits per pixel of the output image (optional, default 24)\n"
 "    B    Bits before decimal to store for each output SSH sample (default 8)\n"
 "    A    Bits after decimal to store for each output SSH sample (default 7)\n"
 "\n"
-"Options:\n"
-"  -mM    Noise margin to add to minimum SSH value.  Used to evade\n"
-"         JPEG noise problems when encoding NaN as absolute zero.\n"
-"\n"
-"Input data must be in equirectangular projection, sea surface height\n"
-"measured in centimeters.  There should be no space characters\n"
-"before or after the commas in the CSV, newlines should be\n"
-"Unix-style, and there should be one newline character at the end of\n"
-"last row in the file.");
+"Options (see the source code for more details):\n"
+"  -mM    Noise margin (default 0)"
+"  -hH    Channel shift: (default 1)\n"
+"  -iI    Internal channel shift: (default 1)\n"
+"  -pP    Bit split: (default 0)\n"
+"  -cC    Channel flow: Integer specifying a boolean value (default 1)\n"
+"  -oO    Overflow: Integer specifying a boolean value (default 2)");
       return 0;
     } else if (help == -1) {
       fprintf(stderr,
@@ -66,15 +73,6 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  /* Additional options:
-
-    -os -obbw -osw
-
-    -cbbw -csw
-
-    -r7-0:23-16 -g7-0:15-8 -b7-0:7-0
-  */
-
   { /* Parse the command line arguments.  */
     /* Variables that keep track of which segments were specified.  */
     int dims_spec = 0, bits_spec = 0;
@@ -83,28 +81,13 @@ int main(int argc, char *argv[]) {
       if ((*argv)[0] == '-') {
   	switch ((*argv)[1]) {
   	case 'm': noise_margin = atoi(*argv + 2); break;
+	case 'h': chs = atoi(*argv + 2); break;
+	case 'i': ics = atoi(*argv + 2); break;
+	case 'p': bitsplit = atoi(*argv + 2); break;
+	case 'c': chanflow = atoi(*argv + 2); break;
+	case 'o': overflow = atoi(*argv + 2); break;
 
-	case 'o':
-	  if (!strcmp(*argv + 2, "s"))
-	    overflow = 2;
-	  else if (!strcmp(*argv + 2, "bbw"))
-	    overflow = 1;
-	  else if (!strcmp(*argv + 2, "sw"))
-	    overflow = 0;
-	  else
-	    goto invalid_option;
-	  break;
-
-	case 'c':
-	  else if (!strcmp(*argv + 2, "bbw"))
-	    chanflow = 1;
-	  else if (!strcmp(*argv + 2, "sw"))
-	    chanflow = 0;
-	  else
-	    goto invalid_option;
-	  break;
-
-  	default: invalid_option:
+  	default:
   	  fprintf(stderr, "%s: Error: Invalid option: %s\n",
   		  prog_name, *argv);
   	  return 1;
@@ -167,8 +150,20 @@ int main(int argc, char *argv[]) {
       return 1;
     }
 
-    if (bbd + bad <= 8)
+    if (bbd + bad <= 8) {
       bpp = 8;
+      chs = 0;
+    }
+
+    if (bitsplit) {
+      chs = 12;
+      if (bbd + bad != 12) {
+	fprintf(stderr,
+		"%s: Error: Bitsplit can only be used with 12-bit formats.\n",
+		prog_name);
+	return 1;
+      }
+    }
   }
 
   /* Write the TGA header.  */
@@ -205,8 +200,7 @@ int main(int argc, char *argv[]) {
 
     while (scanf("%f", &in_val) != EOF) {
       unsigned int out_val;
-      unsigned int overflow, chs, ics;
-      unsigned char blue, green, red;
+      unsigned char red, green, blue;
 
       /* Shift the desired number of bits after the decimal to be
 	 before the decimal.  */
@@ -263,7 +257,7 @@ int main(int argc, char *argv[]) {
 	 channels.  This can result in greater detail appearing in the
 	 JPEG image.  (JPEG assumes that pure blue will appear dimmer
 	 and hence require less luminance detail.)  */
-      chs = 1;
+
       /* Option I: Shift so that the most significant bit is the first
 	 bit of the red channel.  */
       if (chs == 1 && bbd + bad <= 24)
@@ -285,12 +279,12 @@ int main(int argc, char *argv[]) {
       /* Bit Split: Only use upper 4 most significant bits per
 	 channel.  Only works with 12-bit fixed point formats.  Not
 	 recommended.  */
-      /* if (bbd + bad == 12 && chs == 12) {
+      if (bitsplit == 1) {
 	blue = green & 0xf0;
 	green = (red & 0x0f) << 4;
 	red &= 0xf0;
 	chs = 0;
-      } */
+      }
 
       if (chanflow == 1) {
 	/* BounceBack Wrap: If the bit before a byte is 1, make the
@@ -303,35 +297,35 @@ int main(int argc, char *argv[]) {
 	  green = ~green;
       }
 
-      /* Internal Channel Shift: If not all the bits in a channel are
-	 used, shift the partial bits of a channel to be the most
-	 significant bits.  This possibly makes sure that the JPEG
-	 compression algorithm will give these bits a fair amount of
-	 detail.  */
-      ics = bbd + bad + chs;
-      /* ics = 24; */ /* Override the automatic choice */
-      if (ics <= 8) {
-	ics = 8 - ics;
-	blue <<= ics;
-      } else if (ics <= 16) {
-	ics = 16 - ics;
-	green <<= ics;
-      } else if (ics <= 24) {
-	ics = 24 - ics;
-	red <<= ics;
-      } else
-	ics = 0;
+      /* Internal Channel Shift: If not all the bits in the most
+	 significant channel are used, shift the partial bits of a
+	 channel to be the most significant bits.  This possibly makes
+	 sure that the JPEG compression algorithm will give these bits
+	 a fair amount of detail.  */
+      if (ics == 1) {
+	ics = bbd + bad + chs;
+	if (ics <= 8) {
+	  ics = 8 - ics;
+	  blue <<= ics;
+	} else if (ics <= 16) {
+	  ics = 16 - ics;
+	  green <<= ics;
+	} else if (ics <= 24) {
+	  ics = 24 - ics;
+	  red <<= ics;
+	} else
+	  ics = 0;
+      }
 
       /* Write the actual pixel value.  */
-      if (bpp == 8) {
-	row_buffer[col_pos++] = (out_val >> chs) << ics;
-	col_pos %= rowb_size;
-      } else {
+      if (bpp == 8)
+	row_buffer[col_pos++] = blue;
+      else {
 	row_buffer[col_pos++] = blue;
 	row_buffer[col_pos++] = green;
 	row_buffer[col_pos++] = red;
-	col_pos %= rowb_size;
       }
+      col_pos %= rowb_size;
       if (col_pos == col_start)
 	fwrite(row_buffer, rowb_size, 1, stdout);
 

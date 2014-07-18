@@ -22,6 +22,9 @@ docs: docbundle.js
 docbundle.js: doc.hjs
 	$(cjs_dir)/hjssmash.sh $< -o $@
 
+tracksconv: tracksconv.c qsorts.c xmalloc.c
+	cc -O3 $^ -o $@
+
 sshdata: ../data
 	CLASSES='jpgssh pngssh' ./sshconv.sh
 

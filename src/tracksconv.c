@@ -211,7 +211,6 @@ int main(int argc, char *argv[]) {
        regular intervals for safety.  Null characters must never be
        stored in the output stream.  */
     unsigned i = 0;
-    unsigned first_eddy_idx = 0;
 
     /* Little endian will be used for this encoding.  */
 #define PUT_SHORT(var) \
@@ -303,12 +302,17 @@ int main(int argc, char *argv[]) {
       ERROR_OR_PUT_SHORT(seddy->eddy_index,
 			 "Error: i = %u: Eddy index too large: %u\n");
       if (slist_next == 0) {
+	/* Search backwards to find the beginning of the linked
+	   list.  */
+	SortedEddy *cur_seddy = seddy;
+	while (cur_seddy->prev != cur_seddy)
+	  cur_seddy = cur_seddy->prev;
+	unsigned first_seddy_idx = cur_seddy - sorted_eddies.d;
 	/* Make this the offset (in the negative direction) to the
 	   first eddy in the track.  */
-	ERROR_OR_PUT_SHORT(i - first_eddy_idx,
+	ERROR_OR_PUT_SHORT(i - first_seddy_idx,
 "Error: i = %u: Offset between first and last eddy indexes of a track is\n"
 "too large: %u\n");
-	first_eddy_idx = i + 1;
       } else {
 	/* NOTE: Some errors may cause the next eddy offset to be
 	   negative, so we use %d instead of %u for diagnostic

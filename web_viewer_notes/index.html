@@ -1683,6 +1683,8 @@ http://www.sitepoint.com/forums/showthread.php?249148-IE-puts-extra-space-at-bot
 That will do it.  But wow, that sure is a strange way to do it, very
 non-CSS like in order to get the IE-style box model to work.
 
+I've been able to fix this problem using "overflow: hidden" instead.
+
 ----------------------------------------
 
 Web Workers can be used for multiprocessing.
@@ -1694,7 +1696,8 @@ transfers are not available on Firefox 3.6.
 ----------------------------------------
 
 Performance optimization: Go through my code and change all constants
-to #define and likewise for inline functions.
+to #define and likewise for inline functions.  Or even better, use cjs
+so that this is simply an amendment to the normal code.
 
 ----------------------------------------
 
@@ -1734,10 +1737,6 @@ rendering that I need to implement:
 
 * "Center" rendering: Render a small portion of the center at full
   resolution, then progressively render the surrounding areas.
-
-Perhaps I should also make the preemption interval user-configurable,
-though the default should be good for most people who have modern
-systems.
 
 I also must absolutely implement storing the configuration within the
 address bar hash fragment.  This feature proves to be invaluable for
@@ -1854,6 +1853,19 @@ AddCharset UTF-16 .wtxt
 # this charset value.
 
 # ISO-10646-UCS-2 is also worth considering.
+
+Test if the server is setup correctly:
+
+telnet ucc.umn.edu 80
+
+GET /eddies/viewer/data/hello.wtxt HTTP/1.1
+Host: climatechange.cs.umn.edu
+Connection: close
+
+Another option that is viable from JavaScript is to just override the
+MIME type that the server returns:
+
+httpRequest.overrideMimeType("text/plain; charset=utf-16");
 
 ----------------------------------------</pre>
 

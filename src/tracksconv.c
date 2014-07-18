@@ -15,7 +15,6 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <time.h>
 #include <string.h>
 #include <ctype.h>
 #include <errno.h>
@@ -212,6 +211,7 @@ int main(int argc, char *argv[]) {
        regular intervals for safety.  Null characters must never be
        stored in the output stream.  */
     unsigned i = 0;
+    unsigned first_eddy_idx = 0;
 
     /* Little endian will be used for this encoding.  */
 #define PUT_SHORT(var) \
@@ -258,10 +258,10 @@ int main(int argc, char *argv[]) {
     /* Next output the optimized eddy entries.  */
     for (i = 0; i < sorted_eddies.len; i++) {
       SortedEddy *seddy = &sorted_eddies.d[i];
-      unsigned int_lat = ((unsigned)(seddy->lat * (1 << 6)) +
+      unsigned int_lat = ((unsigned)(seddy->lat * (1 << 5)) +
+			  (1 << 12)) & 0x1fff;
+      unsigned int_lon = ((unsigned)(seddy->lon * (1 << 5)) +
 			  (1 << 13)) & 0x3fff;
-      unsigned int_lon = ((unsigned)(seddy->lon * (1 << 6)) +
-			  (1 << 14)) & 0x7fff;
       unsigned slist_next = (seddy->next - sorted_eddies.d) - i;
 
       if (seddy->lat < -90 || seddy->lat > 90) {
@@ -279,22 +279,21 @@ int main(int argc, char *argv[]) {
 		"Error: i = %u: Eddy indexes must never equal zero.\n", i);
 	retval = 1; /* goto cleanup; */
       }
-      if ((unsigned)slist_next > (unsigned)0xd7fe) {
-	/* NOTE: Some errors may cause the next eddy offset to be
-	   negative, so we use %d instead of %u for diagnostic
-	   convenience.  */
-	fprintf(stderr,
-		"Error: i = %u: Next eddy offset too large: %d\n",
-		i, slist_next);
-	retval = 1; /* goto cleanup; */
-      }
 
-      /* Since latitudes only range from -90 to 90, the above encoding
-	 for latitude only needs 14 bits.  This leaves room for
-	 storing one extra bit of information in the same character.
-	 Thus, the type information, which is only a zero or a one,
-	 can conveniently be stored in that space.  */
+      /* Note: We allow room for storing one extra bit of information
+	 in the latitude and longitude fields.  Since latitudes only
+	 range from -90 to 90, the above encoding for latitude only
+	 needs 13 bits.  This leaves room for storing one extra bit of
+	 information in the same character.  */
+
+      /* The type information, which is only a zero or a one, can be
+	 stored in one of the two single bit slots in the
+	 latitude.  */
       int_lat |= seddy->type << 14;
+
+      /* Store the sign of the next index displacement in the single
+	 bit slot of the longitude.  */
+      int_lon |= ((slist_next == 0) ? 1 : 0) << 14;
 
       if (i % 32 == 0)
 	{ PUT_SHORT('\n'); }
@@ -303,10 +302,20 @@ int main(int argc, char *argv[]) {
       PUT_SHORT(int_lon);
       ERROR_OR_PUT_SHORT(seddy->eddy_index,
 			 "Error: i = %u: Eddy index too large: %u\n");
-      if (slist_next == 0)
-	{ PUT_SHORT(0xd7ff); }
-      else
-	{ PUT_SHORT(slist_next); }
+      if (slist_next == 0) {
+	/* Make this the offset (in the negative direction) to the
+	   first eddy in the track.  */
+	ERROR_OR_PUT_SHORT(i - first_eddy_idx,
+"Error: i = %u: Offset between first and last eddy indexes of a track is\n"
+"too large: %u\n");
+	first_eddy_idx = i + 1;
+      } else {
+	/* NOTE: Some errors may cause the next eddy offset to be
+	   negative, so we use %d instead of %u for diagnostic
+	   convenience.  */
+	ERROR_OR_PUT_SHORT(slist_next,
+			   "Error: i = %u: Next eddy offset too large: %d\n");
+      }
 
       if (fdiag != NULL)
 	fprintf(fdiag,
@@ -397,6 +406,12 @@ int parse_json(FILE *fp, unsigned eddy_type) {
       break;
     case ']':
       if (nest_level == 3) {
+	if (eddy_param_index < 4) {
+	  fprintf(stderr,
+		  "Error: In track %u: Not enough parameters in an eddy.\n",
+		  tot_num_tracks - 1);
+	  return 1;
+	}
 	add_eddy(&cur_eddy, eddy_type, start_of_track);
 	start_of_track = false;
       }

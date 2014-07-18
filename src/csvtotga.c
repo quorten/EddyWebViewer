@@ -80,12 +80,12 @@ int main(int argc, char *argv[]) {
     while (--argc > 0) {
       if ((*argv)[0] == '-') {
   	switch ((*argv)[1]) {
-  	case 'm': noise_margin = atoi(*argv + 2); break;
-	case 'h': chs = atoi(*argv + 2); break;
-	case 'i': ics = atoi(*argv + 2); break;
-	case 'p': bitsplit = atoi(*argv + 2); break;
-	case 'c': chanflow = atoi(*argv + 2); break;
-	case 'o': overflow = atoi(*argv + 2); break;
+  	case 'm': noise_margin = strtoul(*argv + 2, NULL, 0); break;
+	case 'h': chs = strtoul(*argv + 2, NULL, 0); break;
+	case 'i': ics = strtoul(*argv + 2, NULL, 0); break;
+	case 'p': bitsplit = strtoul(*argv + 2, NULL, 0); break;
+	case 'c': chanflow = strtoul(*argv + 2, NULL, 0); break;
+	case 'o': overflow = strtoul(*argv + 2, NULL, 0); break;
 
   	default:
   	  fprintf(stderr, "%s: Error: Invalid option: %s\n",
@@ -108,14 +108,14 @@ int main(int argc, char *argv[]) {
   	dims_spec = 1;
 
   	*(str_height - 1) = '\0';
-  	width = atoi(str_width);
+  	width = strtoul(str_width, NULL, 0);
 
   	if (str_bpp != NULL) {
   	  *str_bpp++ = '\0';
-  	  bpp = atoi(str_bpp);
+  	  bpp = strtoul(str_bpp, NULL, 0);
   	}
 
-  	height = atoi(str_height);
+  	height = strtoul(str_height, NULL, 0);
 
       } else if (strchr(*argv, '.') != NULL) {
   	char *str_bbd = *argv;
@@ -130,8 +130,8 @@ int main(int argc, char *argv[]) {
   	bits_spec = 1;
 
   	*str_bad++ = '\0';
-  	bbd = atoi(str_bbd);
-  	bad = atoi(str_bad);
+  	bbd = strtoul(str_bbd, NULL, 0);
+  	bad = strtoul(str_bad, NULL, 0);
       }
 
       argv++;

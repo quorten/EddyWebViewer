@@ -1840,6 +1840,21 @@ And for simulating colorblind vision:
 
 http://vischeck.com/
 
+----------------------------------------
+
+This is my my .htaccess should look like:
+
+AddType text/plain .wtxt
+AddCharset UTF-16 .wtxt
+
+# UTF-16 is only safe with 15-bit integers.  The most significant bit must
+# always be zero, to avoid problems with surrogate pairs.
+
+# UTF-16BE, _do not_ use a BOM if you configure the server to pass
+# this charset value.
+
+# ISO-10646-UCS-2 is also worth considering.
+
 ----------------------------------------</pre>
 
 <hr />

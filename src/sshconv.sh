@@ -38,7 +38,7 @@ setclass()
   fi
 }
 
-cc csvtotga.c -o csvtotga
+cc -O3 csvtotga.c -o csvtotga
 trap "rm csvtotga" EXIT
 
 if [ -z "$CLASSES" ]; then

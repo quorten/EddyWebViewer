@@ -343,6 +343,7 @@ int parse_json(FILE *fp, unsigned eddy_type) {
   /* nest_level == 1: Top-level tracks array
      nest_level == 2: Eddies array within one track
      nest_level == 3: Parameters of one eddy */
+  unsigned eddy_param_index = 0;
   InputEddy cur_eddy;
 
   while (isspace(c = getc(fp)));
@@ -369,48 +370,16 @@ int parse_json(FILE *fp, unsigned eddy_type) {
 	    "read during parsing.\n", stderr); \
       return 1; \
     }
-#define READ_FLOAT(var) \
-    buf_len = 0; \
-    while ((isdigit(c = getc(fp)) || \
-	    c == '+' || c == '-' || c == '.' || c == 'e' || c == 'E') && \
-	   buf_len < 255) \
-      buffer[buf_len++] = (char)c; \
-    buffer[buf_len++] = '\0'; \
-    var = strtof(buffer, NULL)
-#define READ_UINT(var) \
-    buf_len = 0; \
-    while (isdigit(c = getc(fp)) && buf_len < 255) \
-      buffer[buf_len++] = (char)c; \
-    buffer[buf_len++] = '\0'; \
-    var = strtoul(buffer, NULL, 0)
-#define SKIP_COMMA() \
-    while (isspace(c)) \
-      c = getc(fp); \
-    if (c == ',') \
-      /* Just skip the separator.  */; \
-    else if (c == EOF) { \
-      fputs("Error: Unexpected end of input.\n", stderr); \
-      return 1; \
-    } else { \
-      fprintf(stderr, \
-	      "Error: Unexpected character found in input: %c\n", c); \
-      return 1; \
-    } \
-    while (isspace(c = getc(fp))); \
-    ungetc(c, fp)
 
-    /* TODO: Need faster replacement for fscanf() here.  */
     if (nest_level == 3) {
-      char buffer[256];
-      unsigned buf_len;
       while (isspace(c = getc(fp)));
       ungetc(c, fp);
-      READ_FLOAT(cur_eddy.lat);        SKIP_COMMA();
-      READ_FLOAT(cur_eddy.lon);        SKIP_COMMA();
-      READ_UINT(cur_eddy.date_index);              SKIP_COMMA();
-      READ_UINT(cur_eddy.eddy_index); ungetc(c, fp);
-      /* FSCANF_OR_ERROR("%u", &cur_eddy.date_index); SKIP_COMMA();
-      FSCANF_OR_ERROR("%u", &cur_eddy.eddy_index); */
+      switch (eddy_param_index++) {
+      case 0: FSCANF_OR_ERROR("%f", &cur_eddy.lat); break;
+      case 1: FSCANF_OR_ERROR("%f", &cur_eddy.lon); break;
+      case 2: FSCANF_OR_ERROR("%u", &cur_eddy.date_index); break;
+      case 3: FSCANF_OR_ERROR("%u", &cur_eddy.eddy_index); break;
+      }
     }
 
     while (isspace(c = getc(fp)));
@@ -423,7 +392,8 @@ int parse_json(FILE *fp, unsigned eddy_type) {
       if (nest_level == 2) {
 	tot_num_tracks++;
 	start_of_track = true;
-      }
+      } else if (nest_level == 3)
+	eddy_param_index = 0;
       break;
     case ']':
       if (nest_level == 3) {

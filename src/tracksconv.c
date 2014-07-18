@@ -115,7 +115,7 @@ int main(int argc, char *argv[]) {
     FILE *fp;
     int parse_status;
 
-    unsigned eddy_type = atoi(*argv++);
+    unsigned eddy_type = strtoul(*argv++, NULL, 0);
     if (eddy_type > 1) {
       fputs("Error: Invalid eddy type specified.\n", stderr);
       retval = 1; goto cleanup;
@@ -207,9 +207,10 @@ int main(int argc, char *argv[]) {
 
   { /* Output the new JSON data as UTF-16 characters.  Each character
        will be treated as a 15-bit fixed point number on input.
-       Newlines are written out at regular intervals for safety.  If
-       necessary, the codepoint is also incremented by one to avoid
-       storing null characters.  */
+       (There is also support for quasi-16-bit unsigned integers that
+       range from 0x0001 to 0xd7ff.)  Newlines are written out at
+       regular intervals for safety.  Null characters must never be
+       stored in the output stream.  */
     unsigned i = 0;
 
     /* Little endian will be used for this encoding.  */
@@ -217,7 +218,7 @@ int main(int argc, char *argv[]) {
     putc((var) & 0xff, stdout); \
     putc(((var) >> 8) & 0xff, stdout)
 #define ERROR_OR_PUT_SHORT(var, errmsg) \
-    if ((unsigned)var > (unsigned)(1 << 15) - 1) { \
+    if ((unsigned)(var) > (unsigned)0xd7ff) { \
       fprintf(stderr, errmsg, i, var); \
       retval = 1; /* goto cleanup; */ \
     } else { \
@@ -225,6 +226,21 @@ int main(int argc, char *argv[]) {
     }
 
     PUT_SHORT(0xfeff); /* BOM (Byte Order Mask) */
+
+    { /* Start by writing a human-friendly information message that also
+	 serves as a file type.  */
+      const char *file_type =
+"# Binary eddy tracks data for the Ocean Eddies Web Viewer.\n"
+"# For more information on this file format, see the following webpage:\n"
+"# <http://example.com/dev_url>\n"
+"#\n"
+"# BEGIN_DATA\n";
+      const char *cur_pos = file_type;
+      while (*cur_pos != '\0') {
+	PUT_SHORT(*cur_pos);
+	cur_pos++;
+      }
+    }
 
     /* Convert the date chunk start indexes structure to an eddies per
        date index structure, and output that structure.  */
@@ -263,7 +279,7 @@ int main(int argc, char *argv[]) {
 		"Error: i = %u: Eddy indexes must never equal zero.\n", i);
 	retval = 1; /* goto cleanup; */
       }
-      if ((unsigned)slist_next > (unsigned)(1 << 15) - 1) {
+      if ((unsigned)slist_next > (unsigned)0xd7fe) {
 	/* NOTE: Some errors may cause the next eddy offset to be
 	   negative, so we use %d instead of %u for diagnostic
 	   convenience.  */
@@ -287,10 +303,10 @@ int main(int argc, char *argv[]) {
       PUT_SHORT(int_lon);
       ERROR_OR_PUT_SHORT(seddy->eddy_index,
 			 "Error: i = %u: Eddy index too large: %u\n");
-      /* It's okay for this number to barely dip into the 16-bit
-	 range: it will still be small enough not to touch any
-	 dangerous codepoints.  */
-      PUT_SHORT(slist_next + 1);
+      if (slist_next == 0)
+	{ PUT_SHORT(0xd7ff); }
+      else
+	{ PUT_SHORT(slist_next); }
 
       if (fdiag != NULL)
 	fprintf(fdiag,
@@ -327,7 +343,6 @@ int parse_json(FILE *fp, unsigned eddy_type) {
   /* nest_level == 1: Top-level tracks array
      nest_level == 2: Eddies array within one track
      nest_level == 3: Parameters of one eddy */
-  unsigned eddy_param_index = 0;
   InputEddy cur_eddy;
 
   while (isspace(c = getc(fp)));
@@ -343,50 +358,84 @@ int parse_json(FILE *fp, unsigned eddy_type) {
   }
   nest_level++;
   while (nest_level > 0) {
-    while (isspace(c = getc(fp)));
-    ungetc(c, fp);
 
 #define FSCANF_OR_ERROR(format, param) \
     c = fscanf(fp, format, param); \
     if (c == EOF) { \
       fputs("Error: Unexpected end of input.\n", stderr); \
       return 1; \
-    } \
-    if (c != 1) { \
+    } else if (c != 1) { \
       fputs("Error: An expected input parameter could not be " \
 	    "read during parsing.\n", stderr); \
       return 1; \
     }
+#define READ_FLOAT(var) \
+    buf_len = 0; \
+    while ((isdigit(c = getc(fp)) || \
+	    c == '+' || c == '-' || c == '.' || c == 'e' || c == 'E') && \
+	   buf_len < 255) \
+      buffer[buf_len++] = (char)c; \
+    buffer[buf_len++] = '\0'; \
+    var = strtof(buffer, NULL)
+#define READ_UINT(var) \
+    buf_len = 0; \
+    while (isdigit(c = getc(fp)) && buf_len < 255) \
+      buffer[buf_len++] = (char)c; \
+    buffer[buf_len++] = '\0'; \
+    var = strtoul(buffer, NULL, 0)
+#define SKIP_COMMA() \
+    while (isspace(c)) \
+      c = getc(fp); \
+    if (c == ',') \
+      /* Just skip the separator.  */; \
+    else if (c == EOF) { \
+      fputs("Error: Unexpected end of input.\n", stderr); \
+      return 1; \
+    } else { \
+      fprintf(stderr, \
+	      "Error: Unexpected character found in input: %c\n", c); \
+      return 1; \
+    } \
+    while (isspace(c = getc(fp))); \
+    ungetc(c, fp)
 
+    /* TODO: Need faster replacement for fscanf() here.  */
     if (nest_level == 3) {
-      switch (eddy_param_index++) {
-      case 0: FSCANF_OR_ERROR("%f", &cur_eddy.lat); break;
-      case 1: FSCANF_OR_ERROR("%f", &cur_eddy.lon); break;
-      case 2: FSCANF_OR_ERROR("%u", &cur_eddy.date_index); break;
-      case 3: FSCANF_OR_ERROR("%u", &cur_eddy.eddy_index); break;
-      }
+      char buffer[256];
+      unsigned buf_len;
+      while (isspace(c = getc(fp)));
+      ungetc(c, fp);
+      READ_FLOAT(cur_eddy.lat);        SKIP_COMMA();
+      READ_FLOAT(cur_eddy.lon);        SKIP_COMMA();
+      READ_UINT(cur_eddy.date_index);              SKIP_COMMA();
+      READ_UINT(cur_eddy.eddy_index); ungetc(c, fp);
+      /* FSCANF_OR_ERROR("%u", &cur_eddy.date_index); SKIP_COMMA();
+      FSCANF_OR_ERROR("%u", &cur_eddy.eddy_index); */
     }
 
     while (isspace(c = getc(fp)));
-    if (c == ',')
-      /* Just skip the separator.  */;
-    else if (c == '[') {
+    switch (c) {
+    case ',':
+      /* Just skip the separator.  */
+      break;
+    case '[':
       nest_level++;
       if (nest_level == 2) {
 	tot_num_tracks++;
 	start_of_track = true;
       }
-      if (nest_level == 3)
-	eddy_param_index = 0;
-    } else if (c == ']') {
+      break;
+    case ']':
       if (nest_level == 3) {
 	add_eddy(&cur_eddy, eddy_type, start_of_track);
 	start_of_track = false;
       }
       nest_level--;
-    } else if (c == EOF) {
+      break;
+    case EOF:
       fputs("Error: Unexpected end of input.\n", stderr);
-    } else {
+      return 1;
+    default:
       fprintf(stderr,
 	      "Error: Unexpected character found in input: %c\n", c);
       return 1;

@@ -38,13 +38,13 @@ typedef struct InputEddy_tag InputEddy;
 typedef struct SortedEddy_tag SortedEddy;
 struct SortedEddy_tag {
   unsigned type;
-  float lat;
-  float lon;
+  float coords[2]; /* Latitude and longitude */
   unsigned date_index;
   unsigned eddy_index;
   /* unsigned unsorted_index; */
   /* Pointer of the next eddy in a track.  If there is no next eddy,
-     then this points to the current eddy itself.  */
+     then this points to the current eddy itself.  NULL is used when
+     an eddy points to itself.  */
   SortedEddy *next;
   SortedEddy *prev;
 };
@@ -61,10 +61,16 @@ unsigned tot_num_tracks;
 SortedEddy_array sorted_eddies;
 unsigned_array date_chunk_starts;
 
-SortedEddy_array kd_curdim_0;
-SortedEddy_array kd_curdim_1;
-SortedEddy_array kd_curdim_tmp;
+/* [0] "Current dimension 0"
+   [1] "Current dimension 1"
+   [2] Temporary copy of current dimension 0.
 
+   "Current dimension 0" cycles between latitude and longitude,
+   depending on the current kd-tree construction iteration.  */
+#define KD_DIMS 2
+SortedEddy_array kd_curdim[KD_DIMS+1];
+
+inline bool put_short_in_range(FILE *fout, unsigned value);
 int parse_json(FILE *fp, unsigned eddy_type);
 inline void add_eddy(InputEddy *ieddy, unsigned eddy_type,
 		     bool start_of_track);
@@ -72,7 +78,8 @@ inline int qs_date_cmp(const void *p1, const void *p2, void *arg);
 inline int qs_lat_cmp(const void *p1, const void *p2, void *arg);
 inline int qs_lon_cmp(const void *p1, const void *p2, void *arg);
 inline void qs_eddy_swap(void *p1, void *p2, void *arg);
-inline bool put_short_in_range(FILE *fout, unsigned value);
+void kd_eddy_move(SortedEddy *dest, SortedEddy *src);
+void kd_tree_build(unsigned start, size_t length);
 
 void display_help(FILE *fout, const char *progname) {
     fprintf(fout, "Usage: %s [-v] [-vv diag-file] [-x] [-o OUTPUT]\n"
@@ -135,6 +142,9 @@ int main(int argc, char *argv[]) {
   tot_num_tracks = 0;
   EA_INIT(SortedEddy, sorted_eddies, 1048576);
   EA_INIT(unsigned, date_chunk_starts, 16);
+  EA_INIT(SortedEddy, kd_curdim[0], 16);
+  EA_INIT(SortedEddy, kd_curdim[1], 16);
+  EA_INIT(SortedEddy, kd_curdim[2], 16);
 
   /* Start by reading all of the input data into a data structure in
      memory.  */
@@ -178,8 +188,10 @@ int main(int argc, char *argv[]) {
     for (i = 0; i < sorted_eddies.len; i++) {
       unsigned next_idx = sorted_eddies.d[i].next - (SortedEddy*)0;
       unsigned prev_idx = sorted_eddies.d[i].prev - (SortedEddy*)0;
-      sorted_eddies.d[i].next = sorted_eddies.d + next_idx;
-      sorted_eddies.d[i].prev = sorted_eddies.d + prev_idx;
+      if (next_idx == i) sorted_eddies.d[i].next = NULL;
+      else sorted_eddies.d[i].next = sorted_eddies.d + next_idx;
+      if (prev_idx == i) sorted_eddies.d[i].prev = NULL;
+      else sorted_eddies.d[i].prev = sorted_eddies.d + prev_idx;
     }
   }
 
@@ -208,7 +220,8 @@ int main(int argc, char *argv[]) {
        adds a chunk start index.  */
     unsigned last_date_index = 0;
     for (i = 0; i < sorted_eddies.len; i++) {
-      unsigned date_index_diff = sorted_eddies.d[i].date_index - last_date_index;
+      unsigned date_index_diff =
+	sorted_eddies.d[i].date_index - last_date_index;
       if (date_index_diff == 1) {
 	EA_APPEND(date_chunk_starts, i);
 	last_date_index = sorted_eddies.d[i].date_index;
@@ -231,7 +244,36 @@ int main(int argc, char *argv[]) {
   if (diag_proc)
     fprintf(stderr, "Done: %u date indexes.\n", date_chunk_starts.len - 1);
 
-  /* TODO: Build the eddies in each date range into a kd-tree.  */
+  { /* Build the eddies in each date range into a kd-tree.  */
+    unsigned i;
+    for (i = 0; i < date_chunk_starts.len - 1; i++) {
+      SortedEddy *start = sorted_eddies.d + date_chunk_starts.d[i];
+      unsigned length = date_chunk_starts.d[i+1] - date_chunk_starts.d[i];
+
+      /* First sort the eddies by latitude.  */
+      EA_SET_SIZE(kd_curdim[0], length);
+      memcpy(kd_curdim[0].d, start, sizeof(SortedEddy) * length);
+      qsort(kd_curdim[0].d, kd_curdim[0].len,
+	    sizeof(SortedEddy), qs_lat_cmp);
+
+      /* Now sort by longitude.  */
+      EA_SET_SIZE(kd_curdim[1], length);
+      memcpy(kd_curdim[1].d, start, sizeof(SortedEddy) * length);
+      qsort(kd_curdim[1].d, kd_curdim[1].len,
+	    sizeof(SortedEddy), qs_lon_cmp);
+
+      /* Make sure to initialize the temporary array.  */
+      EA_SET_SIZE(kd_curdim[2], length);
+
+      /* Build the actual kd-tree for this date range.  */
+      kd_tree_build(0, length);
+
+      /* The finished kd-tree is located within kd_curdim[0].  Copy
+	 this back to the official location within
+	 `sorted_eddies'.  */
+      memcpy(start, kd_curdim[0].d, sizeof(SortedEddy) * length);
+    }
+  }
 
   if (diag_proc)
     fprintf(stderr, "Writing output...\n");
@@ -291,21 +333,23 @@ int main(int argc, char *argv[]) {
     /* Next output the optimized eddy entries.  */
     for (i = 0; i < sorted_eddies.len; i++) {
       SortedEddy *seddy = &sorted_eddies.d[i];
-      unsigned int_lat = ((unsigned)(seddy->lat * (1 << 6)) +
+      unsigned int_lat = ((unsigned)(seddy->coords[0] * (1 << 6)) +
 			  (1 << 13)) & 0x3fff;
-      unsigned int_lon = ((unsigned)(seddy->lon * (1 << 6)) +
+      unsigned int_lon = ((unsigned)(seddy->coords[1] * (1 << 6)) +
 			  (1 << 14)) & 0x7fff;
-      unsigned rel_next = (seddy->next - sorted_eddies.d) - i;
-      unsigned rel_prev = i - (seddy->prev - sorted_eddies.d);
+      unsigned rel_next = (seddy->next == NULL) ? 0 :
+	((seddy->next - sorted_eddies.d) - i);
+      unsigned rel_prev = (seddy->prev == NULL) ? 0 :
+	(i - (seddy->prev - sorted_eddies.d));
 
-      if (seddy->lat < -90 || seddy->lat > 90) {
+      if (seddy->coords[0] < -90 || seddy->coords[0] > 90) {
 	fprintf(stderr, "Error: i = %u: Latitude out of range: %f\n",
-		i, seddy->lat);
+		i, seddy->coords[0]);
 	retval = 1; /* goto cleanup; */
       }
-      if (seddy->lon < -180 || seddy->lon > 180) {
+      if (seddy->coords[1] < -180 || seddy->coords[1] > 180) {
 	fprintf(stderr, "Error: i = %u: Longitude out of range: %f\n",
-		i, seddy->lon);
+		i, seddy->coords[1]);
 	retval = 1; /* goto cleanup; */
       }
       if (seddy->eddy_index == 0) {
@@ -344,7 +388,7 @@ int main(int argc, char *argv[]) {
 		"Date index: %-5u    Eddy index: %-5u\n"
 		"Next index: %-5u    Previous index: %-5u\n\n",
 		i, seddy->type,
-		seddy->lat, seddy->lon,
+		seddy->coords[0], seddy->coords[1],
 		seddy->date_index, seddy->eddy_index,
 		seddy->next - sorted_eddies.d, seddy->prev - sorted_eddies.d);
     }
@@ -357,6 +401,9 @@ int main(int argc, char *argv[]) {
  cleanup:
   EA_DESTROY(sorted_eddies);
   EA_DESTROY(date_chunk_starts);
+  EA_DESTROY(kd_curdim[0]);
+  EA_DESTROY(kd_curdim[1]);
+  EA_DESTROY(kd_curdim[2]);
   if (fdiag != NULL && fclose(fdiag) == EOF) {
     fprintf(stderr, "Error closing diagnostics file: %s\n", strerror(errno));
     retval = 1;
@@ -366,6 +413,22 @@ int main(int argc, char *argv[]) {
     retval = 1;
   }
   return retval;
+}
+
+/* Write a UTF-16 character, but only if the value is within the valid
+   numeric range.  */
+bool put_short_in_range(FILE *fout, unsigned value) {
+  unsigned max = 0xd7fe;
+  if (max_utf_range)
+    max = 0xf7fe;
+  if (value > max)
+    return false;
+  if (value > 0xd7ff)
+    value += 0x0800;
+  if (value == 0)
+    value = max + 1;
+  PUT_SHORT(value);
+  return true;
 }
 
 /* Parse a JSON file from the given file pointer and append its
@@ -461,8 +524,8 @@ int parse_json(FILE *fp, unsigned eddy_type) {
 void add_eddy(InputEddy *ieddy, unsigned eddy_type, bool start_of_track) {
   SortedEddy *seddy = &sorted_eddies.d[sorted_eddies.len];
   seddy->type = eddy_type;
-  seddy->lat = ieddy->lat;
-  seddy->lon = ieddy->lon;
+  seddy->coords[0] = ieddy->lat;
+  seddy->coords[1] = ieddy->lon;
   seddy->date_index = ieddy->date_index;
   seddy->eddy_index = ieddy->eddy_index;
   /* seddy->unsorted_index = sorted_eddies.len; */
@@ -489,7 +552,7 @@ int qs_date_cmp(const void *p1, const void *p2, void *arg) {
 int qs_lat_cmp(const void *p1, const void *p2, void *arg) {
   const SortedEddy *se1 = (const SortedEddy*)p1;
   const SortedEddy *se2 = (const SortedEddy*)p2;
-  float cmp = se1->lat - se2->lat;
+  float cmp = se1->coords[0] - se2->coords[0];
   if (cmp > 0.0)
     return 1;
   else if (cmp < 0.0)
@@ -501,7 +564,7 @@ int qs_lat_cmp(const void *p1, const void *p2, void *arg) {
 int qs_lon_cmp(const void *p1, const void *p2, void *arg) {
   const SortedEddy *se1 = (const SortedEddy*)p1;
   const SortedEddy *se2 = (const SortedEddy*)p2;
-  float cmp = se1->lon - se2->lon;
+  float cmp = se1->coords[1] - se2->coords[1];
   if (cmp > 0.0)
     return 1;
   else if (cmp < 0.0)
@@ -518,21 +581,17 @@ void qs_eddy_swap(void *p1, void *p2, void *arg) {
 
   /* Rearrange the linked list indexes.  */
 
-  if (se1->next == se1) se1->next = se2;
-  else if (se1->next == se2) se1->next = se1;
-  else se1->next->prev = se2;
+  if (se1->next == se2) se1->next = se1;
+  else if (se1->next != NULL) se1->next->prev = se2;
 
-  if (se1->prev == se1) se1->prev = se2;
-  else if (se1->prev == se2) se1->prev = se1;
-  else se1->prev->next = se2;
+  if (se1->prev == se2) se1->prev = se1;
+  else if (se1->prev != NULL) se1->prev->next = se2;
 
-  if (se2->next == se2) se2->next = se1;
-  else if (se2->next == se1) se2->next = se2;
-  else se2->next->prev = se1;
+  if (se2->next == se1) se2->next = se2;
+  else if (se2->next != NULL) se2->next->prev = se1;
 
-  if (se2->prev == se2) se2->prev = se1;
-  else if (se2->prev == se1) se2->prev = se2;
-  else se2->prev->next = se1;
+  if (se2->prev == se1) se2->prev = se2;
+  else if (se2->prev != NULL) se2->prev->next = se1;
 
   /* Swap the memory quantities verbatim.  */
   memcpy(&temp, se1, sizeof(SortedEddy));
@@ -540,28 +599,117 @@ void qs_eddy_swap(void *p1, void *p2, void *arg) {
   memcpy(se2, &temp, sizeof(SortedEddy));
 }
 
-/* Similar to the swap function above, this function handles
+/* Similar to the `swap()' function above, this function handles
    rearranging the list links during kd-tree construction.  */
 void kd_eddy_move(SortedEddy *dest, SortedEddy *src) {
-  if (src->next == src) src->next = dest;
-  else src->next->prev = dest;
-
-  if (src->prev == src) src->prev = dest;
-  else src->prev->next = dest;
-
+  if (src->next != NULL) src->next->prev = dest;
+  if (src->prev != NULL) src->prev->next = dest;
   memcpy(dest, src, sizeof(SortedEddy));
 }
 
-bool put_short_in_range(FILE *fout, unsigned value) {
-  unsigned max = 0xd7fe;
-  if (max_utf_range)
-    max = 0xf7fe;
-  if (value > max)
-    return false;
-  if (value > 0xd7ff)
-    value += 0x0800;
-  if (value == 0)
-    value = max + 1;
-  PUT_SHORT(value);
-  return true;
+/* NOTE: Thanks to the glibc `qsort()' function for providing a good
+   example of how to implement the software stack of `kd_tree_build()'
+   in an efficient way.
+
+   This function builds a 2D kd-tree based off of the latitudes and
+   longitudes of the given input eddies.  The finished kd-tree is
+   stored in `kd_curdim[0]'.  */
+
+typedef struct {
+  unsigned start;
+  unsigned length;
+} kd_stack_node;
+
+void kd_tree_build(unsigned start, unsigned length) {
+  return;
+
+  /* Note: The algorithms used to preprocess the data before this
+     algorithm ensure that the number of eddies on a certain date
+     index never equals zero.  Thus, it is not necessary to check if
+     (length == 0).  */
+
+  unsigned cur_depth = 0;
+  unsigned push_pop = 0; /* num_pushes - num_pops */
+  kd_stack_node stack[QS_STACK_SIZE];
+  kd_stack_node *top = stack;
+
+  QS_PUSH(NULL, NULL);
+
+  while (QS_STACK_NOT_EMPTY) {
+    unsigned real_curdim; /* "Real" current dimension */
+    unsigned median, end = start + length;
+    float median_val;
+    unsigned iter_dim;
+    /* End indexes of subarrays.  Note: In this usage, `right_subend'
+       includes the median element as the first element of the
+       subarray.  */
+    unsigned left_subend, right_subend;
+    unsigned i, j;
+
+    if (length == 0) {
+      POP(start, length);
+      /* cur_depth--; */
+      if (push_pop == 1)
+	/* Still at the same depth.  */;
+      if (push_pop == 0)
+	cur_depth--;
+    }
+
+    /* 1. Pick the median point at the current dimension.  */
+    real_curdim = (cur_depth) % 2;
+    median = start + length / 2;
+    /* Verify the median represents a >= division.  */
+    while (median > 0 &&
+	   kd_curdim[0].d[median-1].coords[real_curdim] ==
+	     kd_curdim[0].d[median].coords[real_curdim])
+      median--;
+    median_val = kd_curdim[0].d[median].coords[real_curdim];
+
+    /* 2. Make a temporary copy of kd_curdim[0].  */
+    memcpy(kd_curdim[KD_DIMS-1].d, kd_curdim[0].d,
+	   sizeof(SortedEddy) * length);
+
+    /* 3. Shift to the next current dimension by constructing the
+       `curdim + 1' points in kd_curdim[0].  Elements moved into the
+       first array must have their pointers rebased, since it will
+       contain the officially sorted copy when finished.  */
+    left_subend = 0; right_subend = median;
+    median_moved = false;
+    for (i = start; i < end; i++) {
+      int cmp = (int)kd_curdim[1][i] - (int)kd_curdim[0][median];
+      if (cmp < 0)
+	kd_eddy_move(&kd_curdim[1][i], &kd_curdim[0][i]);
+      else if (right_subend == median &&  == kd_curdim[0][median])
+	kd_eddy_move();
+    }
+
+    for (j = 1; j < KD_DIMS; j++) {
+      for (i = start; i < end; i++) {
+	if (kd_curdim[j][i] < kd_curdim[0][median]) {}
+      }
+    }
+
+    for (iter_dim = 0; iter_dim < KD_DIMS; iter_dim++) {
+      for (i = start; i < end; i++) {
+	if (kd_curdim[1][i] < kd_curdim[0][median]) {
+	  kd_eddy_move(kd_curdim[0][j], kd_curdim[1][i]);
+	  memcpy();
+	}
+      }
+    }
+
+    { /* 4. Recurse on the left and right subarrays.  */
+      unsigned left_len = left_subend - start;
+      unsigned right_len = right_subend - (median + 1);
+      if (left_len > right_len ) {
+	/* Push the larger left subarray.  */
+	PUSH(start, left_len);
+	start = median + 1; length = right_len; cur_depth++;
+      } else {
+	/* Push the larger (or equal) right subarray.  */
+	PUSH(median + 1, right_len);
+	/* start = start; */ length = left_len; cur_depth++;
+      }
+    }
+  }
 }

@@ -30,12 +30,8 @@
 
 #include "qsorts.h"
 
-#ifndef CHAR_BIT
-#define CHAR_BIT 8 /* Assuming that we can't do better and use autoconf... */
-#endif
-
 /* Byte-wise swap two items of size SIZE. */
-#define SWAP(a, b, size)						      \
+#define QS_SWAP(a, b, size)						      \
   do									      \
     {									      \
       register size_t __size = (size);					      \
@@ -56,23 +52,6 @@
    swap operation, MAX_THRESH has been reduced.  */
 #define MAX_THRESH 0
 
-/* Stack node declarations used to store unfulfilled partition obligations. */
-typedef struct
-  {
-    char *lo;
-    char *hi;
-  } stack_node;
-
-/* The next 4 #defines implement a very fast in-line stack abstraction. */
-/* The stack needs log (total_elements) entries (we could even subtract
-   log(MAX_THRESH)).  Since total_elements has type size_t, we get as
-   upper bound for log (total_elements):
-   bits per byte (CHAR_BIT) * sizeof(size_t).  */
-#define STACK_SIZE	(CHAR_BIT * sizeof(size_t))
-#define PUSH(low, high)	((void) ((top->lo = (low)), (top->hi = (high)), ++top))
-#define	POP(low, high)	((void) (--top, (low = top->lo), (high = top->hi)))
-#define	STACK_NOT_EMPTY	(stack < top)
-
 
 /* Order size using quicksort.  This implementation incorporates
    four optimizations discussed in Sedgewick:
@@ -81,7 +60,7 @@ typedef struct
       next array partition to sort.  To save time, this maximum amount
       of space required to store an array of SIZE_MAX is allocated on the
       stack.  Assuming a 32-bit (64 bit) integer for size_t, this needs
-      only 32 * sizeof(stack_node) == 256 bytes (for 64 bit: 1024 bytes).
+      only 32 * sizeof(qs_stack_node) == 256 bytes (for 64 bit: 1024 bytes).
       Pretty cheap, actually.
 
    2. Chose the pivot element using a median-of-three decision tree.
@@ -114,12 +93,12 @@ qsorts_r (void *const pbase, size_t total_elems, size_t size,
     {
       char *lo = base_ptr;
       char *hi = &lo[size * (total_elems - 1)];
-      stack_node stack[STACK_SIZE];
-      stack_node *top = stack;
+      qs_stack_node stack[QS_STACK_SIZE];
+      qs_stack_node *top = stack;
 
-      PUSH (NULL, NULL);
+      QS_PUSH (NULL, NULL);
 
-      while (STACK_NOT_EMPTY)
+      while (QS_STACK_NOT_EMPTY)
         {
           char *left_ptr;
           char *right_ptr;
@@ -184,7 +163,7 @@ qsorts_r (void *const pbase, size_t total_elems, size_t size,
             {
               if ((size_t) (hi - left_ptr) <= max_thresh)
 		/* Ignore both small partitions. */
-                POP (lo, hi);
+                QS_POP (lo, hi);
               else
 		/* Ignore small left partition. */
                 lo = left_ptr;
@@ -195,13 +174,13 @@ qsorts_r (void *const pbase, size_t total_elems, size_t size,
           else if ((right_ptr - lo) > (hi - left_ptr))
             {
 	      /* Push larger left partition indices. */
-              PUSH (lo, right_ptr);
+              QS_PUSH (lo, right_ptr);
               lo = left_ptr;
             }
           else
             {
 	      /* Push larger right partition indices. */
-              PUSH (left_ptr, hi);
+              QS_PUSH (left_ptr, hi);
               hi = right_ptr;
             }
         }

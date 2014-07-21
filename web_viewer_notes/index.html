@@ -1846,13 +1846,25 @@ This is my my .htaccess should look like:
 AddType text/plain .wtxt
 AddCharset UTF-16 .wtxt
 
-# UTF-16 is only safe with 15-bit integers.  The most significant bit must
-# always be zero, to avoid problems with surrogate pairs.
+# UTF-16 is only safe with the range from 0x0001 to 0xd7ff and from
+# 0xe000 to 0xffff.  The range 0xd800 to 0xdfff is used for surrogate
+# pairs.
+
+# Note, however, that the DOM specifically defines the characters of
+# string objects to be 16 bits in length, no exceptions.  Thus, it is
+# possible to use the the "dangerous" range in JavaScript without any
+# problems.  Maybe.
 
 # UTF-16BE, _do not_ use a BOM if you configure the server to pass
 # this charset value.
 
-# ISO-10646-UCS-2 is also worth considering.
+# ISO-10646-UCS-2 is also worth considering.  Must use network byte
+# order for this, though.  Officially not supposed to have a BOM, but
+# lots of existing software assumes a leading zero-width
+# non-breaking-space character is a BOM, though.
+
+# Consensus: UTF-16LE, with BOM.  We can ignore the BOM ourselves,
+# if necessary.
 
 Test if the server is setup correctly:
 
@@ -1862,10 +1874,33 @@ GET /eddies/viewer/data/hello.wtxt HTTP/1.1
 Host: climatechange.cs.umn.edu
 Connection: close
 
+Or use wget.
+
 Another option that is viable from JavaScript is to just override the
 MIME type that the server returns:
 
 httpRequest.overrideMimeType("text/plain; charset=utf-16");
+
+----------------------------------------
+
+More useful links:
+
+http://annevankesteren.nl/2009/09/utf-8-reasons
+http://blog.gmane.org/gmane.ietf.charsets/month=20090801/page=1
+
+----------------------------------------
+
+Document notational conventions, coding style.
+
+~~num or 0|num is used to designate integer conversion.
+>>> 0 is used to designate unsigned integer conversion.
+
+----------------------------------------
+
+Here's how to use XMLHttpRequest efficiently with the typed array
+extensions:
+
+http://www.html5rocks.com/en/tutorials/file/xhr2/
 
 ----------------------------------------</pre>
 

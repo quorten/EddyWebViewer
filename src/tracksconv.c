@@ -52,33 +52,53 @@ struct SortedEddy_tag {
 EA_TYPE(SortedEddy);
 EA_TYPE(unsigned);
 
+/* Whether or not to use UTF-16 codepoints above 0xd7ff for encoding
+   integers.  Note that using codepoints 0xe000 to 0xffff requires
+   more effort on the side of the decoder, or is slower, in other
+   words.  */
+bool max_utf_range = false;
 unsigned tot_num_tracks;
 SortedEddy_array sorted_eddies;
 unsigned_array date_chunk_starts;
 
+SortedEddy_array kd_curdim_0;
+SortedEddy_array kd_curdim_1;
+SortedEddy_array kd_curdim_tmp;
+
 int parse_json(FILE *fp, unsigned eddy_type);
 inline void add_eddy(InputEddy *ieddy, unsigned eddy_type,
 		     bool start_of_track);
-int qs_date_cmp(const void *p1, const void *p2, void *arg);
-int qs_lat_cmp(const void *p1, const void *p2, void *arg);
-int qs_lon_cmp(const void *p1, const void *p2, void *arg);
-void qs_eddy_swap(void *p1, void *p2, void *arg);
+inline int qs_date_cmp(const void *p1, const void *p2, void *arg);
+inline int qs_lat_cmp(const void *p1, const void *p2, void *arg);
+inline int qs_lon_cmp(const void *p1, const void *p2, void *arg);
+inline void qs_eddy_swap(void *p1, void *p2, void *arg);
+inline bool put_short_in_range(FILE *fout, unsigned value);
+
+void display_help(FILE *fout, const char *progname) {
+    fprintf(fout, "Usage: %s [-v] [-vv diag-file] [-x] [-o OUTPUT]\n"
+	    "    [TYPE file TYPE file ...] [TYPE TYPE ... <INPUT] [>OUTPUT]\n",
+	    progname);
+    fprintf(fout, "TYPE is 0 for an anticyclonic tracks JSON and 1 "
+	    "for a cyclonic tracks JSON.\n");
+    fputs(
+"Specify -v for computational diagnostics, -vv for data diagnostics that are\n"
+"output to the given file, -x for extended output range (0x0000 to 0xf7fe),\n"
+"-o for output to a named file (standard output by default).\n"
+"Options must be specified in the order given above.\n", fout);
+}
 
 int main(int argc, char *argv[]) {
   int retval = 0;
   bool diag_proc = false;
   FILE *fdiag = NULL;
+  FILE *fout = NULL;
 
   if (argc < 2) {
-    fprintf(stderr, "Usage: %s [-v] [-vv diag-file]\n"
-	    "    [TYPE file TYPE file ...] [TYPE TYPE ... <INPUT] >OUTPUT\n",
-	    argv[0]);
-    fprintf(stderr, "TYPE is 0 for an anticyclonic tracks JSON and 1 "
-	    "for a cyclonic tracks JSON.\n");
-    fputs(
-"Specify -v for computational diagnostics, -vv for data diagnostics that are\n"
-"output to the given file.\n", stderr);
+    display_help(stderr, argv[0]);
     return 1;
+  } else if (!strcmp(argv[1], "-h") || !strcmp(argv[1], "--help")) {
+    display_help(stdout, argv[0]);
+    return 0;
   }
 
   argv++;
@@ -94,6 +114,18 @@ int main(int argc, char *argv[]) {
       return 1;
     }
   }
+  if (*argv != NULL && !strcmp(*argv, "-x"))
+    max_utf_range = true;
+  if (*argv != NULL && !strcmp(*argv, "-o")) {
+    char *outname = *++argv; argv++;
+    fout = fopen(outname, "wb");
+    if (fout == NULL) {
+      fprintf(stderr, "Error: Could not open %s: %s\n",
+	      outname, strerror(errno));
+      return 1;
+    }
+  } else
+    fout = stdout;
 
   if (*argv == NULL) {
     fputs("Error: Invalid command line.\n", stderr);
@@ -207,21 +239,19 @@ int main(int argc, char *argv[]) {
   { /* Output the new JSON data as UTF-16 characters.  Each character
        will be treated as a 15-bit fixed point number on input.
        (There is also support for quasi-16-bit unsigned integers that
-       range from 0x0001 to 0xd7ff.)  Newlines are written out at
-       regular intervals for safety.  Null characters must never be
-       stored in the output stream.  */
+       range from 0x0000 to 0xd7fe, or even up to 0xf7fe.)  Newlines
+       are written out at regular intervals for safety.  Null
+       characters must never be stored in the output stream.  */
     unsigned i = 0;
 
     /* Little endian will be used for this encoding.  */
-#define PUT_SHORT(var) \
-    putc((var) & 0xff, stdout); \
-    putc(((var) >> 8) & 0xff, stdout)
-#define ERROR_OR_PUT_SHORT(var, errmsg) \
-    if ((unsigned)(var) > (unsigned)0xd7ff) { \
-      fprintf(stderr, errmsg, i, var); \
+#define PUT_SHORT(value) \
+    putc((value) & 0xff, fout); \
+    putc(((value) >> 8) & 0xff, fout)
+#define ERROR_OR_PUT_SHORT(value, errmsg) \
+    if (!put_short_in_range(fout, (unsigned)value)) { \
+      fprintf(stderr, errmsg, i, value); \
       retval = 1; /* goto cleanup; */ \
-    } else { \
-      PUT_SHORT(var); \
     }
 
     PUT_SHORT(0xfeff); /* BOM (Byte Order Mask) */
@@ -241,6 +271,10 @@ int main(int argc, char *argv[]) {
       }
     }
 
+    /* Write out the value that represents zero, since null characters
+       cannot be stored literally.  */
+    put_short_in_range(fout, 0);
+
     /* Convert the date chunk start indexes structure to an eddies per
        date index structure, and output that structure.  */
     ERROR_OR_PUT_SHORT(date_chunk_starts.len - 1,
@@ -257,11 +291,12 @@ int main(int argc, char *argv[]) {
     /* Next output the optimized eddy entries.  */
     for (i = 0; i < sorted_eddies.len; i++) {
       SortedEddy *seddy = &sorted_eddies.d[i];
-      unsigned int_lat = ((unsigned)(seddy->lat * (1 << 5)) +
-			  (1 << 12)) & 0x1fff;
-      unsigned int_lon = ((unsigned)(seddy->lon * (1 << 5)) +
+      unsigned int_lat = ((unsigned)(seddy->lat * (1 << 6)) +
 			  (1 << 13)) & 0x3fff;
-      unsigned slist_next = (seddy->next - sorted_eddies.d) - i;
+      unsigned int_lon = ((unsigned)(seddy->lon * (1 << 6)) +
+			  (1 << 14)) & 0x7fff;
+      unsigned rel_next = (seddy->next - sorted_eddies.d) - i;
+      unsigned rel_prev = i - (seddy->prev - sorted_eddies.d);
 
       if (seddy->lat < -90 || seddy->lat > 90) {
 	fprintf(stderr, "Error: i = %u: Latitude out of range: %f\n",
@@ -279,20 +314,13 @@ int main(int argc, char *argv[]) {
 	retval = 1; /* goto cleanup; */
       }
 
-      /* Note: We allow room for storing one extra bit of information
-	 in the latitude and longitude fields.  Since latitudes only
-	 range from -90 to 90, the above encoding for latitude only
-	 needs 13 bits.  This leaves room for storing one extra bit of
-	 information in the same character.  */
-
+      /* Since latitudes only range from -90 to 90, the above encoding
+	 for latitude only needs 14 bits.  This leaves room for
+	 storing one extra bit of information in the same
+	 character.  */
       /* The type information, which is only a zero or a one, can be
-	 stored in one of the two single bit slots in the
-	 latitude.  */
+	 stored in the latitude field.  */
       int_lat |= seddy->type << 14;
-
-      /* Store the sign of the next index displacement in the single
-	 bit slot of the longitude.  */
-      int_lon |= ((slist_next == 0) ? 1 : 0) << 14;
 
       if (i % 32 == 0)
 	{ PUT_SHORT('\n'); }
@@ -301,25 +329,13 @@ int main(int argc, char *argv[]) {
       PUT_SHORT(int_lon);
       ERROR_OR_PUT_SHORT(seddy->eddy_index,
 			 "Error: i = %u: Eddy index too large: %u\n");
-      if (slist_next == 0) {
-	/* Search backwards to find the beginning of the linked
-	   list.  */
-	SortedEddy *cur_seddy = seddy;
-	while (cur_seddy->prev != cur_seddy)
-	  cur_seddy = cur_seddy->prev;
-	unsigned first_seddy_idx = cur_seddy - sorted_eddies.d;
-	/* Make this the offset (in the negative direction) to the
-	   first eddy in the track.  */
-	ERROR_OR_PUT_SHORT(i - first_seddy_idx,
-"Error: i = %u: Offset between first and last eddy indexes of a track is\n"
-"too large: %u\n");
-      } else {
-	/* NOTE: Some errors may cause the next eddy offset to be
-	   negative, so we use %d instead of %u for diagnostic
-	   convenience.  */
-	ERROR_OR_PUT_SHORT(slist_next,
-			   "Error: i = %u: Next eddy offset too large: %d\n");
-      }
+      /* NOTE: Some errors may cause the next or previous eddy offsets
+	 to be negative, so we use %d instead of %u for diagnostic
+	 convenience.  */
+      ERROR_OR_PUT_SHORT(rel_next,
+			 "Error: i = %u: Next eddy offset too large: %d\n");
+      ERROR_OR_PUT_SHORT(rel_prev,
+		 "Error: i = %u: Previous eddy offset too large: %d\n");
 
       if (fdiag != NULL)
 	fprintf(fdiag,
@@ -341,8 +357,14 @@ int main(int argc, char *argv[]) {
  cleanup:
   EA_DESTROY(sorted_eddies);
   EA_DESTROY(date_chunk_starts);
-  if (fdiag != NULL)
-    fclose(fdiag);
+  if (fdiag != NULL && fclose(fdiag) == EOF) {
+    fprintf(stderr, "Error closing diagnostics file: %s\n", strerror(errno));
+    retval = 1;
+  }
+  if (fclose(fout) == EOF) {
+    fprintf(stderr, "Error closing output file: %s\n", strerror(errno));
+    retval = 1;
+  }
   return retval;
 }
 
@@ -516,4 +538,30 @@ void qs_eddy_swap(void *p1, void *p2, void *arg) {
   memcpy(&temp, se1, sizeof(SortedEddy));
   memcpy(se1, se2, sizeof(SortedEddy));
   memcpy(se2, &temp, sizeof(SortedEddy));
+}
+
+/* Similar to the swap function above, this function handles
+   rearranging the list links during kd-tree construction.  */
+void kd_eddy_move(SortedEddy *dest, SortedEddy *src) {
+  if (src->next == src) src->next = dest;
+  else src->next->prev = dest;
+
+  if (src->prev == src) src->prev = dest;
+  else src->prev->next = dest;
+
+  memcpy(dest, src, sizeof(SortedEddy));
+}
+
+bool put_short_in_range(FILE *fout, unsigned value) {
+  unsigned max = 0xd7fe;
+  if (max_utf_range)
+    max = 0xf7fe;
+  if (value > max)
+    return false;
+  if (value > 0xd7ff)
+    value += 0x0800;
+  if (value == 0)
+    value = max + 1;
+  PUT_SHORT(value);
+  return true;
 }

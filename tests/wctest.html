@@ -1,0 +1,173 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"
+      lang="en" xml:lang="en">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <title>wchar test page</title>
+</head>
+<body>
+
+<p>This is the wchar test page.  Good luck!</p>
+
+<script type="text/javascript">
+
+var httpRequest;
+
+/* The character code that represents zero in the input.  */
+var INPUT_ZERO_SYM;
+var eddiesOnDate = [];
+var cumDates = [];
+var startOfData; // Character offset where eddy records begin.
+
+function dispDiag(diagText) {
+  var dispInfo = document.createElement("pre");
+  dispInfo.appendChild(document.createTextNode(diagText));
+  document.documentElement.children[1].appendChild(dispInfo);
+}
+
+function dispArray(array) {
+  var length = array.length;
+  var diagText = "" + length + ": [ " + array + " ]";
+  diagText = diagText.replace(/,/g, ", ");
+  var wrapper = document.createElement("p");
+  var dispInfo = document.createElement("code");
+  dispInfo.appendChild(document.createTextNode(diagText));
+  wrapper.appendChild(dispInfo);
+  document.documentElement.children[1].appendChild(wrapper);
+}
+
+/* Parse out an eddy from the text stream at the given position.  */
+function getEddy(outEddy, index) {
+  var textBuf = httpRequest.responseText;
+  var numNls = 0|(index / 32);
+  var curPos = startOfData + index * 5 + numNls;
+
+  // Start by reading the raw data fields.
+  outEddy[0] = 0; // Eddy type
+  outEddy[1] = textBuf.charCodeAt(curPos++); // Latitude
+  outEddy[2] = textBuf.charCodeAt(curPos++); // Longitude
+  outEddy[3] = textBuf.charCodeAt(curPos++); // Eddy ID
+  outEddy[4] = textBuf.charCodeAt(curPos++); // Next
+  outEddy[5] = textBuf.charCodeAt(curPos++); // Prev
+
+  // Perform mandatory format conversions.
+  for (var i = 1, len = outEddy.length; i < len; i++) {
+    if (outEddy[i] == INPUT_ZERO_SYM)
+      outEddy[i] = 0;
+    if (outEddy[i] > 0xd7ff)
+      outEddy[i] -= 0x0800;
+  }
+
+  // Decode the data fields.
+  outEddy[0] = (outEddy[1] >> 14) & 1;
+  outEddy[1] = ((outEddy[1] & 0x3fff) - (1 << 13)) / (1 << 6);
+  outEddy[2] = ((outEddy[2] & 0x7fff) - (1 << 14)) / (1 << 6);
+}
+
+function processTestFile() {
+  if (httpRequest.readyState === 4) {
+    if (httpRequest.status === 200) {
+      var testText = httpRequest.responseText;
+      var testText_length = testText.length;
+
+      // Start by skipping past the human-readable header.
+      var re = /(^|\n)# BEGIN_DATA\n/g;
+      re.exec(testText);
+      var curPos = re.lastIndex;
+
+      /* Read the value that represents zero, since null characters
+         cannot be stored literally.  */
+      INPUT_ZERO_SYM = testText.charCodeAt(curPos++);
+
+      // Read the entire dates header.
+      var numDates = testText.charCodeAt(curPos++);
+      var lastCumDates = 0;
+      cumDates.push(lastCumDates);
+      for (var i = 0; i < numDates; i++) {
+        if (i % 32 == 0)
+          curPos++; // Skip the newline character.
+        var numEddies = testText.charCodeAt(curPos++);
+        eddiesOnDate.push(numEddies);
+        lastCumDates += numEddies;
+        cumDates.push(lastCumDates);
+      }
+      curPos++; // Skip the newline immediately at the end of the header.
+      startOfData = curPos;
+      // console.log(eddiesOnDate);
+      // console.log(cumDates);
+      dispArray(cumDates);
+
+      /* Rather than parsing out all data into JavaScript objects at
+         this point, we will only parse out the data when we need it.
+         Advantage: This is a tremendous economization on memory
+         consumption: Using only a single JavaScript object for
+         multiple entities results in far less garbage accumulation.
+         Plus, this method allows us to count the exact number of
+         bytes of memory that our JavaScript program needs.  */
+
+      var curEddy = []; curEddy.length = 6 >>> 0;
+      var startIdx = 0;
+      var nextIdx = startIdx;
+      for (var i = 0; i < 10; i++) {
+        getEddy(curEddy, nextIdx);
+        dispArray(curEddy);
+        nextIdx += curEddy[4];
+        if (curEddy[4] == 0)
+          nextIdx = ++startIdx;
+      }
+
+      /* Note: One possibly useful technique is to keep the entire
+         data string in memory, but only keep a small window of
+         the data parsed into a format useful for JavaScript.  This
+         will alleviate the issue of garbage accumulation.  */
+      /* Memory allocation problem solved: Buffering.  The old format
+         tended toward arrays that had way too many elements for the
+         JavaScript runtime to be happy.  That's why everything ran
+         so slow and consumed so much memory.  Also, the singly-linked
+         lists format is a dud: the numbers do indeed get too large
+         for it to work.  */
+
+      /* This test is bound to create serious problems with most
+         browsers on most computers.  Thus, we limit the number of
+         characters displayed to 4096.  */
+      dispInfo = document.createElement("pre");
+      dispInfo.appendChild(document.
+        createTextNode(testText.substr(0, 4096)));
+      document.documentElement.children[1].appendChild(dispInfo);
+
+      // console.log("Done processing.");
+      alert("Done processing.");
+
+      // Cleanup
+      delete httpRequest;
+      delete INPUT_ZERO_SYM;
+      delete eddiesOnDate;
+      delete cumDates;
+      delete startOfData;
+    } else {
+      alert("There was a problem with the request.");
+    }
+  }
+}
+
+// Load the test file.
+if (window.XMLHttpRequest) // Mozilla, Safari, ...
+  httpRequest = new XMLHttpRequest();
+else if (window.ActiveXObject) // IE 8 and older
+  httpRequest = new ActiveXObject("Microsoft.XMLHTTP");
+  // Plus we would need lots of error handling...
+if (!httpRequest) {
+  alert("Could not create an XMLHttpRequest.");
+  // return;
+}
+httpRequest.onreadystatechange = processTestFile;
+httpRequest.open("GET", "../data/tracks.wtxt", true);
+// NOTE: overrideMimeType has compatibility issues.
+httpRequest.overrideMimeType("text/plain; charset=utf-16le");
+httpRequest.send();
+
+</script>
+
+</body>
+</html>

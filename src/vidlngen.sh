@@ -8,7 +8,7 @@ if [ -z "$CLASS" ]; then
   FMT=jpg
 fi
 
-FRAMELIST=`ls $CLASS | sort`
+FRAMELIST=`ls $CLASS | sed -e '/^format.json$/d' | sort`
 NUMFRAMES=`echo "$FRAMELIST" | wc -l`
 mkdir vidgen
 cd vidgen

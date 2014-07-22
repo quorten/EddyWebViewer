@@ -16,6 +16,8 @@ setclass()
   case "$CLASS" in
     pngssh)
       FMT=png
+      BITS_BEF_DEC=8
+      BITS_AFT_DEC=7
     ;;
     jpgssh)
       FMT=jpg
@@ -53,8 +55,8 @@ fi
 # Write out the format files for each SSH conversion class.
 for CLASS in $CLASSES; do
   setclass
-  mkdir -p ../data/${CLASS}ssh
-  cat >../data/${CLASS}ssh/format.json <<EOF
+  mkdir -p ../data/${CLASS}
+  cat >../data/${CLASS}/format.json <<EOF
 {
   "format": ${FMT},
   "bitsBefDec": ${BITS_BEF_DEC},
@@ -70,8 +72,9 @@ for date in $DATES; do
     setclass
     ./csvtotga $BITS_BEF_DEC.$BITS_AFT_DEC -m$NOISE_MARGIN \
       <../data/SSH/ssh_${date}.dat | \
-      convert tga:- ../data/${CLASS}ssh/ssh_${date}.${FMT}
+      convert tga:- ../data/${CLASS}/ssh_${date}.${FMT}
   done
+  echo Finished date ${date}.
 
   # Note: Web browsers cannot reliably work with PNGs that has an
   # unassociated alpha channel, but this would be the option to

@@ -331,7 +331,12 @@ int main(int argc, char *argv[]) {
 
     /* Write out the value that represents zero, since null characters
        cannot be stored literally.  */
-    put_short_in_range(fout, 0);
+    { /* Write the format header.  */
+      unsigned short format_bits = 0x01;
+      if (max_utf_range)
+	format_bits |= 0x02;
+      PUT_SHORT(format_bits);
+    }
 
     /* Convert the date chunk start indexes structure to an eddies per
        date index structure, and output that structure.  */
@@ -439,10 +444,10 @@ bool put_short_in_range(FILE *fout, unsigned value) {
     max = 0xf7fe;
   if (value > max)
     return false;
-  if (value > 0xd7ff)
-    value += 0x0800;
   if (value == 0)
     value = max + 1;
+  if (value > 0xd7ff)
+    value += 0x0800;
   PUT_SHORT(value);
   return true;
 }

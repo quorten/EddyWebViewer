@@ -55,7 +55,7 @@ function getEddy(outEddy, index) {
   for (var i = 1, len = outEddy.length; i < len; i++) {
     if (outEddy[i] == INPUT_ZERO_SYM)
       outEddy[i] = 0;
-    if (outEddy[i] > 0xd7ff)
+    else if (outEddy[i] > 0xd7ff)
       outEddy[i] -= 0x0800;
   }
 
@@ -63,6 +63,46 @@ function getEddy(outEddy, index) {
   outEddy[0] = (outEddy[1] >> 14) & 1;
   outEddy[1] = ((outEddy[1] & 0x3fff) - (1 << 13)) / (1 << 6);
   outEddy[2] = ((outEddy[2] & 0x7fff) - (1 << 14)) / (1 << 6);
+}
+
+/* TODO:
+
+   * Viable implementation of a partial downloader.
+
+   * Kd-tree traversal for potential visible rendering.
+
+*/
+
+/* Kd-tree potential visibility traversal.  This function traverses
+   the kd-tree at the current date to determine the smallest kd-tree
+   cell that entirely contains the bounding box of the current view.
+
+   bbox: [ minLat, minLon, maxLat, maxLon ]
+   Units are degrees.
+
+*/
+function kdPVS(var bbox) {
+  var curEddies = []; curEddies.length;
+  var kdBBox = [ -90, -180, 90, 180 ];
+  var start = 0; var length = curEddies.length; var depth = 0;
+  var lastStart = 0; var lastLength = curEddies.length;
+
+  while (kdBBox[0] < bbox[0] && kdBBox[1] < bbox[1] &&
+         kdBBox[2] > bbox[2] && kdBBox[3] > bbox[3]) {
+    var curdim = depth % 2; /* Latitude (0) or longitude (1) */
+    var median = start + length / 2; var end = start + length;
+    if (cumdim == 0) { /* Latitude */
+      if (bbox[0] < median.lat && bbox[2] < median.lat) {
+        // Choose the left side.
+      } else if () {
+        // Choose the right side.
+      } else {
+        // We're done.
+      }
+    } else { /* Longitude */
+      median;
+    }
+  }
 }
 
 function processTestFile() {
@@ -76,9 +116,16 @@ function processTestFile() {
       re.exec(testText);
       var curPos = re.lastIndex;
 
-      /* Read the value that represents zero, since null characters
-         cannot be stored literally.  */
-      INPUT_ZERO_SYM = testText.charCodeAt(curPos++);
+      /* Read the format header.  */
+      var formatBits = testText.charCodeAt(curPos++);
+      if (formatBits & 0x02) /* Extended range */
+        INPUT_ZERO_SYM = 0xffff;
+      else
+        INPUT_ZERO_SYM = 0xd7ff;
+      if (formatBits & 0x03) /* Track-keyed format */
+        ;
+      else
+        /* Eddy-keyed format */;
 
       // Read the entire dates header.
       var numDates = testText.charCodeAt(curPos++);

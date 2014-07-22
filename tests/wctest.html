@@ -81,7 +81,7 @@ function getEddy(outEddy, index) {
    Units are degrees.
 
 */
-function kdPVS(var bbox) {
+function kdPVS(bbox) {
   var curEddies = []; curEddies.length;
   var kdBBox = [ -90, -180, 90, 180 ];
   var start = 0; var length = curEddies.length; var depth = 0;
@@ -94,13 +94,21 @@ function kdPVS(var bbox) {
     if (cumdim == 0) { /* Latitude */
       if (bbox[0] < median.lat && bbox[2] < median.lat) {
         // Choose the left side.
-      } else if () {
+      } else if (bbox[0] > median.lat && bbox[2] > median.lat) {
         // Choose the right side.
       } else {
-        // We're done.
+        // We're done.  Choose the last cell and return.
       }
     } else { /* Longitude */
-      median;
+      if (bbox[1] < median.lat && bbox[3] < median.lat) {
+        // Choose the left side.
+        /* start = start; */ length = median - start;
+      } else if (bbox[1] > median.lat && bbox[3] > median.lat) {
+        // Choose the right side.
+        start = median + 1; length = end - start;
+      } else {
+        // We're done.  Choose the last cell and return.
+      }
     }
   }
 }

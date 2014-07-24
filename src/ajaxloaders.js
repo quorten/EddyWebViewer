@@ -54,6 +54,7 @@ import "cothread";
 var XHRLoader = function(url, notifyFunc) {
   this.url = url;
   this.notifyFunc = notifyFunc;
+  this.httpRequest = null;
 };
 
 XHRLoader.prototype = new Cothread();
@@ -94,6 +95,9 @@ XHRLoader.prototype.alertContents = function() {
 };
 
 XHRLoader.prototype.startExec = function() {
+  if (this.httpRequest)
+    this.httpRequest.abort();
+
   var httpRequest;
   if (window.XMLHttpRequest)
     httpRequest = new XMLHttpRequest();

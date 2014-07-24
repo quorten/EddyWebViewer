@@ -5,7 +5,7 @@
 <head>
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
   <title>Ocean Eddies Web Viewer Notes</title>
-  <style type="text/css">
+  <style id="internalStyle" type="text/css">
     p.image-flow { page-break-inside: avoid; }
     p.image-flow object, p.image-flow img { vertical-align: top; }
     /* TODO: Put margins in images, not HTML page.  */
@@ -582,8 +582,7 @@ embedded objects. -->
 <p style="text-align: center">
 <object id="persp_math1" type="application/xhtml+xml" data="persp_math1.xhtml"
 	width="100%" height="941">
-<img src="persp_math1.png" alt="[complicated math that spans multiple lines,
- don't even try to read this without raster image display]"
+<img src="persp_math1.png" alt="[complicated math that spans multiple lines, don't even try to read this without raster image display]"
      width="607" height="941" />
 </object>
 </p>
@@ -658,8 +657,7 @@ equations.</p>
 <p style="text-align: center">
 <object id="persp_math2" type="application/xhtml+xml" data="persp_math2.xhtml"
 	width="100%" height="617">
-<img src="persp_math2.png" alt="[complicated math that spans multiple lines,
- don't even try to read this without raster image display]"
+<img src="persp_math2.png" alt="[complicated math that spans multiple lines, don't even try to read this without raster image display]"
      width="540" height="617" />
 </object>
 </p>
@@ -1775,7 +1773,7 @@ var timeoutIter = this.i + numIters;
 
 lastTime = Date.now();
 
-for (; i < timeoutIter && condition; i++) {
+for (; i &lt; timeoutIter && condition; i++) {
 }
 
 lastElapTime = Date.now() - lastTime;
@@ -1893,7 +1891,7 @@ http://blog.gmane.org/gmane.ietf.charsets/month=20090801/page=1
 Document notational conventions, coding style.
 
 ~~num or 0|num is used to designate integer conversion.
->>> 0 is used to designate unsigned integer conversion.
+&gt;&gt;&gt; 0 is used to designate unsigned integer conversion.
 
 ----------------------------------------
 
@@ -1907,6 +1905,169 @@ http://www.html5rocks.com/en/tutorials/file/xhr2/
 TODO: When a data load is preempted, make sure to call abort().
 
 TODO: When tracks cross 360 degrees, split them up.
+
+TODO: Document derived classes and bases better.
+
+----------------------------------------
+
+Time for a bulletproof plan for robust feature detection.
+
+0. Core language feature detects.
+
+1. Core native object feature detects.
+
+2. Core host object feature detects.
+
+* new Array(), array.push(), array.pop().
+
+* document and window objects
+
+* try-catch detection.  Use additional scripts in page to recover from
+  an error in one script.
+
+* Exception processing is an ADVANCED JavaScript feature.  Only detect
+  it if you need it.
+
+window.onerror = function() {
+};
+
+Absolute bare minimum feature tests must be written inline with the
+main HTML.  Additional feature tests can then come with the JavaScript
+library.
+
+http://perfectionkills.com/understanding-delete/
+
+http://modernizr.com/
+
+Looking at Modernizr myself, the basic ideas behind it are pretty
+straightforward from reading the more advanced sources, so I won't
+need to use it.  For example, HTML Canvas is just detected by creating
+a canvas element and checking if getContext() is a function, which is
+not as good as the feature detection functions that I'll be using, so
+I'll just code things up in my low-level way that works.
+
+function isHostMethod(object, property) {
+  var t = typeof object[property];  
+  return t=='function' ||
+         (!!(t=='object' && object[property])) ||
+         t=='unknown';
+}
+
+function isHostCollection(object, property) {
+  var t = typeof object[property];  
+  return (!!(t=='object' && object[property])) ||
+         t=='function';
+}
+
+function isHostObject(object, property) {
+  return !!(typeof(object[property]) == 'object' && object[property]);
+}
+
+http://www.feedthebot.com/pagespeed/defer-loading-javascript.html
+
+----------------------------------------
+
+Really tricky.  Want to use XML stylesheet association and also have
+support for IE6 fallback at the same time, where &lt;!DOCTYPE&gt; must
+appear before any XML processing instructions?  Easy: Move the PI
+after the &lt;!DOCTYPE&gt;.  According to the plans, this is still
+valid, since the PI will still be located in the prolog of the XML
+document.
+
+(Another option is to just skip out on XML stylesheet PIs altogether.
+This never seemed like a bad idea to me, but according to some, you
+should use an XML stylesheet declaration when serving as XHTML.)
+
+http://www.w3.org/TR/2000/REC-xml-20001006#sec-prolog-dtd
+http://www.w3.org/TR/xml-stylesheet/
+
+NOTE: I think I've ended up on some stale information.
+
+http://annevankesteren.nl/2003/08/perfect-markup
+
+The current W3C document recommends against using XML stylesheet
+processing instructions, saying that conforming user agents MUST
+process &lt;style&gt; and &lt;link&gt; elements, which you should use
+instead.
+
+http://www.w3.org/TR/xhtml-media-types/#compatGuidelines
+
+----------------------------------------
+
+Quick and easy things that I should make note of doing:
+
+* Draw arrows rather than circles for the eddies.  Do not worry about
+  graphics state changes, but if those do prove to be slow, allow
+  disabling.
+
+* Try drawing backgrounds just as a panned and scaled image.
+
+* Create an SVG for the land masses, manually, by hand.
+
+* Create the user documentation.
+
+* Integer arithmetic, regenerate.
+
+* Note how to draw eddy boundaries, another image on top.
+
+----------------------------------------
+
+Introduction
+
+<h2>What are mesoscale ocean eddies?</h2>
+
+<p>Ocean eddies are circular disturbances in the ocean currents, like
+"hurricanes" and "whirlpools" in informal terms.  <em>Mesoscale</em>
+ocean eddies range from 5 kilometers to a couple hundred kilometers in
+diameter.  Most eddies' height variations are within the range of +/-
+32 centimeters from the mean sea surface height.  Mesoscale eddies are
+classified into two main categories:</p>
+
+<ul>
+  <li><em>Cyclonic eddies</em> are depressions in the sea surface
+  height.  These eddies rotate counterclockwise in the northern
+  hemisphere.</li>
+  <li><em>Anticyclonic eddies</em> are elevations in the sea surface
+  height.  These eddies rotate clockwise in the northern
+  hemisphere.</li>
+<li>
+
+<h2>Why are mesoscale ocean eddies important?</h2>
+
+<p>Ocean eddies transport heat, salt, energy, and nutrients across the
+World Oceans.  Figure x.y is a photograph of an ocean eddy.</p>
+
+<h3></h3>
+
+<p>As a result, accurately identifying and tracking such phenomena are
+crucial for understanding future marine and terrestrial ecosystems and
+their sustainability.</p>
+
+<h2>How are ocean eddies identified?</h2>
+
+<p>Our algorithms generally only identify eddies that are 100
+kilometers in diameter or larger.</p>
+
+<p>Interesting from a computer science perspective.</p>
+
+Minimum amplitude of 1 cm.
+
+The EddyScan.
+
+Go ahead, see for yourself.  Depending on you, you'll notice that you
+can visualize eddy formations smaller than the current automated
+algorithms are designed to identify.  The average diameter of an ocean
+eddy is, and the average height of an ocean eddy is.
+
+So powerful land so dangerous that it could suck a freight ship
+underneath the surface of the ocean.
+
+Amplitude ranges from a minimum of one centimeter.
+
+Geodesic speed, which for practical matters is the physical line
+distance that the eddy travels across the curved surface of the Earth.
+
+Mesoscale
 
 ----------------------------------------</pre>
 

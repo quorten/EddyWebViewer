@@ -90,7 +90,7 @@ function kdPVS(bbox) {
   while (kdBBox[0] < bbox[0] && kdBBox[1] < bbox[1] &&
          kdBBox[2] > bbox[2] && kdBBox[3] > bbox[3]) {
     var curdim = depth % 2; /* Latitude (0) or longitude (1) */
-    var median = start + length / 2; var end = start + length;
+    var median = start + (length - 1) / 2; var end = start + length;
     if (cumdim == 0) { /* Latitude */
       if (bbox[0] < median.lat && bbox[2] < median.lat) {
         // Choose the left side.

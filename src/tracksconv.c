@@ -38,7 +38,7 @@ typedef struct InputEddy_tag InputEddy;
 typedef struct SortedEddy_tag SortedEddy;
 struct SortedEddy_tag {
   unsigned type;
-  float coords[2]; /* Latitude and longitude */
+  unsigned coords[2]; /* Latitude and longitude */
   unsigned date_index;
   unsigned eddy_index;
   /* unsigned unsorted_index; */
@@ -72,7 +72,7 @@ SortedEddy_array kd_curdim[KD_DIMS+1];
 
 bool put_short_in_range(FILE *fout, unsigned value);
 int parse_json(FILE *fp, unsigned eddy_type);
-void add_eddy(InputEddy *ieddy, unsigned eddy_type,
+int add_eddy(InputEddy *ieddy, unsigned eddy_type,
 	      bool start_of_track);
 int qs_date_cmp(const void *p1, const void *p2, void *arg);
 int qs_lat_cmp(const void *p1, const void *p2);
@@ -354,35 +354,23 @@ int main(int argc, char *argv[]) {
     /* Next output the optimized eddy entries.  */
     for (i = 0; i < sorted_eddies.len; i++) {
       SortedEddy *seddy = &sorted_eddies.d[i];
-      unsigned int_lat = ((unsigned)(seddy->coords[0] * (1 << 6)) +
-			  (1 << 13)) & 0x3fff;
-      unsigned int_lon = ((unsigned)(seddy->coords[1] * (1 << 6)) +
-			  (1 << 14)) & 0x7fff;
+      unsigned int_lat = seddy->coords[0];
+      unsigned int_lon = seddy->coords[1];
       unsigned rel_next = (seddy->next == NULL) ? 0 :
 	((seddy->next - sorted_eddies.d) - i);
       unsigned rel_prev = (seddy->prev == NULL) ? 0 :
 	(i - (seddy->prev - sorted_eddies.d));
 
-      if (seddy->coords[0] < -90 || seddy->coords[0] > 90) {
-	fprintf(stderr, "Error: i = %u: Latitude out of range: %f\n",
-		i, seddy->coords[0]);
-	retval = 1; /* goto cleanup; */
-      }
-      if (seddy->coords[1] < -180 || seddy->coords[1] > 180) {
-	fprintf(stderr, "Error: i = %u: Longitude out of range: %f\n",
-		i, seddy->coords[1]);
-	retval = 1; /* goto cleanup; */
-      }
       if (seddy->eddy_index == 0) {
 	fprintf(stderr,
 		"Error: i = %u: Eddy indexes must never equal zero.\n", i);
 	retval = 1; /* goto cleanup; */
       }
 
-      /* Since latitudes only range from -90 to 90, the above encoding
-	 for latitude only needs 14 bits.  This leaves room for
-	 storing one extra bit of information in the same
-	 character.  */
+      /* Since latitudes only range from -90 to 90, the encoding
+	 method (located in the `add_eddy()' function) for latitude
+	 only needs 14 bits.  This leaves room for storing one extra
+	 bit of information in the same character.  */
       /* The type information, which is only a zero or a one, can be
 	 stored in the latitude field.  */
       int_lat |= seddy->type << 14;
@@ -392,8 +380,13 @@ int main(int argc, char *argv[]) {
 
       PUT_SHORT(int_lat);
       PUT_SHORT(int_lon);
+      /* Eddy ID is only of relevance to the MATLAB viewer.  No future
+	 data or encoding mechanism in the web viewer will ever have a
+	 justified need for an Eddy ID: kd-trees and image storage
+	 formats make it unneeded.
+
       ERROR_OR_PUT_SHORT(seddy->eddy_index,
-			 "Error: i = %u: Eddy index too large: %u\n");
+			 "Error: i = %u: Eddy index too large: %u\n"); */
       /* NOTE: Some errors may cause the next or previous eddy offsets
 	 to be negative, so we use %d instead of %u for diagnostic
 	 convenience.  */
@@ -402,16 +395,25 @@ int main(int argc, char *argv[]) {
       ERROR_OR_PUT_SHORT(rel_prev,
 		 "Error: i = %u: Previous eddy offset too large: %d\n");
 
-      if (fdiag != NULL)
+      if (fdiag != NULL) {
+	float latitude = (float)((int)(seddy->coords[0] -
+				       (1 << 13))) / (1 << 6);
+	float longitude = (float)((int)(seddy->coords[1] -
+					(1 << 14))) / (1 << 6);
+	unsigned next_idx = (seddy->next == NULL) ? i :
+	  (seddy->next - sorted_eddies.d);
+	unsigned prev_idx = (seddy->prev == NULL) ? i :
+	  (seddy->prev - sorted_eddies.d);
 	fprintf(fdiag,
 		"i = %-5u            Type: %-5u\n"
 		"Latitude: %-7.2f    Longitude: %-7.2f\n"
 		"Date index: %-5u    Eddy index: %-5u\n"
 		"Next index: %-5u    Previous index: %-5u\n\n",
 		i, seddy->type,
-		seddy->coords[0], seddy->coords[1],
+		latitude, longitude,
 		seddy->date_index, seddy->eddy_index,
-		seddy->next - sorted_eddies.d, seddy->prev - sorted_eddies.d);
+		next_idx, prev_idx);
+      }
     }
 
     /* Put a newline at the end of the data for good measure.  */
@@ -522,7 +524,8 @@ int parse_json(FILE *fp, unsigned eddy_type) {
 		  tot_num_tracks - 1);
 	  return 1;
 	}
-	add_eddy(&cur_eddy, eddy_type, start_of_track);
+	if (add_eddy(&cur_eddy, eddy_type, start_of_track) != 0)
+	  return 1;
 	start_of_track = false;
       }
       nest_level--;
@@ -542,11 +545,29 @@ int parse_json(FILE *fp, unsigned eddy_type) {
 /* Add an eddy to the eddy-indexed array.  NOTE: Because the array's
    base address is constantly changing during construction, the `next'
    and `prev' pointers use zero as their base address.  */
-void add_eddy(InputEddy *ieddy, unsigned eddy_type, bool start_of_track) {
+int add_eddy(InputEddy *ieddy, unsigned eddy_type, bool start_of_track) {
   SortedEddy *seddy = &sorted_eddies.d[sorted_eddies.len];
   seddy->type = eddy_type;
-  seddy->coords[0] = ieddy->lat;
-  seddy->coords[1] = ieddy->lon;
+
+  /* Convert the floating point latitude and longitude to the destined
+     output 14/15-bit fixed-point format immediately, for faster
+     integer arithmetic during kd-tree construction.  (This conversion
+     was previously performed just before output.)  */
+  if (ieddy->lat < -90 || ieddy->lat > 90) {
+    fprintf(stderr, "Error: Latitude out of range: %f\n",
+	    ieddy->lat);
+    return 1;
+  }
+  if (ieddy->lon < -180 || ieddy->lon > 180) {
+    fprintf(stderr, "Error: Longitude out of range: %f\n",
+	    ieddy->lon);
+    return 1;
+  }
+  seddy->coords[0] = ((unsigned)(ieddy->lat * (1 << 6)) +
+		      (1 << 13)) & 0x3fff;
+  seddy->coords[1] = ((unsigned)(ieddy->lon * (1 << 6)) +
+		      (1 << 14)) & 0x7fff;
+
   seddy->date_index = ieddy->date_index;
   seddy->eddy_index = ieddy->eddy_index;
   /* seddy->unsorted_index = sorted_eddies.len; */
@@ -560,37 +581,28 @@ void add_eddy(InputEddy *ieddy, unsigned eddy_type, bool start_of_track) {
     { seddy--; seddy->next++; }
 
   EA_ADD(sorted_eddies);
+  return 0;
 }
 
 /* `qsorts_r()' date comparison function.  */
 int qs_date_cmp(const void *p1, const void *p2, void *arg) {
   const SortedEddy *se1 = (const SortedEddy*)p1;
   const SortedEddy *se2 = (const SortedEddy*)p2;
-  return se1->date_index - se2->date_index;
+  return (int)(se1->date_index - se2->date_index);
 }
 
 /* `qsorts_r()' latitude comparison function.  */
 int qs_lat_cmp(const void *p1, const void *p2) {
   const SortedEddy *se1 = (const SortedEddy*)p1;
   const SortedEddy *se2 = (const SortedEddy*)p2;
-  float cmp = se1->coords[0] - se2->coords[0];
-  if (cmp > 0.0)
-    return 1;
-  else if (cmp < 0.0)
-    return -1;
-  return 0;
+  return (int)(se1->coords[0] - se2->coords[0]);
 }
 
 /* `qsorts_r()' longitude comparison function.  */
 int qs_lon_cmp(const void *p1, const void *p2) {
   const SortedEddy *se1 = (const SortedEddy*)p1;
   const SortedEddy *se2 = (const SortedEddy*)p2;
-  float cmp = se1->coords[1] - se2->coords[1];
-  if (cmp > 0.0)
-    return 1;
-  else if (cmp < 0.0)
-    return -1;
-  return 0;
+  return (int)(se1->coords[1] - se2->coords[1]);
 }
 
 /* `qsorts_r()' swapping function that rearranges linked lists as
@@ -672,24 +684,21 @@ void kd_tree_build(unsigned begin_start, unsigned begin_length) {
   while (QS_STACK_NOT_EMPTY) {
     unsigned real_curdim; /* "Real" current dimension (lat or lon) */
     unsigned median, end;
-    float median_val;
-    /* End indexes (index just beyond last element) of subarrays.
-       Note: In this usage, `right_subend' includes the median element
-       as the first element of the subarray.  */
-    unsigned left_subend, right_subend;
-    bool median_moved;
+    unsigned median_val;
+    unsigned eq_median;
     unsigned i, j;
 
     /* 1. Pick the median point at the current dimension.  */
     real_curdim = depth % 2;
-    /* TODO: Might need better median choosing equation.  */
-    median = start + length / 2; end = start + length;
-    /* Verify the median represents a `>=' division.  */
-    while (median > start &&
-	   kd_curdim[0].d[median-1].coords[real_curdim] ==
-	     kd_curdim[0].d[median].coords[real_curdim])
-      median--;
+    median = start + (length - 1) / 2; end = start + length;
     median_val = kd_curdim[0].d[median].coords[real_curdim];
+    /* If there are other points equal to the median in this
+       dimension, find the `>=' division boundary.  */
+    eq_median = median;
+    while (eq_median > start &&
+	   kd_curdim[0].d[eq_median-1].coords[real_curdim] ==
+	     median_val)
+      eq_median--;
 
     /* 2. Make a temporary copy of kd_curdim[0].  */
     memcpy(kd_curdim[KD_DIMS].d + start, kd_curdim[0].d + start,
@@ -702,29 +711,34 @@ void kd_tree_build(unsigned begin_start, unsigned begin_length) {
        (point to themselves) or point outside the current date index
        chunk.  */
     for (j = 0; j < KD_DIMS; j++) {
-      left_subend = start; right_subend = median + 1;
-      median_moved = false;
+      /* End indexes (index just beyond last element) of
+	 subarrays.  */
+      unsigned left_subend = start, right_subend = median + 1;
+      bool median_moved = false; unsigned eq_med_end = eq_median;
       for (i = start; i < end; i++) {
-	float cmp = kd_curdim[j+1].d[i].coords[real_curdim] - median_val;
+	int cmp = (int)(kd_curdim[j+1].d[i].coords[real_curdim] - median_val);
 	if (cmp < 0) /* Left */
 	  memcpy(&kd_curdim[j].d[left_subend++], &kd_curdim[j+1].d[i],
 		 sizeof(SortedEddy));
-	else if (!median_moved && cmp == 0.0 &&
+	else if (!median_moved && cmp == 0 &&
 		 !memcmp(&kd_curdim[j+1].d[i],
 			 &kd_curdim[0].d[median],
 			 sizeof(SortedEddy))) { /* Median */
 	  memcpy(&kd_curdim[j].d[median], &kd_curdim[j+1].d[i],
 		 sizeof(SortedEddy));
 	  median_moved = true;
-	} else /* Right */
+	} else if (eq_med_end < median && cmp == 0) /* Equal-to median */
+	  memcpy(&kd_curdim[j].d[eq_med_end++], &kd_curdim[j+1].d[i],
+		 sizeof(SortedEddy));
+	else /* Right */
 	  memcpy(&kd_curdim[j].d[right_subend++], &kd_curdim[j+1].d[i],
 		 sizeof(SortedEddy));
       }
     }
 
     { /* 4. Recurse on the left and right subarrays.  */
-      unsigned left_len = left_subend - start;
-      unsigned right_len = right_subend - (median + 1);
+      unsigned left_len = median - start;
+      unsigned right_len = end - (median + 1);
       depth++;
       if (left_len > right_len) {
 	/* Push the larger left subarray.  */

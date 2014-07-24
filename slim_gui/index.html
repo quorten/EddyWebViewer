@@ -25,7 +25,7 @@
 <head>
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
   <title>Ocean Eddies Web Viewer</title>
-  <style type="text/css">
+  <style id="internalStyle" type="text/css">
     /**************************************/
     /* Top Level */
 
@@ -51,7 +51,7 @@
                 -khtml-user-select: none;
                 -moz-user-select: none;
                 -ms-user-select: none;
-                /* user-select: none; */ /* Doesn't validate */
+                user-select: none; /* Doesn't validate */
                 cursor: default; }
 
     /**************************************/
@@ -71,10 +71,16 @@
     /* Configuration option to change GUI scale factor?  */
 
     #popupInfo { position: absolute; left: 8px; top: 8px;
-                 max-width: 10cm; background-color: rgba(0, 0, 0, 0.6);
+                 max-width: 10cm;
+                 background-color: #202020;
+                 background-color: rgba(0, 0, 0, 0.6);
                  font-family: sans; font-size: 10pt;
                  -moz-border-radius:16px; -webkit-border-radius:16px;
                  border-radius: 16px; padding: 16px; }
+    .ie6 #popupInfo, .ie7 #popupInfo { background: transparent;
+filter:progid:DXImageTransform.Microsoft.gradient(startColorstr=#20000000, endColorstr=#20000000); }
+    .ie8 #popupInfo { background: transparent;
+-ms-filter: "progid:DXImageTransform.Microsoft.gradient(startColorstr=#20000000, endColorstr=#20000000)"; }
     #popupClose { position: absolute; right: 8px; top: 8px;
                   width: 16px; height: 16px;
                   background-image: url("close.png");
@@ -85,8 +91,13 @@
 
     #configWrapper { position: absolute; right: 0px; bottom: 0px;
                      width: 7.5cm; height: auto; max-height: 100%;
+                     background-color: #404040;
                      background-color: rgba(0, 0, 0, 0.25);
                      overflow: auto; }
+    .ie6 #configWrapper, .ie7 #configWrapper { background: transparent;
+filter:progid:DXImageTransform.Microsoft.gradient(startColorstr=#40000000, endColorstr=#40000000); }
+    .ie8 #configWrapper { background: transparent;
+-ms-filter: "progid:DXImageTransform.Microsoft.gradient(startColorstr=#40000000, endColorstr=#40000000)"; }
     #configPanel { width: auto; height: auto;
                    /* NOTE: The margins, though transparent, block
                    mouse events from the canvas underneath.  However,
@@ -173,12 +184,20 @@
 <body id="topBody" style="height: auto; margin: 0.5em"
       onload="bodyInit()">
 
-<noscript>
+<div id="noscriptJSCtl">
 
 <h1>Sorry</h1>
 
 <p>You need a JavaScript-enabled web browser to use the the
-interactive web viewer.</p>
+interactive web viewer.  If your browser does have JavaScript enabled,
+then your browser's JavaScript implementation is apparently too badly
+broken or lacks sufficient standards compliance to pass the minimum
+feature tests at startup.</p>
+
+<p>If you believe that your browser should have sufficient
+capabilities to run the web viewer, then check your network
+connection.  Your computer simply might not have been able to download
+the entire web page.</p>
 
 <p>If you want to see what the interactive web viewer is capable of
 doing on more capable systems, please see the <a href="help.html">user
@@ -191,14 +210,239 @@ support for displaying images will greatly help.</p>
 ignore it, since it will be unusable to you.</p>
 
 <hr />
-</noscript>
+</div>
 
 <div id="scriptWrapper" style="display: none">
 <script type="text/javascript">
 <!--//--><![CDATA[//><!--
-document.getElementById('topBody').style.cssText =
-  'color: white; background-color: #333348;';
-document.getElementById('scriptWrapper').style.cssText = '';
+/* Mandatory feature testing.  If any of the following tests fail, the
+   browser's JavaScript runtime is assumed to be broken.  Any tests
+   more advanced than this should be moved to the script's main body.  */
+
+// -------------------------------------------------------------------
+// 0. Verify that the JavaScript runtime has reasonable syntax parsing.
+
+function FTfnStmt(p1, p2, p3) {
+  var v1 = 5;
+  v1++; v1 - 5; typeof(v1)
+  var v2
+  v2 = v1--
+  p3 % p1; p2 / p3; p1 +
+    p3
+  if (1) { p1 = 5
+  } else if (p2) p3 = p2
+  else
+    p1 = p2 = p3
+  switch (p2)
+  {
+  case 0:
+    v2 = 4 * p1
+    break
+  case 1: v2 = p1 ^ p3;
+  default: return 20
+  }
+  return v2
+}
+
+FTvarFunc = function(p1) {
+  var x = 2, y = 3
+  x | 2; y & 3; x << 2; y >> 1; x >>> 3;
+  x += 2; x *= 4; x -= 8; x /= 7; x %= 2;
+  x |= 3; x &= 7; x ^= 8; x <<= 3; x >>= 3; x >>>= 2;
+  !!(32 && 4 != 3 && 0 == 2 || 5 < 8); typeof p1
+  return
+  bogusFunc()
+};
+
+var FTnodelVarFunc = function() {
+  return 2;
+};
+
+FTvarFunc();
+FTfnStmt(5, 9, 20.5);
+
+// Check closure support.
+(function() {
+  var x = 2; x += 4; return 5;
+})();
+
+(function() {
+  return 7;
+}());
+
+// Check for dictionary (object) and array syntax.
+FTtestObj = {};
+FTtestObj.prop1 = 9;
+FTtestObj["prop1"] = 4;
+delete FTtestObj.prop1;
+
+FTtestArray = [];
+FTtestArray.length = 3;
+FTtestArray[0] = 3;
+FTtestArray[1] = 1;
+FTtestArray[2] = 9;
+delete FTtestArray[2];
+
+// Check for global object (this).
+this.FTtestObj.prop1;
+
+// Check for string and RegExp syntax.
++'5'; -"7"; 'str1' + 'str2';
+FTtestString = ""; FTtestString += "hello";
+/regexp/g;
+
+// Check for object creation syntax.
+FTnewObj = new FTvarFunc(4);
+
+// 0.1. Check for more advanced syntax, if mandatory.
+/*
+'str1' === "str1"; 5 !== '5';
+try {
+}
+catch (e) {
+}
+*/
+
+// 0.2. Check for advanced `delete' usage, if mandatory.
+/*
+// Old IE compatible `delete' (but fails in strict mode).
+// delete FTfnStmt; // Cannot delete functions declarations
+delete FTvarFunc; delete FTtestObj; delete FTtestArray;
+FTcanDelGlobals = true;
+
+// Non-IE-friendly, but standard, delete tests.
+FTtestVar = 4; delete this.FTtestVar;
+this.FTotherVar = 2; delete FTotherVar;
+this.FTlastVar = 5; delete this.FTlastVar;
+delete this.FTneverExisted;
+
+// Any more delete tests are not strictly syntax tests and should
+// be done at normal feature detection.
+*/
+
+// Good, we've gotten past the absolute minimum syntax checks.
+FTsaneJSRuntime = false;
+
+// -------------------------------------------------------------------
+// 1. Perform mandatory native object feature tests, if any.
+
+FTnativeObjects = function() {
+  // Attempt to add array `push()' and `pop()' functions if they are missing.
+  if (typeof(Array.prototype.push) != 'function')
+    Array.prototype.push = function() {
+      var i = 0, l = arguments.length;
+      var len = this.length >>> 0;
+      while (i < l) {
+        this[len] = arguments[i++];
+        len = len + 1 >>> 0;
+      }
+      return this.length;
+    };
+  if (typeof(Array.prototype.pop) != 'function')
+    Array.prototype.pop = function() {
+      var v, len = this.length >>> 0;
+      if (len) {
+        v = this[--len];
+        delete this[len];
+      }
+      this.length = len;
+      return v;
+    };
+
+  // Test array support.
+  var testArray = [ 1, 2 ];
+  if (testArray.length != 2) return false;
+  if (typeof(testArray.pop) != 'function') return false;
+  if (testArray.pop() != 2) return false;
+  if (testArray.length != 1) return false;
+  if (typeof(testArray.push) != 'function') return false;
+  testArray.push(3);
+  if (testArray[testArray.length-1] != 3) return false;
+  testArray = new Array(3);
+  if (testArray.length != 3) return false;
+  testArray = new Array(4);
+  if (testArray.length != 4) return false;
+
+  // Test string support.
+  var testStr = 'Hello';
+  if (testStr.charAt(0) != 'H') return false;
+  // Do you need the following syntax?
+  // if (testStr[0] != 'H') return false;
+  if (testStr.charCodeAt(0) != 72) return false;
+  if (testStr.substr(2, 2) != 'll') return false;
+  testStr += ' there.';
+  if (testStr != 'Hello there.') return false;
+  if (testStr + '  Never mind...' != 'Hello there.  Never mind...')
+    return false;
+  testStr = new String(testStr);
+
+  return true;
+};
+
+// -------------------------------------------------------------------
+// 2. Perform mandatory host object feature tests, if any.
+
+var isHostMethod = function(object, property) {
+  var t = typeof(object[property]);
+  return t=='function' ||
+         (!!(t=='object' && object[property])) ||
+         t=='unknown';
+};
+
+var isHostCollection = function(object, property) {
+  var t = typeof(object[property]);
+  return (!!(t=='object' && object[property])) ||
+         t=='function';
+};
+
+var isHostObject = function(object, property) {
+  return !!(typeof(object[property]) == 'object' && object[property]);
+};
+
+FThostObjects = function() {
+  // We need these to have a browser.
+  if (!isHostObject(this, 'window') || !isHostObject(this, 'document'))
+    return false;
+
+  // We also need some basic DOM support to communicate with the user
+  // without using alert dialogs.
+  if (!isHostMethod(document, 'getElementById') ||
+      !isHostMethod(document, 'createElement') ||
+      !isHostMethod(document, 'createTextNode'))
+    return false;
+
+  var testEl = document.createElement('p');
+  testEl.id = 'testEl';
+  if (!isHostObject(testEl, 'style') ||
+      !isHostMethod(testEl, 'appendChild') ||
+      !isHostMethod(testEl, 'insertBefore') ||
+      !isHostCollection(testEl, 'childNodes'))
+    return false;
+
+  return true;
+};
+
+// -------------------------------------------------------------------
+
+if (FTnativeObjects() && FThostObjects()) {
+  /* Go ahead and give the rest of the startup routines the okay to go
+     signal.  Normal feature tests will be performed in the main
+     script body.  */
+  FTsaneJSRuntime = true;
+
+  // Delete our unneeded globals, if possible.
+  if (typeof(FTcanDelGlobals) != 'undefined' && FTcanDelGlobals) {
+    delete FTcanDelGlobals;
+    delete FTnativeObjects; delete FThostObjects;
+  }
+
+  // Activate the JavaScript loading UI.
+  document.getElementById('noscriptJSCtl').style.cssText =
+    'display: none';
+  document.getElementById('topBody').style.cssText =
+    'color: white; background-color: #333348;';
+  document.getElementById('scriptWrapper').style.cssText = '';
+}
 //--><!]]>
 </script>
 
@@ -209,7 +453,7 @@ document.getElementById('scriptWrapper').style.cssText = '';
     <object type="image/svg+xml" data="loading_composite.svg"
 	    width="170" height="170">
       <img src="loading_composite.png" alt="Decorative Loading Icon."
-	   width="170" height="170"/>
+	   width="170" height="170" />
     </object><br />
     <strong>Loading</strong><br />
     <br />
@@ -366,361 +610,406 @@ element in the document.  -->
 
 <script type="text/javascript">
 <!--//--><![CDATA[//><!--
-  // Preload the button images.
-  function loadImages() {
-    var files = [ "minimize_light.png", "beginning_light.png",
-      "rewind_light.png", "step_back_light.png", "pause.png",
-      "pause_light.png", "play_light.png", "step_fwd_light.png",
-      "fast_forward_light.png", "end_light.png", "config_light.png",
-      "help_light.png", "close_light.png" ];
+/* General Event Handling and GUI Management */
 
-    var i = 0;
-    for (i = 0; i < files.length; i++) {
-      btnImages[i] = new Image(); btnImages[i].src = files[i];
+// Preload the button images.
+function loadImages() {
+  var files = [ "minimize_light.png", "beginning_light.png",
+    "rewind_light.png", "step_back_light.png", "pause.png",
+    "pause_light.png", "play_light.png", "step_fwd_light.png",
+    "fast_forward_light.png", "end_light.png", "config_light.png",
+    "help_light.png", "close_light.png" ];
+
+  var i = 0;
+  for (i = 0; i < files.length; i++) {
+    btnImages[i] = new Image(); btnImages[i].src = files[i];
+  }
+}
+
+function onunhide(event) {
+  document.getElementById('bottomBar').style.cssText = '';
+}
+
+function onhide(event) {
+  document.getElementById('bottomBar').style.cssText = 'display: none';
+}
+
+function onplay(event) {
+  this.id = 'btn-pause';
+  this.title = 'Pause';
+  this.onclick = onpause;
+}
+
+function onpause(event) {
+  this.id = 'btn-play';
+  this.title = 'Play';
+  this.onclick = onplay;
+}
+
+function applyCurDate(updateRenderLayers) {
+  var dateStr = Dates.dateList[Dates.curDate];
+  document.getElementById('cfg-curDate').value = dateStr;
+  if (updateRenderLayers) {
+    if (Compositor.dispSSH) {
+      SSHLayer.loadFrame = dateStr.replace('-', '').replace('-', '');
+      SSHLayer.loadData.start();
+      SSHLayer.render.start();
     }
+    TracksLayer.render.start();
+    if (!Compositor.renderInProg)
+      return Compositor.finishRenderJobs();
   }
+}
 
-  function onunhide(event) {
-    document.getElementById('bottomBar').style.cssText = '';
-  }
+/* This is a delayed initializer for Dates.curDate that is not
+   called until after the list of dates is loaded.  */
+function initCurDate() {
+  return document.getElementById('cfg-curDate').onchange(null);
+}
 
-  function onhide(event) {
-    document.getElementById('bottomBar').style.cssText = 'display: none';
-  }
+function initGUIHooks() {
+  document.getElementById('btn-minimize').onclick = function(event) {
+    var bbwrap = document.getElementById('bbwrap');
+    if (this.style.cssText == '') {
+      this.style.cssText = 'background-image: url("minimize_light.png")';
+      bbwrap.onmouseover = onunhide;
+      bbwrap.onmouseout = onhide;
+    } else {
+      this.style.cssText = '';
+      bbwrap.onmouseover = null;
+      bbwrap.onmouseout = null;
+    }
+  };
 
-  function onplay(event) {
-    this.id = 'btn-pause';
-    this.title = 'Pause';
-    this.onclick = onpause;
-  }
+  document.getElementById('btn-begin').onclick = function(event) {
+    if (Dates.curDate == 0)
+      return;
+    Dates.curDate = 0;
+    return applyCurDate(event != null);
+  };
 
-  function onpause(event) {
-    this.id = 'btn-play';
-    this.title = 'Play';
-    this.onclick = onplay;
-  }
+  document.getElementById('btn-rewind').onclick = function(event) {
+    alert('Rewind');
+  };
 
-  function applyCurDate(updateRenderLayers) {
-    var dateStr = Dates.dateList[Dates.curDate];
-    document.getElementById('cfg-curDate').value = dateStr;
-    if (updateRenderLayers) {
-      if (Compositor.dispSSH) {
-        SSHLayer.loadFrame = dateStr.replace('-', '').replace('-', '');
-        SSHLayer.loadData.start();
-        SSHLayer.render.start();
+  document.getElementById('btn-bstep').onclick = function(event) {
+    if (Dates.curDate <= 0)
+      return;
+    Dates.curDate--;
+    return applyCurDate(event != null);
+  };
+
+  document.getElementById('btn-play').onclick = onplay;
+
+  document.getElementById('btn-fstep').onclick = function(event) {
+    if (Dates.curDate >= Dates.dateList.length - 1)
+      return;
+    Dates.curDate++;
+    return applyCurDate(event != null);
+  };
+
+  document.getElementById('btn-ffwd').onclick = function(event) {
+    alert('Fast forward');
+  };
+
+  document.getElementById('btn-end').onclick = function(event) {
+    var endIdx = Dates.dateList.length - 1;
+    if (Dates.curDate == endIdx)
+      return;
+    Dates.curDate = endIdx;
+    return applyCurDate(event != null);
+  };
+
+  document.getElementById('btn-config').onclick = function(event) {
+    var configPanel = document.getElementById('configWrapper');
+    if (configPanel.style.cssText == '') {
+      configPanel.style.cssText = 'visibility: hidden';
+      this.style.cssText = '';
+    } else {
+      configPanel.style.cssText = '';
+      this.style.cssText = 'background-image: url("config_light.png")';
+    }
+  };
+
+  document.getElementById('popupClose').onclick = function(event) {
+    var popupInfo = document.getElementById('popupInfo');
+    popupInfo.style.cssText = 'visibility: hidden';
+  };
+
+  var cfg_curDate = document.getElementById('cfg-curDate');
+  cfg_curDate.onchange = function(event) {
+    if (!Dates.dateList)
+      return;
+    var userDate = +(new Date(this.value));
+
+    /* Linear search for the closest match to the user-provided
+       date.  */
+    var numDates = Dates.dateList.length;
+    var Dates_realTimes = Dates.realTimes;
+    for (var i = 0; i < numDates; i++) {
+      if (Dates_realTimes[i] > userDate) {
+        Dates.curDate = i - 1;
+        return applyCurDate(event != null);
       }
+    }
+
+    // else...
+    // Just reset the curDate control to the old date value.
+    this.value = Dates.dateList[Dates.curDate];
+  };
+
+  var cfg_latLon = document.getElementById('cfg-latLon');
+  cfg_latLon.onchange = function(event) {
+    var parts = this.value.split(' ');
+    var parseNum1 = +parts[0]; var parseNum2 = +parts[2];
+    if (isNaN(parseNum1) || isNaN(parseNum2)) return; // TODO reset value
+
+    tilt = parseNum1;
+    if (parts[1] == 'S')
+      tilt = -tilt;
+    lon_rot = parseNum2;
+    if (parts[3] == 'W')
+      lon_rot = -lon_rot;
+    lon_rot += 180;
+
+    if (event != null)
+      Compositor.finishRenderJobs(true);
+  };
+
+  var cfg_scaleFac = document.getElementById('cfg-scaleFac');
+  cfg_scaleFac.onchange = function(event) {
+    var parseNum = +this.value;
+    if (isNaN(parseNum)) { this.value = scale.toFixed(3); return; }
+    scale = parseNum;
+    if (event != null)
+      Compositor.finishRenderJobs(true);
+  };
+
+  var cfg_graticule = document.getElementById('cfg-graticule');
+  cfg_graticule.onchange = function(event) {
+    var parts = this.value.split(', ');
+    Compositor.gratDensity = +parts[0];
+    /* if (event != null)
+      Compositor.finishRenderJobs(false, true); */
+  };
+
+  var cfg_showCyc = document.getElementById('cfg-showCyc');
+  cfg_showCyc.onclick = function(event) {
+    if (this.checked)
+      TracksLayer.dispCyc = true;
+    else
+      TracksLayer.dispCyc = false;
+    if (event != null) {
       TracksLayer.render.start();
       if (!Compositor.renderInProg)
         return Compositor.finishRenderJobs();
     }
-  }
+  };
 
-  /* This is a delayed initializer for Dates.curDate that is not
-     called until after the list of dates is loaded.  */
-  function initCurDate() {
-    return document.getElementById('cfg-curDate').onchange(null);
-  }
-
-  function initGUIHooks() {
-    document.getElementById('btn-minimize').onclick = function(event) {
-      var bbwrap = document.getElementById('bbwrap');
-      if (this.style.cssText == '') {
-        this.style.cssText = 'background-image: url("minimize_light.png")';
-        bbwrap.onmouseover = onunhide;
-        bbwrap.onmouseout = onhide;
-      } else {
-        this.style.cssText = '';
-        bbwrap.onmouseover = null;
-        bbwrap.onmouseout = null;
-      }
-    };
-
-    document.getElementById('btn-begin').onclick = function(event) {
-      if (Dates.curDate == 0)
-        return;
-      Dates.curDate = 0;
-      return applyCurDate(event != null);
-    };
-
-    document.getElementById('btn-rewind').onclick = function(event) {
-      alert('Rewind');
-    };
-
-    document.getElementById('btn-bstep').onclick = function(event) {
-      if (Dates.curDate <= 0)
-        return;
-      Dates.curDate--;
-      return applyCurDate(event != null);
-    };
-
-    document.getElementById('btn-play').onclick = onplay;
-
-    document.getElementById('btn-fstep').onclick = function(event) {
-      if (Dates.curDate >= Dates.dateList.length - 1)
-        return;
-      Dates.curDate++;
-      return applyCurDate(event != null);
-    };
-
-    document.getElementById('btn-ffwd').onclick = function(event) {
-      alert('Fast forward');
-    };
-
-    document.getElementById('btn-end').onclick = function(event) {
-      var endIdx = Dates.dateList.length - 1;
-      if (Dates.curDate == endIdx)
-        return;
-      Dates.curDate = endIdx;
-      return applyCurDate(event != null);
-    };
-
-    document.getElementById('btn-config').onclick = function(event) {
-      var configPanel = document.getElementById('configWrapper');
-      if (configPanel.style.cssText == '') {
-        configPanel.style.cssText = 'visibility: hidden';
-        this.style.cssText = '';
-      } else {
-        configPanel.style.cssText = '';
-        this.style.cssText = 'background-image: url("config_light.png")';
-      }
-    };
-
-    document.getElementById('popupClose').onclick = function(event) {
-      var popupInfo = document.getElementById('popupInfo');
-      popupInfo.style.cssText = 'visibility: hidden';
-    };
-
-    var cfg_curDate = document.getElementById('cfg-curDate');
-    cfg_curDate.onchange = function(event) {
-      if (!Dates.dateList)
-        return;
-      var userDate = +(new Date(this.value));
-
-      /* Linear search for the closest match to the user-provided
-         date.  */
-      var numDates = Dates.dateList.length;
-      var Dates_realTimes = Dates.realTimes;
-      for (var i = 0; i < numDates; i++) {
-        if (Dates_realTimes[i] > userDate) {
-          Dates.curDate = i - 1;
-          return applyCurDate(event != null);
-        }
-      }
-
-      // else...
-      // Just reset the curDate control to the old date value.
-      this.value = Dates.dateList[Dates.curDate];
-    };
-
-    var cfg_latLon = document.getElementById('cfg-latLon');
-    cfg_latLon.onchange = function(event) {
-      var parts = this.value.split(' ');
-      var parseNum1 = +parts[0]; var parseNum2 = +parts[2];
-      if (isNaN(parseNum1) || isNaN(parseNum2)) return; // TODO reset value
-
-      tilt = parseNum1;
-      if (parts[1] == 'S')
-        tilt = -tilt;
-      lon_rot = parseNum2;
-      if (parts[3] == 'W')
-        lon_rot = -lon_rot;
-      lon_rot += 180;
-
-      if (event != null)
-        Compositor.finishRenderJobs(true);
-    };
-
-    var cfg_scaleFac = document.getElementById('cfg-scaleFac');
-    cfg_scaleFac.onchange = function(event) {
-      var parseNum = +this.value;
-      if (isNaN(parseNum)) { this.value = scale.toFixed(3); return; }
-      scale = parseNum;
-      if (event != null)
-        Compositor.finishRenderJobs(true);
-    };
-
-    var cfg_graticule = document.getElementById('cfg-graticule');
-    cfg_graticule.onchange = function(event) {
-      var parts = this.value.split(', ');
-      Compositor.gratDensity = +parts[0];
-      /* if (event != null)
-        Compositor.finishRenderJobs(false, true); */
-    };
-
-    var cfg_showCyc = document.getElementById('cfg-showCyc');
-    cfg_showCyc.onclick = function(event) {
-      if (this.checked)
-        TracksLayer.dispCyc = true;
-      else
-        TracksLayer.dispCyc = false;
-      if (event != null) {
-        TracksLayer.render.start();
-        if (!Compositor.renderInProg)
-          return Compositor.finishRenderJobs();
-      }
-    };
-
-    var cfg_showAntiCyc = document.getElementById('cfg-showAntiCyc');
-    cfg_showAntiCyc.onclick = function(event) {
-      if (this.checked)
-        TracksLayer.dispAcyc = true;
-      else
-        TracksLayer.dispAcyc = false;
-      if (event != null) {
-        TracksLayer.render.start();
-        if (!Compositor.renderInProg)
-          return Compositor.finishRenderJobs();
-      }
-    };
-
-    var cfg_lenRange = document.getElementById('cfg-lenRange');
-    cfg_lenRange.onchange = function(event) {
-      var weeksToSecs = 1000 * 60 * 60 * 24 * 7;
-      var parts = this.value.split(', ');
-      TracksLayer.minLength = +parts[0] * weeksToSecs;
-      if (parts[1] == 'max')
-        TracksLayer.maxLength = -1;
-      else
-        TracksLayer.maxLength = +parts[1] * weeksToSecs;
-      if (event != null) {
-        TracksLayer.render.start();
-        if (!Compositor.renderInProg)
-          return Compositor.finishRenderJobs();
-      }
-    };
-
-    var cfg_projMethod = document.getElementById('cfg-projMethod');
-    cfg_projMethod.onchange = function(event) {
-      var choice = this.options[this.selectedIndex].text;
-      if (choice == 'Perspective') {
-        Compositor.setProjector(Compositor.rayPersp);
-
-        var fovCtl = document.getElementById('cfg-perspFOV');
-        fovCtl.setAttribute('disabled', false);
-        fovCtl.disabled = false;
-
-        var altCtl = document.getElementById('cfg-perspAltitude');
-        altCtl.setAttribute('disabled', false);
-        altCtl.disabled = false;
-
-      } else if (choice == 'Orthographic') {
-        Compositor.setProjector(Compositor.rayOrtho);
-      } else if (choice == 'Equirectangular') {
-        Compositor.setProjector(EquirectMapProjector);
-      } else if (choice == 'Robinson') {
-        Compositor.setProjector(RobinsonMapProjector);
-      } else if (choice == 'Mercator') {
-        Compositor.setProjector(MercatorMapProjector);
-      }
-
-      if (choice != 'Perspective') {
-        var fovCtl = document.getElementById('cfg-perspFOV');
-        fovCtl.setAttribute('disabled', true);
-        fovCtl.disabled = true;
-
-        var altCtl = document.getElementById('cfg-perspAltitude');
-        altCtl.setAttribute('disabled', true);
-        altCtl.disabled = true;
-      }
-
-      if (event != null && !Compositor.renderInProg)
+  var cfg_showAntiCyc = document.getElementById('cfg-showAntiCyc');
+  cfg_showAntiCyc.onclick = function(event) {
+    if (this.checked)
+      TracksLayer.dispAcyc = true;
+    else
+      TracksLayer.dispAcyc = false;
+    if (event != null) {
+      TracksLayer.render.start();
+      if (!Compositor.renderInProg)
         return Compositor.finishRenderJobs();
-    };
+    }
+  };
 
-    var cfg_perspAltitude = document.getElementById('cfg-perspAltitude');
-    cfg_perspAltitude.onchange = function(event) {
-      persp_altitude = +this.value;
-      if (event != null) return Compositor.finishRenderJobs(true);
-    };
+  var cfg_lenRange = document.getElementById('cfg-lenRange');
+  cfg_lenRange.onchange = function(event) {
+    var weeksToSecs = 1000 * 60 * 60 * 24 * 7;
+    var parts = this.value.split(', ');
+    TracksLayer.minLength = +parts[0] * weeksToSecs;
+    if (parts[1] == 'max')
+      TracksLayer.maxLength = -1;
+    else
+      TracksLayer.maxLength = +parts[1] * weeksToSecs;
+    if (event != null) {
+      TracksLayer.render.start();
+      if (!Compositor.renderInProg)
+        return Compositor.finishRenderJobs();
+    }
+  };
 
-    var cfg_perspFOV = document.getElementById('cfg-perspFOV');
-    cfg_perspFOV.onchange = function(event) {
-      persp_fov = +this.value;
-      if (event != null) return Compositor.finishRenderJobs(true);
-    };
+  var cfg_projMethod = document.getElementById('cfg-projMethod');
+  cfg_projMethod.onchange = function(event) {
+    var choice = this.options[this.selectedIndex].text;
+    if (choice == 'Perspective') {
+      Compositor.setProjector(Compositor.rayPersp);
 
-    var cfg_landMass = document.getElementById('cfg-landMass');
-    cfg_landMass.onchange = function(event) {
-      var choice = this.options[this.selectedIndex].text;
-      if (choice == 'Textured')
-        Compositor.dispLandMasses = true;
-      else
-        Compositor.dispLandMasses = false;
-      if (event != null)
+      var fovCtl = document.getElementById('cfg-perspFOV');
+      fovCtl.setAttribute('disabled', false);
+      fovCtl.disabled = false;
+
+      var altCtl = document.getElementById('cfg-perspAltitude');
+      altCtl.setAttribute('disabled', false);
+      altCtl.disabled = false;
+
+    } else if (choice == 'Orthographic') {
+      Compositor.setProjector(Compositor.rayOrtho);
+    } else if (choice == 'Equirectangular') {
+      Compositor.setProjector(EquirectMapProjector);
+    } else if (choice == 'Robinson') {
+      Compositor.setProjector(RobinsonMapProjector);
+    } else if (choice == 'Mercator') {
+      Compositor.setProjector(MercatorMapProjector);
+    }
+
+    if (choice != 'Perspective') {
+      var fovCtl = document.getElementById('cfg-perspFOV');
+      fovCtl.setAttribute('disabled', true);
+      fovCtl.disabled = true;
+
+      var altCtl = document.getElementById('cfg-perspAltitude');
+      altCtl.setAttribute('disabled', true);
+      altCtl.disabled = true;
+    }
+
+    if (event != null && !Compositor.renderInProg)
+      return Compositor.finishRenderJobs();
+  };
+
+  var cfg_perspAltitude = document.getElementById('cfg-perspAltitude');
+  cfg_perspAltitude.onchange = function(event) {
+    persp_altitude = +this.value;
+    if (event != null) return Compositor.finishRenderJobs(true);
+  };
+
+  var cfg_perspFOV = document.getElementById('cfg-perspFOV');
+  cfg_perspFOV.onchange = function(event) {
+    persp_fov = +this.value;
+    if (event != null) return Compositor.finishRenderJobs(true);
+  };
+
+  var cfg_landMass = document.getElementById('cfg-landMass');
+  cfg_landMass.onchange = function(event) {
+    var choice = this.options[this.selectedIndex].text;
+    if (choice == 'Textured')
+      Compositor.dispLandMasses = true;
+    else
+      Compositor.dispLandMasses = false;
+    if (event != null)
+      Compositor.finishRenderJobs(false, true);
+  };
+
+  var cfg_sshPal = document.getElementById('cfg-sshPal');
+  cfg_sshPal.onchange = function(event) {
+    var choice = this.options[this.selectedIndex].text;
+    if (choice == 'None')
+      Compositor.dispSSH = false;
+    else if (!Compositor.dispSSH) {
+      Compositor.dispSSH = true;
+      // We'll need to make sure we've loaded the latest frame.
+      var dateStr = Dates.dateList[Dates.curDate];
+      SSHLayer.loadFrame = dateStr.replace('-', '').replace('-', '');
+      SSHLayer.loadData.start();
+    }
+
+    if (choice == 'Grayscale')
+      SSHLayer.shadeStyle = 0;
+    else if (choice == 'MATLAB')
+      SSHLayer.shadeStyle = 1;
+    else if (choice == 'Contour Bands')
+      SSHLayer.shadeStyle = 2;
+    if (event != null) {
+      if (Compositor.dispSSH) {
+        SSHLayer.render.start();
+        if (!Compositor.renderInProg)
+          return Compositor.finishRenderJobs();
+      } else
         Compositor.finishRenderJobs(false, true);
-    };
+    }
+  };
 
-    var cfg_sshPal = document.getElementById('cfg-sshPal');
-    cfg_sshPal.onchange = function(event) {
-      var choice = this.options[this.selectedIndex].text;
-      if (choice == 'None')
-        Compositor.dispSSH = false;
-      else if (!Compositor.dispSSH) {
-        Compositor.dispSSH = true;
-        // We'll need to make sure we've loaded the latest frame.
-        var dateStr = Dates.dateList[Dates.curDate];
-        SSHLayer.loadFrame = dateStr.replace('-', '').replace('-', '');
-        SSHLayer.loadData.start();
-      }
+  var cfg_wireRender = document.getElementById('cfg-wireRender');
+  cfg_wireRender.onclick = function(event) {
+    if (this.checked)
+      wire_render = true;
+    else
+      wire_render = false;
+    if (event != null) render_globe();
+  };
 
-      if (choice == 'Grayscale')
-        SSHLayer.shadeStyle = 0;
-      else if (choice == 'MATLAB')
-        SSHLayer.shadeStyle = 1;
-      else if (choice == 'Contour Bands')
-        SSHLayer.shadeStyle = 2;
-      if (event != null) {
-        if (Compositor.dispSSH) {
-          SSHLayer.render.start();
-          if (!Compositor.renderInProg)
-            return Compositor.finishRenderJobs();
-        } else
-          Compositor.finishRenderJobs(false, true);
-      }
-    };
+  /* Once all the GUI hooks have been initialized, call all of the
+     event handlers for the FORM controls so that any settings that
+     have been saved by the browser will be picked up by the
+     internal code.  */
+  // cfg_curDate.onchange(null); // Uses initCurDate() instead.
+  cfg_latLon.onchange(null);
+  cfg_scaleFac.onchange(null);
+  cfg_graticule.onchange(null);
+  cfg_showCyc.onclick(null);
+  cfg_showAntiCyc.onclick(null);
+  cfg_lenRange.onchange(null);
+  cfg_projMethod.onchange(null);
+  cfg_perspAltitude.onchange(null);
+  cfg_perspFOV.onchange(null);
+  cfg_landMass.onchange(null);
+  cfg_sshPal.onchange(null);
+  cfg_wireRender.onclick(null);
+}
 
-    var cfg_wireRender = document.getElementById('cfg-wireRender');
-    cfg_wireRender.onclick = function(event) {
-      if (this.checked)
-        wire_render = true;
-      else
-        wire_render = false;
-      if (event != null) render_globe();
-    };
+function bodyInit() {
+  initGUIHooks();
+  return Compositor.init();
+}
 
-    /* Once all the GUI hooks have been initialized, call all of the
-       event handlers for the FORM controls so that any settings that
-       have been saved by the browser will be picked up by the
-       internal code.  */
-    // cfg_curDate.onchange(null); // Uses initCurDate() instead.
-    cfg_latLon.onchange(null);
-    cfg_scaleFac.onchange(null);
-    cfg_graticule.onchange(null);
-    cfg_showCyc.onclick(null);
-    cfg_showAntiCyc.onclick(null);
-    cfg_lenRange.onchange(null);
-    cfg_projMethod.onchange(null);
-    cfg_perspAltitude.onchange(null);
-    cfg_perspFOV.onchange(null);
-    cfg_landMass.onchange(null);
-    cfg_sshPal.onchange(null);
-    cfg_wireRender.onclick(null);
-  }
-
-  function bodyInit() {
-    initGUIHooks();
-    return Compositor.init();
-  }
-
-  var btnImages = [];
-  loadImages();
-  /* Configure the "Help" button to prefer opening the link in a new
-     window/tab.  */
-  document.getElementById('btn-help').target = '_blank';
+var btnImages = [];
+loadImages();
+/* Configure the "Help" button to prefer opening the link in a new
+   window/tab.  */
+document.getElementById('btn-help').target = '_blank';
 //--><!]]>
 </script>
-<script type="text/javascript"
-	src="../src/bundle.js"></script>
+
+<script type="text/javascript">
+<!--//--><![CDATA[//><!--
+/* Script Main Body Loader */
+
+function downloadJSAtOnload() {
+  var element = document.createElement("script");
+  element.src = "defer.js";
+  document.body.appendChild(element);
+}
+if (isHostMethod(window, 'addEventListener'))
+  window.addEventListener("load", downloadJSAtOnload, false);
+else if (isHostMethod(window, 'attachEvent'))
+  window.attachEvent("onload", downloadJSAtOnload);
+else window.onload = downloadJSAtOnload;
+
+document.body or
+document.documentElement.childNodes[1]
+
+function loadScript(src, callback) {
+    var head = document.getElementsByTagName('head')[0],
+        script = document.createElement('script');
+    done = false;
+    script.setAttribute('src', src);
+    script.setAttribute('type', 'text/javascript');
+    script.setAttribute('charset', 'utf-8');
+    script.onload = script.onreadstatechange = function() {
+        if (!done && (!this.readyState || this.readyState == 'loaded' || this.readyState == 'complete')) {
+            done = true;
+            script.onload = script.onreadystatechange = null;
+                if (callback) {
+                    callback();
+                }
+            }
+    }
+    head.insertBefore(script, head.firstChild);
+}
+ 
+// load the my-script-file.js and display an alert dialog once the script has been loaded
+loadScript('my-script-file.js', function() { alert('my-script-file.js loaded.'); });
+
+//--><!]]>
+</script>
+<!-- <script type="text/javascript"
+	src="../src/bundle.js"></script> -->
 
 </body>
 </html>

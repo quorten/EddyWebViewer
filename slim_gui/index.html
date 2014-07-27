@@ -358,15 +358,13 @@ FTnativeObjects = function() {
   if (typeof(testArray.push) != 'function') return false;
   testArray.push(3);
   if (testArray[testArray.length-1] != 3) return false;
-  testArray = new Array(3);
-  if (testArray.length != 3) return false;
   testArray = new Array(4);
   if (testArray.length != 4) return false;
 
   // Test string support.
   var testStr = 'Hello';
   if (testStr.charAt(0) != 'H') return false;
-  // Do you need the following syntax?
+  // The following syntax can be a source of compatibility issues.
   // if (testStr[0] != 'H') return false;
   if (testStr.charCodeAt(0) != 72) return false;
   if (testStr.substr(2, 2) != 'll') return false;

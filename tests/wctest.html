@@ -10,15 +10,38 @@
 
 <p>This is the wchar test page.  Good luck!</p>
 
+<script type="text/javascript" src="../mylib.js"></script>
 <script type="text/javascript">
 
 var httpRequest;
 
+var textBuf;
 /* The character code that represents zero in the input.  */
 var INPUT_ZERO_SYM;
 var eddiesOnDate = [];
 var cumDates = [];
 var startOfData; // Character offset where eddy records begin.
+
+/*
+
+Array of date records:
+
+[ list of downloaded chunk starts ]
+[ list of data strings ]
+
+First request: download linearly.
+
+User seeks to an undownloaded position: abort current request.
+Start new request (insert new request chunk)
+Download a couple of date indexes in front of request for performance
+Keep downloading
+When finished, download any missing chunks in between
+Always start download at date boundary.
+
+Provision for a time where backwards downloads are requested before
+normal downloads.
+
+*/
 
 function dispDiag(diagText) {
   var dispInfo = document.createElement("pre");
@@ -37,19 +60,28 @@ function dispArray(array) {
   document.documentElement.children[1].appendChild(wrapper);
 }
 
+/* Compute the byte range to download for the given date index.  */
+function getDate(outRange, index) {
+  var eddyIndex = cumDates[index];
+  var numNls = 0|(eddyIndex / 32);
+  outRange[0] = startOfData + eddyIndex * 4 + numNls;
+  eddyIndex = cumDates[index+1];
+  numNls = 0|(eddyIndex / 32);
+  outRange[1] = startOfData + eddyIndex * 4 + numNls;
+  return outRange;
+}
+
 /* Parse out an eddy from the text stream at the given position.  */
 function getEddy(outEddy, index) {
-  var textBuf = httpRequest.responseText;
   var numNls = 0|(index / 32);
-  var curPos = startOfData + index * 5 + numNls;
+  var curPos = startOfData + index * 4 + numNls;
 
   // Start by reading the raw data fields.
   outEddy[0] = 0; // Eddy type
   outEddy[1] = textBuf.charCodeAt(curPos++); // Latitude
   outEddy[2] = textBuf.charCodeAt(curPos++); // Longitude
-  outEddy[3] = textBuf.charCodeAt(curPos++); // Eddy ID
-  outEddy[4] = textBuf.charCodeAt(curPos++); // Next
-  outEddy[5] = textBuf.charCodeAt(curPos++); // Prev
+  outEddy[3] = textBuf.charCodeAt(curPos++); // Next
+  outEddy[4] = textBuf.charCodeAt(curPos++); // Prev
 
   // Perform mandatory format conversions.
   for (var i = 1, len = outEddy.length; i < len; i++) {
@@ -63,6 +95,7 @@ function getEddy(outEddy, index) {
   outEddy[0] = (outEddy[1] >> 14) & 1;
   outEddy[1] = ((outEddy[1] & 0x3fff) - (1 << 13)) / (1 << 6);
   outEddy[2] = ((outEddy[2] & 0x7fff) - (1 << 14)) / (1 << 6);
+  return outEddy;
 }
 
 /* TODO:
@@ -73,42 +106,160 @@ function getEddy(outEddy, index) {
 
 */
 
+/*
+
+In the PVS traversal, eddies are primarily referenced by their
+indexes.  To read the value of an index, we must use getEddy() above.
+In the real code, getEddy() will be an inline function.
+
+curdim = depth % 2;
+median = start + (0|((length - 1) / 2));
+getEddy(curEddy);
+medianVal = curEddy[1+curdim];
+
+How to box split efficiently:
+
+Start by splitting into two boxes if wrap beyond edges
+
+Or clip to latitude edge
+
+Divide up box into 4 subboxes if go through major divisions
+
+Use variables instead of arrays as much as possible, for performance.
+
+var vbox = new Array(4);
+if (vbox[0] < -90) vbox[0] = -90;
+if (vbox[2] > 90) vbox[2] = 90;
+if (vbox[1] < -180 && vbox[3] > 180)
+  { vbox[1] = -180; vbox[3] = 180; }
+// Split the vbox into two separate bounding boxes if it crosses the
+// 0 or 360 degrees longitude.
+if (vbox[1] < -180) {
+  vbox2[0] = vbox[0]; vbox2[2] = vbox[2];
+  vbox2[1] = 360 + vbox[1]; vbox2[3] = 180;
+  vbox[1] = -180;
+}
+if (vbox[3] > 180) {
+  vbox2[0] = vbox[0]; vbox2[2] = vbox[2];
+  vbox2[3] = vbox[3] - 360; vbox2[1] = -180;
+  vbox[3] = 180;
+}
+
+Run kdPVS twice for above division.
+
+(y - y0) = m(x - x0)
+(y - y0) = (y1 - y0)(x - x0) / (x1 - x0)
+(x1 - x0)(y - y0) - (y1 - y0)(x - x0) = 0
+(y0 - y1)x + (x1 - x0)y - y0(x1 - x0) + x0(y1 - y0) = 0
+
+ax + by + c = 0
+
+a = (y0 - y1)
+b = (x1 - x0)
+c = x0y1 - y0x1
+
+(1, 5) (3, 2)
+
+m = (5 - 2) / (1 - 3) = 3 / -2 = -3/2
+y = -3/2*x + b
+5 = -3/2 + b
+b = 5 + 3/2 = 13/2
+y = -3/2*x + 13/2
+
+a = 5 - 2 = 3
+b = 3 - 1 = 2
+c = 1*2 - 5*3 = 2 - 15 = -13
+3x + 2y - 13 = 0
+2y = -3x + 13
+3x + 2y - 13 = 0
+
+*/
+
 /* Kd-tree potential visibility traversal.  This function traverses
    the kd-tree at the current date to determine the smallest kd-tree
-   cell that entirely contains the bounding box of the current view.
+   cell that entirely contains the viewport bounding box.
 
-   bbox: [ minLat, minLon, maxLat, maxLon ]
+   Sometimes the viewport box will cross upper level kd-tree divisions
+   that would cause it to have to include an excessively large PVS
+   boundary.  For these cases, the bounding box can be subdivided up
+   to 4 times to avoid worst cases of this scenario.
+
+   curDate: Current date index
+   vbox: [ minLat, minLon, maxLat, maxLon ]
    Units are degrees.
 
 */
-function kdPVS(bbox) {
-  var curEddies = []; curEddies.length;
-  var kdBBox = [ -90, -180, 90, 180 ];
-  var start = 0; var length = curEddies.length; var depth = 0;
-  var lastStart = 0; var lastLength = curEddies.length;
+function kdPVS(vbox) {
+  var curEddy = new Array(5);
 
-  while (kdBBox[0] < bbox[0] && kdBBox[1] < bbox[1] &&
-         kdBBox[2] > bbox[2] && kdBBox[3] > bbox[3]) {
+  var stack = [];
+  var results = [];
+  var numSplits = 0;
+
+  var kdVbox = [ -90, -180, 90, 180 ];
+  var start = cumDates[curDate];
+  var length = cumDates[curDate+1] - cumDates[curDate];
+  var depth = 0;
+  var lastStart = start;
+  var lastLength = length;
+
+  while (length > 0) {
     var curdim = depth % 2; /* Latitude (0) or longitude (1) */
-    var median = start + (length - 1) / 2; var end = start + length;
-    if (cumdim == 0) { /* Latitude */
-      if (bbox[0] < median.lat && bbox[2] < median.lat) {
-        // Choose the left side.
-      } else if (bbox[0] > median.lat && bbox[2] > median.lat) {
-        // Choose the right side.
-      } else {
-        // We're done.  Choose the last cell and return.
-      }
-    } else { /* Longitude */
-      if (bbox[1] < median.lat && bbox[3] < median.lat) {
-        // Choose the left side.
-        /* start = start; */ length = median - start;
-      } else if (bbox[1] > median.lat && bbox[3] > median.lat) {
-        // Choose the right side.
+    var median = start + (0|((length - 1) / 2));
+    var end = start + length;
+    getEddy(curEddy, median);
+    var medianVal = curEddy[1+curdim];
+    var vbox_min = vbox[curdim];
+    var vbox_max = vbox[2+curdim];
+    if (vbox_min < medianVal && vbox_max < medianVal) {
+      // Choose the less-than side.
+      kdVbox[2+curdim] = medianVal;
+      lastStart = start; lastLength = length;
+      /* start = start; */ length = median - start;
+      depth++;
+    } else if (vbox_min > medianVal && vbox_max > medianVal) {
+      // Choose the greater-than side.
+      kdVbox[curdim] = medianVal;
+      lastStart = start; lastLength = length;
+      start = median + 1; length = end - start;
+      depth++;
+    } else {
+      // Split this into two boxes if the dimensions are oversized
+      // by a factor of 4, and the maximum number of splits has
+      // not been exceeded.
+      if (numSplits < 4 && stack.length <= 1 &&
+          ((vbox[2] - vbox[0] > (kdVbox[2] - kdVbox[0]) * 4) ||
+           (vbox[3] - vbos[1] > (kdVbox[3] - kdVbox[1]) * 4))) {
+        numSplits++; depth++;
+        var frame = new Array(6);
+        frame[0] = kdVbox.slice(0);     // kdVbox
+        frame[0][2+curdim] = medianVal;
+        frame[1] = start;               // start
+        frame[2] = median - start;      // length
+        frame[3] = depth;               // depth
+        frame[4] = start;               // lastStart
+        frame[5] = length;              // lastLength
+        stack.push(frame);
+
+        kdVbox[curdim] = medianVal;
+        lastStart = start; lastLength = length;
         start = median + 1; length = end - start;
       } else {
-        // We're done.  Choose the last cell and return.
+        // Otherwise, we're done.
+        results.push([ lastStart, lastLength ]);
+        // Process any entries remaining on the stack.
+        if (stack.length > 0) {
+          var frame = stack.pop();
+          kdVbox = frame[0]; start = frame[1]; length = frame[2];
+          depth = frame[3]; lastStart = frame[4]; lastLength = frame[5];
+        } else
+          return results;
       }
+    }
+    if (length == 0 && stack.length > 0) {
+        var frame = stack.pop();
+        kdVbox = frame[0]; start = frame[1]; length = frame[2];
+        depth = frame[3]; lastStart = frame[4]; lastLength = frame[5];
     }
   }
 }
@@ -116,16 +267,17 @@ function kdPVS(bbox) {
 function processTestFile() {
   if (httpRequest.readyState === 4) {
     if (httpRequest.status === 200) {
-      var testText = httpRequest.responseText;
-      var testText_length = testText.length;
+      textBuf = new String(httpRequest.responseText);
+      var textBuf_length = textBuf.length;
 
       // Start by skipping past the human-readable header.
       var re = /(^|\n)# BEGIN_DATA\n/g;
-      re.exec(testText);
+      if (!re.exec(textBuf))
+        return; // Invalid data file.
       var curPos = re.lastIndex;
 
       /* Read the format header.  */
-      var formatBits = testText.charCodeAt(curPos++);
+      var formatBits = textBuf.charCodeAt(curPos++);
       if (formatBits & 0x02) /* Extended range */
         INPUT_ZERO_SYM = 0xffff;
       else
@@ -136,13 +288,13 @@ function processTestFile() {
         /* Eddy-keyed format */;
 
       // Read the entire dates header.
-      var numDates = testText.charCodeAt(curPos++);
+      var numDates = textBuf.charCodeAt(curPos++);
       var lastCumDates = 0;
       cumDates.push(lastCumDates);
       for (var i = 0; i < numDates; i++) {
         if (i % 32 == 0)
           curPos++; // Skip the newline character.
-        var numEddies = testText.charCodeAt(curPos++);
+        var numEddies = textBuf.charCodeAt(curPos++);
         eddiesOnDate.push(numEddies);
         lastCumDates += numEddies;
         cumDates.push(lastCumDates);
@@ -161,15 +313,82 @@ function processTestFile() {
          Plus, this method allows us to count the exact number of
          bytes of memory that our JavaScript program needs.  */
 
-      var curEddy = []; curEddy.length = 6 >>> 0;
+      /* NOTE: Arrays are sometimes slow on old JS runtimes and should
+         be avoided.  However, it appears that small arrays used in
+         this manner may not be problematic.  */
+      var curEddy = []; curEddy.length = 5 >>> 0;
       var startIdx = 0;
       var nextIdx = startIdx;
+
       for (var i = 0; i < 10; i++) {
         getEddy(curEddy, nextIdx);
         dispArray(curEddy);
-        nextIdx += curEddy[4];
-        if (curEddy[4] == 0)
+        var next = curEddy[3];
+        nextIdx += next;
+        if (next == 0)
           nextIdx = ++startIdx;
+      }
+
+      var kdDbg = document.createElement("canvas");
+      kdDbg.width = 360 * 4;
+      kdDbg.height = 180 * 4;
+      document.documentElement.children[1].appendChild(kdDbg);
+      var ctx = kdDbg.getContext("2d");
+      ctx.strokeStyle = "#800080";
+      { // Try recursively drawing a kd-tree.
+        var i = 3;
+        var stack = [];
+        var kdVbox = [ -90, -180, 90, 180 ];
+        var start = cumDates[i];
+        var length = cumDates[i+1] - cumDates[i];
+        var depth = 0;
+        var lastStart = start;
+        var lastLength = length;
+
+        while (length > 0) {
+          var curdim = depth % 2; /* Latitude (0) or longitude (1) */
+          var median = start + (0|((length - 1) / 2));
+          var end = start + length;
+          getEddy(curEddy, median);
+          var medianVal = curEddy[1+curdim];
+
+          if (true /* depth < 5 */) {
+            ctx.beginPath();
+            if (curdim == 0) {
+              ctx.moveTo((kdVbox[1] + 180) * 4, (-medianVal + 90) * 4);
+              ctx.lineTo((kdVbox[3] + 180) * 4, (-medianVal + 90) * 4);
+            } else {
+              ctx.moveTo((medianVal + 180) * 4, (-kdVbox[0] + 90) * 4);
+              ctx.lineTo((medianVal + 180) * 4, (-kdVbox[2] + 90) * 4);
+            }
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.arc((curEddy[2] + 180) * 4, (-curEddy[1] + 90) * 4,
+                    2, 0, 2 * Math.PI, false);
+            ctx.stroke();
+          }
+
+          depth++;
+          var frame = new Array(6);
+          frame[0] = kdVbox.slice(0);
+          frame[0][2+curdim] = medianVal;
+          frame[1] = start;               // start
+          frame[2] = median - start;      // length
+          frame[3] = depth;               // depth
+          frame[4] = start;               // lastStart
+          frame[5] = length;              // lastLength
+          stack.push(frame);
+
+          kdVbox[curdim] = medianVal;
+          lastStart = start; lastLength = length;
+          start = median + 1; length = end - start;
+
+          while (length == 0 && stack.length > 0) {
+            var frame = stack.pop();
+            kdVbox = frame[0]; start = frame[1]; length = frame[2];
+            depth = frame[3]; lastStart = frame[4]; lastLength = frame[5];
+          }
+        }
       }
 
       /* Note: One possibly useful technique is to keep the entire
@@ -188,11 +407,23 @@ function processTestFile() {
          characters displayed to 4096.  */
       dispInfo = document.createElement("pre");
       dispInfo.appendChild(document.
-        createTextNode(testText.substr(0, 4096)));
+        createTextNode(textBuf.substr(0, 4096)));
       document.documentElement.children[1].appendChild(dispInfo);
 
       // console.log("Done processing.");
       alert("Done processing.");
+
+      // Generate a downloadable static HTML page.
+      /* var doctype = document.doctype;
+      var dtstr = [ "<!DOCTYPE ", doctype.name,
+                    " PUBLIC \"", doctype.publicId,
+                    "\"\n  \"", doctype.systemId, "\">" ].join('');
+      var docHtml = [ dtstr,
+        API.getElementOuterHtml(document.documentElement) ].join('\n');
+      var downloadText = [ "data:text/html;charset=utf-8;base64,",
+        btoa(docHtml) ].join('');
+
+      window.location = downloadText; */
 
       // Cleanup
       delete httpRequest;

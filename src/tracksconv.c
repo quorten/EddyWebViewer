@@ -38,7 +38,7 @@ typedef struct InputEddy_tag InputEddy;
 typedef struct SortedEddy_tag SortedEddy;
 struct SortedEddy_tag {
   unsigned type;
-  unsigned coords[2]; /* Latitude and longitude */
+  unsigned coords[2]; /* Latitude (0) and longitude (1) */
   unsigned date_index;
   unsigned eddy_index;
   /* unsigned unsorted_index; */
@@ -79,7 +79,7 @@ int qs_lat_cmp(const void *p1, const void *p2);
 int qs_lon_cmp(const void *p1, const void *p2);
 void qs_eddy_swap(void *p1, void *p2, void *arg);
 void kd_eddy_move(SortedEddy *dest, SortedEddy *src);
-void kd_tree_build(unsigned begin_start, unsigned begin_length);
+int kd_tree_build(unsigned begin_start, unsigned begin_length);
 
 void display_help(FILE *fout, const char *progname) {
     fprintf(fout, "Usage: %s [OPTIONS] [-o OUTPUT]\n"
@@ -279,7 +279,8 @@ int main(int argc, char *argv[]) {
       EA_SET_SIZE(kd_curdim[2], length);
 
       /* Build the actual kd-tree for this date range.  */
-      kd_tree_build(0, length);
+      if (kd_tree_build(0, length) != 0)
+	{ retval = 1; goto cleanup; }
 
       { /* Copy the finished kd-tree back to the official location
 	   within `sorted_eddies', rebasing the pointers as
@@ -383,7 +384,7 @@ int main(int argc, char *argv[]) {
       /* Eddy ID is only of relevance to the MATLAB viewer.  No future
 	 data or encoding mechanism in the web viewer will ever have a
 	 justified need for an Eddy ID: kd-trees and image storage
-	 formats make it unneeded.
+	 formats render it redundant.
 
       ERROR_OR_PUT_SHORT(seddy->eddy_index,
 			 "Error: i = %u: Eddy index too large: %u\n"); */
@@ -665,7 +666,7 @@ typedef struct {
   ((void) (--top, (istart = top->start), (ilength = top->length), \
 	   (idepth = top->depth)))
 
-void kd_tree_build(unsigned begin_start, unsigned begin_length) {
+int kd_tree_build(unsigned begin_start, unsigned begin_length) {
   /* Note: The algorithms used to preprocess the data before this
      algorithm ensure that the number of eddies on a certain date
      index never equals zero.  Thus, it is not necessary to check if
@@ -686,6 +687,7 @@ void kd_tree_build(unsigned begin_start, unsigned begin_length) {
     unsigned median, end;
     unsigned median_val;
     unsigned eq_median;
+    SortedEddy eqm_eddies[16]; unsigned eqm_eddies_len = 0;
     unsigned i, j;
 
     /* 1. Pick the median point at the current dimension.  */
@@ -697,8 +699,16 @@ void kd_tree_build(unsigned begin_start, unsigned begin_length) {
     eq_median = median;
     while (eq_median > start &&
 	   kd_curdim[0].d[eq_median-1].coords[real_curdim] ==
-	     median_val)
+	     median_val) {
       eq_median--;
+      if (eqm_eddies_len > 16) {
+	fputs("Error: kd-tree construction failed:\n"
+	      "Too many eddies have an identical coordinate.\n", stderr);
+	return 1;
+      }
+      memcpy(&eqm_eddies[eqm_eddies_len++], &kd_curdim[0].d[eq_median],
+	     sizeof(SortedEddy));
+    }
 
     /* 2. Make a temporary copy of kd_curdim[0].  */
     memcpy(kd_curdim[KD_DIMS].d + start, kd_curdim[0].d + start,
@@ -718,21 +728,39 @@ void kd_tree_build(unsigned begin_start, unsigned begin_length) {
       for (i = start; i < end; i++) {
 	int cmp = (int)(kd_curdim[j+1].d[i].coords[real_curdim] - median_val);
 	if (cmp < 0) /* Left */
-	  memcpy(&kd_curdim[j].d[left_subend++], &kd_curdim[j+1].d[i],
-		 sizeof(SortedEddy));
+	  { memcpy(&kd_curdim[j].d[left_subend++], &kd_curdim[j+1].d[i],
+		   sizeof(SortedEddy)); continue; }
 	else if (!median_moved && cmp == 0 &&
 		 !memcmp(&kd_curdim[j+1].d[i],
 			 &kd_curdim[0].d[median],
 			 sizeof(SortedEddy))) { /* Median */
 	  memcpy(&kd_curdim[j].d[median], &kd_curdim[j+1].d[i],
 		 sizeof(SortedEddy));
-	  median_moved = true;
-	} else if (eq_med_end < median && cmp == 0) /* Equal-to median */
-	  memcpy(&kd_curdim[j].d[eq_med_end++], &kd_curdim[j+1].d[i],
-		 sizeof(SortedEddy));
-	else /* Right */
-	  memcpy(&kd_curdim[j].d[right_subend++], &kd_curdim[j+1].d[i],
-		 sizeof(SortedEddy));
+	  median_moved = true; continue;
+	} else if (eq_med_end < median && cmp == 0) { /* Equal-to median */
+	  bool move_okay = false;
+	  /* We must be careful not to place elements in different
+	     dimensional sort orders in different partitions.  */
+	  unsigned k;
+	  for (k = 0; k < eqm_eddies_len; k++) {
+	      if (!memcmp(&eqm_eddies[k], &kd_curdim[j+1].d[i],
+			  sizeof(SortedEddy)))
+		{ move_okay = true; break; }
+	  }
+	  if (move_okay) {
+	    memcpy(&kd_curdim[j].d[left_subend++], &kd_curdim[j+1].d[i],
+		   sizeof(SortedEddy));
+	    eq_med_end++; continue;
+	  } /* else fall through */
+	} /* else Right */
+	memcpy(&kd_curdim[j].d[right_subend++], &kd_curdim[j+1].d[i],
+	       sizeof(SortedEddy));
+      }
+      if (left_subend != median || eq_med_end != median ||
+	  median_moved == false || right_subend != end) {
+	fputs("Error: kd-tree construction failed: "
+	      "internal inconsistency found.\n", stderr);
+	return 1;
       }
     }
 
@@ -756,4 +784,6 @@ void kd_tree_build(unsigned begin_start, unsigned begin_length) {
       }
     }
   }
+
+  return 0;
 }

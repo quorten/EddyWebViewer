@@ -670,7 +670,7 @@ int kd_tree_build(unsigned begin_start, unsigned begin_length) {
   /* Note: The algorithms used to preprocess the data before this
      algorithm ensure that the number of eddies on a certain date
      index never equals zero.  Thus, it is not necessary to check if
-     (length == 0).  */
+     (begin_length == 0).  */
 
   unsigned start = begin_start;
   unsigned length = begin_length;

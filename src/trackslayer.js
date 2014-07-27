@@ -160,6 +160,10 @@ TracksLayer.render = (function() {
     edc.lineJoin = "round";
 
     this.i = 0;
+
+    this.status.returnType = CothreadStatus.PREEMPTED;
+    this.status.preemptCode = 0;
+    this.status.percent = 0;
   }
 
   function contExec() {

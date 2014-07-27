@@ -211,6 +211,10 @@ RayTracer.prototype.startExec = function() {
   this.x = 0;
   this.y = 0;
   this.osaPass = 1;
+
+  this.status.returnType = CothreadStatus.PREEMPTED;
+  this.status.preemptCode = 0;
+  this.status.percent = 0;
 };
 
 RayTracer.prototype.contExec = function() {

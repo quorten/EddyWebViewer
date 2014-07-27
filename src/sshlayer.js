@@ -192,6 +192,10 @@ SSHLayer.render = (function() {
 
     this.x = 0;
     this.y = 0;
+
+    this.status.returnType = CothreadStatus.PREEMPTED;
+    this.status.preemptCode = 0;
+    this.status.percent = 0;
   }
 
   function contExec() {

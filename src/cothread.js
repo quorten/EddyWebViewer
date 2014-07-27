@@ -51,7 +51,8 @@ var Cothread = function(startExec, contExec) {
    * This function is primarily intended to reset the cothread context
    * to an initial state.  This function is not preemptable, so no
    * tasks that are expensive in terms of wall clock time should be
-   * executed in this function.
+   * executed in this function.  This function must reset the
+   * {@linkcode CothreadStatus} to an initial value.
    *
    * @function
    * @protected
@@ -104,7 +105,7 @@ Cothread.prototype.setExitStatus = function(condition) {
 
 /**
  * Begin execution of a new cothread within the given {@linkcode Cothread}
- * context.
+ * context and attempt to finish the task before the preemption timeout.
  *
  * If there was any existing context from a preempted cothread, it
  * will be reset to an initial state for the new cothread run.
@@ -180,7 +181,8 @@ var CothreadStatus = function(returnType, preemptCode, percent) {
    * details.  The following values have common meanings in all
    * derived objects:
    *
-   * * Zero (0) -- Not applicable `(returnType == CothreadStatus.FINISHED)`.
+   * * Zero (0) -- Not applicable
+   *   (i.e. `(returnType == CothreadStatus.FINISHED)`).
    *
    * * {@linkcode CothreadStatus.IOWAIT} (1) -- Cothread is waiting
    *   for I/O.

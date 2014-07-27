@@ -134,6 +134,10 @@ XHRLoader.prototype.startExec = function() {
   this.readySyncProcess = false; // Non-preemptable data processing
 
   this.httpRequest = httpRequest;
+
+  this.status.returnType = CothreadStatus.PREEMPTED;
+  this.status.preemptCode = 0;
+  this.status.percent = 0;
 };
 
 XHRLoader.prototype.contExec = function() {
@@ -345,6 +349,10 @@ ImageLoader.prototype.startExec = function() {
   this.image.onerror = makeEventWrapper(this, "alertError");
   this.image.onabort = makeEventWrapper(this, "alertAbort");
   this.image.src = this.url;
+
+  this.status.returnType = CothreadStatus.PREEMPTED;
+  this.status.preemptCode = CothreadStatus.IOWAIT;
+  this.status.percent = 0;
 };
 
 ImageLoader.prototype.contExec = function() {
@@ -376,8 +384,8 @@ ImageLoader.prototype.contExec = function() {
 };
 
 /**
- * Example image processing function.  Currently does nothing, but you
- * can replace it with a better function in an instantiated object.
+ * Example image processing function.  Currently it does nothing.  You
+ * should replace it with a useful function in an instantiated object.
  * This function is called from `contExec()`.  It should be
  * preemptable and should set and return the `CothreadStatus` object.
  *

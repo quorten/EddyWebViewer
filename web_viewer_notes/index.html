@@ -173,6 +173,11 @@ time and combined on the local computer.  Break up large numeric
 datasets into multiple files and prioritize loading of high resolution
 data at the position that is currently visible to the user.</p>
 
+<p>UPDATE: Since the SSH resolution will always be 1440x721 for this
+project, there will be no need to break up images into tiles: the
+resolution is low enough for such additional software complexity to be
+unjustified.</p>
+
 <h4>Problem: Render an orthgraphic projection of the Earth as a
 globe.</h4>
 
@@ -233,8 +238,9 @@ no additional advantages when using the Eddy Web Viewer.</p>
   <li>CSS 2.1</li>
   <li>Raster image display</li>
   <li>Vector graphics rendering, preferably SVG</li>
-  <li>Full support for HTML 5 Canvas.  Support for getImageData() and
-  putImageData() raster operations on HTML Canvas.</li>
+  <li>Full support for HTML 5 Canvas.  Support
+  for <code>getImageData()</code> and <code>putImageData()</code>
+  raster operations on HTML Canvas.</li>
   <li>WebGL, GPGPU hardware acceleration</li>
 </ul>
 
@@ -441,7 +447,7 @@ images:</p>
   angles linearly along the X-axis of the image.</li>
   <li><strong>Mercator projection:</strong> A cylindrical projection
   that stretches the map vertically at high and low latitudes in order
-  to preserve projected angles (a conformal map).<br /> 
+  to preserve projected angles (a conformal map).<br />
   X-coordinates map linearly to longitudes.<br />
   Y-coordinate to latitude mapping: y = R ln [ tan(&pi;/4 + &phi;/2) ]
   (R = radius = 1)<br />
@@ -1511,43 +1517,6 @@ weight systems, a native application written in C is also available.
 
 ----------------------------------------
 
-(At first, I thought the reason for the latitude and longitude arrays
-was because the SSH data was encoded as a sparse array.  It turned out
-that it is just uniformly arranged image data.)
-
-The SSH data are just images of a reasonable size, no special handling
-required.
-
-Earlier, I was thinking about possibly using quadtrees in the viewer.
-However, since memory allocation is considerably expensive in
-JavaScript, I've changed my mind to instead opt on using kd-trees
-exclusively, since they have the best economization on both memory
-consumption and CPU performance.
-
-----------------------------------------
-
-Need new CSS GUI test suites:
-
-Box resize check
-
-Mouse wheel check
-
-CSS compatibility: Do not use periods in element IDs.
-
-Fast and efficient way to get the current time in milliseconds:
-
-if (!Date.now) {
-  Date.now = function now() {
-    return new Date.getTime();
-  };
-}
-
-Date.now;
-
-https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/now
-
-----------------------------------------
-
 Great high performance JavaScript CSV parser:
 
 https://code.google.com/p/jquery-csv/
@@ -1573,33 +1542,13 @@ Why not use d3.js?  Short answer: "copy and modify" source code.
 d3.js is not already written to run on the GPU via a WebGL shader, so
 its best to work with code that I can manage rewriting for that task.
 
-Since the resolution will always be 1440x721 for this project, there
-will be no need to break up images into tiles: the resolution is low
-enough for such additional software complexity to be unjustified.
-
 ----------------------------------------
 
 Code base plans
 
-Alright, let's break up the renderer and implement it:
-
-Unit testing: JsUnit, QUnit
-
-(Avoid the above frameworks, they do not maintain faithful
-cross-browser compatibility.)
-
 Discovery, design, component implementation/testing, composition.
 
 Need to have table of acronyms and abbreviations
-
-
-Good, I should be in good shape for performance counting when I use
-performance.now() on Windows systems.  Don't worry, it's a drop-in
-replacement for Date.now().
-
-Date.now() is newer than +new Date().
-
-Cite blue marble dataset in credits.
 
 ----------------------------------------
 
@@ -1902,95 +1851,13 @@ http://www.html5rocks.com/en/tutorials/file/xhr2/
 
 ----------------------------------------
 
-TODO: When a data load is preempted, make sure to call abort().
-
 TODO: When tracks cross 360 degrees, split them up.
 
 TODO: Document derived classes and bases better.
 
 ----------------------------------------
 
-Time for a bulletproof plan for robust feature detection.
-
-0. Core language feature detects.
-
-1. Core native object feature detects.
-
-2. Core host object feature detects.
-
-* new Array(), array.push(), array.pop().
-
-* document and window objects
-
-* try-catch detection.  Use additional scripts in page to recover from
-  an error in one script.
-
-* Exception processing is an ADVANCED JavaScript feature.  Only detect
-  it if you need it.
-
-window.onerror = function() {
-};
-
-Absolute bare minimum feature tests must be written inline with the
-main HTML.  Additional feature tests can then come with the JavaScript
-library.
-
-http://perfectionkills.com/understanding-delete/
-
-http://modernizr.com/
-
-Looking at Modernizr myself, the basic ideas behind it are pretty
-straightforward from reading the more advanced sources, so I won't
-need to use it.  For example, HTML Canvas is just detected by creating
-a canvas element and checking if getContext() is a function, which is
-not as good as the feature detection functions that I'll be using, so
-I'll just code things up in my low-level way that works.
-
-function isHostMethod(object, property) {
-  var t = typeof object[property];  
-  return t=='function' ||
-         (!!(t=='object' && object[property])) ||
-         t=='unknown';
-}
-
-function isHostCollection(object, property) {
-  var t = typeof object[property];  
-  return (!!(t=='object' && object[property])) ||
-         t=='function';
-}
-
-function isHostObject(object, property) {
-  return !!(typeof(object[property]) == 'object' && object[property]);
-}
-
-http://www.feedthebot.com/pagespeed/defer-loading-javascript.html
-
-----------------------------------------
-
-Really tricky.  Want to use XML stylesheet association and also have
-support for IE6 fallback at the same time, where &lt;!DOCTYPE&gt; must
-appear before any XML processing instructions?  Easy: Move the PI
-after the &lt;!DOCTYPE&gt;.  According to the plans, this is still
-valid, since the PI will still be located in the prolog of the XML
-document.
-
-(Another option is to just skip out on XML stylesheet PIs altogether.
-This never seemed like a bad idea to me, but according to some, you
-should use an XML stylesheet declaration when serving as XHTML.)
-
-http://www.w3.org/TR/2000/REC-xml-20001006#sec-prolog-dtd
-http://www.w3.org/TR/xml-stylesheet/
-
-NOTE: I think I've ended up on some stale information.
-
-http://annevankesteren.nl/2003/08/perfect-markup
-
-The current W3C document recommends against using XML stylesheet
-processing instructions, saying that conforming user agents MUST
-process &lt;style&gt; and &lt;link&gt; elements, which you should use
-instead.
-
-http://www.w3.org/TR/xhtml-media-types/#compatGuidelines
+* window.onerror return true
 
 ----------------------------------------
 
@@ -2008,66 +1875,42 @@ Quick and easy things that I should make note of doing:
 
 * Integer arithmetic, regenerate.
 
-* Note how to draw eddy boundaries, another image on top.
+* NOTE how to draw eddy boundaries, another image on top.
+
+* Feature detection framework:
+
+** Start by running a series of feature detects at startup.  Set
+   variables based off of the available features.
+
+** Each module will have a function to check if the required features
+   are available.  Each module also provides a few features, named as
+   strings, returned from the feature checking function.
+
+** Feature detection at startup will try to maximize the available
+   named features that are included.  Higher rank features include
+   multiple names, each with their upper rank.  (Or maybe just use one
+   feature category and a rank.)  Use rank.  Rank is used to override
+   using another module, only loaded if necessary for features.
+   Please, use ranks, like upgrading software versions and conflicts
+   from package managers.
+
+** Check for Image() function, etc.
+
+** If cannot load required modules due to missing features, fail with
+   startup error message and link to documentation.
+
+** There won't be that many modules to load.  It could be the case
+   that the necessary logic can just be written inline the detection
+   function.
+
+** onprogress
 
 ----------------------------------------
 
-Introduction
+Generate a data URI and prompt for download:
 
-<h2>What are mesoscale ocean eddies?</h2>
-
-<p>Ocean eddies are circular disturbances in the ocean currents, like
-"hurricanes" and "whirlpools" in informal terms.  <em>Mesoscale</em>
-ocean eddies range from 5 kilometers to a couple hundred kilometers in
-diameter.  Most eddies' height variations are within the range of +/-
-32 centimeters from the mean sea surface height.  Mesoscale eddies are
-classified into two main categories:</p>
-
-<ul>
-  <li><em>Cyclonic eddies</em> are depressions in the sea surface
-  height.  These eddies rotate counterclockwise in the northern
-  hemisphere.</li>
-  <li><em>Anticyclonic eddies</em> are elevations in the sea surface
-  height.  These eddies rotate clockwise in the northern
-  hemisphere.</li>
-<li>
-
-<h2>Why are mesoscale ocean eddies important?</h2>
-
-<p>Ocean eddies transport heat, salt, energy, and nutrients across the
-World Oceans.  Figure x.y is a photograph of an ocean eddy.</p>
-
-<h3></h3>
-
-<p>As a result, accurately identifying and tracking such phenomena are
-crucial for understanding future marine and terrestrial ecosystems and
-their sustainability.</p>
-
-<h2>How are ocean eddies identified?</h2>
-
-<p>Our algorithms generally only identify eddies that are 100
-kilometers in diameter or larger.</p>
-
-<p>Interesting from a computer science perspective.</p>
-
-Minimum amplitude of 1 cm.
-
-The EddyScan.
-
-Go ahead, see for yourself.  Depending on you, you'll notice that you
-can visualize eddy formations smaller than the current automated
-algorithms are designed to identify.  The average diameter of an ocean
-eddy is, and the average height of an ocean eddy is.
-
-So powerful land so dangerous that it could suck a freight ship
-underneath the surface of the ocean.
-
-Amplitude ranges from a minimum of one centimeter.
-
-Geodesic speed, which for practical matters is the physical line
-distance that the eddy travels across the curved surface of the Earth.
-
-Mesoscale
+http://stackoverflow.com/questions/727144/browser-download-file-prompt-using-javascript
+http://stackoverflow.com/questions/5418536/create-and-go-to-url-with-javascript
 
 ----------------------------------------</pre>
 
@@ -2272,12 +2115,31 @@ of the changes and links to additional resources:</p>
 
 <ul>
   <li>You need to make sure your web server is setup to serve XHTML
-  documents with "application/xhtml+xml".<br />
-  Setup Apache to server XHTML: <br />
+  documents with <code>"application/xhtml+xml"</code>.<br />
+  Setup Apache to serve XHTML: <br />
   <a href="http://protempore.net/~calvins/howto/xhtml-apache/">
     http://protempore.net/~calvins/howto/xhtml-apache/</a></li>
-  <li><a href="http://www.456bereastreet.com/archive/200501/the_perils_of_using_xhtml_properly/">
+  <li>This article details proper authoring of XHTML:<br />
+  <a href="http://www.456bereastreet.com/archive/200501/the_perils_of_using_xhtml_properly/">
       http://www.456bereastreet.com/archive/200501/the_perils_of_using_xhtml_properly/</a></li>
+  <li><a href="http://annevankesteren.nl/2003/08/perfect-markup">
+      http://annevankesteren.nl/2003/08/perfect-markup</a></li>
+  <li>The current W3C document recommends against using XML stylesheet
+  processing instructions, saying that conforming user agents MUST
+  process <code>&lt;style&gt;</code> and <code>&lt;link&gt;</code>
+  elements, which you should use instead.<br />
+  <a href="http://www.w3.org/TR/xhtml-media-types/#compatGuidelines">
+    http://www.w3.org/TR/xhtml-media-types/#compatGuidelines</a></li>
+  <li>Nevertheless, if you do want to use XML stylesheet processing
+  instructions, you should place the PIs after
+  the <code>&lt;!DOCTYPE&gt;</code> but
+  before <code>&lt;html&gt;</code>, since that is both safer with
+  older browsers and still considered part of the document
+  prolog.<br />
+  <a href="http://www.w3.org/TR/2000/REC-xml-20001006#sec-prolog-dtd">
+    http://www.w3.org/TR/2000/REC-xml-20001006#sec-prolog-dtd</a><br />
+  <a href="http://www.w3.org/TR/xml-stylesheet/">
+    http://www.w3.org/TR/xml-stylesheet/</a></li>
 </ul>
 
 <h3>CSS Compatibility</h3>
@@ -2306,8 +2168,8 @@ limitations in Internet Explorer 6:</p>
 
 <ul>
   <li>IE6 does not understand XHTML served with the
-  "application/xhtml+xml" MIME type or files with a ".xhtml"
-  extension:<br />
+  <code>"application/xhtml+xml"</code> MIME type or files with
+  a <code>".xhtml"</code> extension:<br />
   <a href="http://bytes.com/topic/html-css/answers/161030-application-xhtml-xml-ie">
     http://bytes.com/topic/html-css/answers/161030-application-xhtml-xml-ie</a></li>
   <li>Detect IE versions for both CSS and JavaScript most flexibly:<br />
@@ -2342,9 +2204,9 @@ limitations in Internet Explorer 6:</p>
   well.  Expect JavaScript 1.5 to be well supported.  However, you
   must take care not to use certain web API scripting idioms that
   won't be supported by IE, such as<br />
-    element.setAttribute('style', 'styleText');<br />
+    <code>element.setAttribute('style', 'styleText');</code><br />
   as opposed to<br />
-    element.style.cssText = 'styleText';<br />
+    <code>element.style.cssText = 'styleText';</code><br />
   Note, however, that old versions of Firefox may not support
   object-oriented CSS style manipulation.</li>
   <li>Avoid inline styling: Using inline style information can sometimes
@@ -2387,13 +2249,18 @@ JavaScript language since the very first version:</p>
 <ul>
   <li>The <code>push()</code> and <code>pop()</code> Array methods did
   not exist in the first version of JavaScript.</li>
+  <li><code>Date.now()</code> was added to JavaScript
+  later.  <code>new Date.getTime()</code> must be used for earlier
+  implementations instead.<br />
+  <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/now">
+    https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/now</a></li>
   <li>Strict mode was added to later versions of JavaScript, which is
   the mandatory mode for newer features introduced by newer
   specifications.<br />
   <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Functions_and_function_scope/Strict_mode">
     https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Functions_and_function_scope/Strict_mode</a></li>
-  <li>Later JavaScript runtimes feature the typed array
-  extensions.</li>
+  <li>Later JavaScript runtimes feature the typed array extensions,
+  such as <code>Float32Array</code>, etc.</li>
 </ul>
 
 <p>This makes JavaScript similar to C in that although the language
@@ -2454,6 +2321,12 @@ browser <em>forever</em>.</p>
   Library</li>
   <li><a href="http://www.fortybelow.ca/Projects/JavaScript/Utils/">
   Matt's DOM Utils</a> &mdash; Modular, general-purpose DOM library</li>
+  <li><a href="http://modernizr.com/">Modernizr</a> &mdash; A library
+  of feature detects to help you conditionally load a compatibility
+  library.  If you read and understand
+    <a href="http://michaux.ca/articles/feature-detection-state-of-the-art-browser-scripting">Peter Michaux's article</a>,
+  though, there's really no magic or reason to use Modernizr, as you
+  will be able to write superior feature detects yourself.</li>
 </ul>
 
 <p>Note that the builders that come with the cross-browser libraries
@@ -2485,6 +2358,11 @@ Network.)</p>
     http://michaux.ca/articles/feature-detection-state-of-the-art-browser-scripting</a></li>
   <li><a href="http://spoken.fortybelow.ca/Browser_Scripting_101/">
     http://spoken.fortybelow.ca/Browser_Scripting_101/</a></li>
+  <li>The JavaScript <code>delete</code> operator is often
+  misunderstood, and it is also a point of cross-browser compatibility
+  issues.<br />
+  <a href="http://perfectionkills.com/understanding-delete/">
+    http://perfectionkills.com/understanding-delete/</a></li>
 </ul>
 
 <h3>Web API Event Compatibility</h3>
@@ -2795,6 +2673,15 @@ updates its time from the network.  The solution to these problems is
 to use <code>performance.now()</code>, when the browser supports it.
 This function returns the elapsed times accurate to microseconds, and
 it does not jump when the system time is updated from the network.</p>
+
+<h3>XMLHttpRequest Performance</h3>
+
+<p>Many browsers incur a significant overhead when accessing
+the <code>responseText</code> member of an <code>XMLHttpRequest</code>
+object.  This is due to the overhead of translating a DOMString to a
+native JavaScript String.  Thus, if you want to obtain download
+progress in a high performance manner, then you should
+use <code>onprogress</code> event handling if it is available.</p>
 
 <ul>
   <li><a href="http://updates.html5rocks.com/2012/08/When-milliseconds-are-not-enough-performance-now">

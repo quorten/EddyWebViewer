@@ -16,9 +16,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <wchar.h>
 #include <ctype.h>
 #include <errno.h>
 
+#include "xmalloc.h"
 #include "exparray.h"
 #include "qsorts.h"
 
@@ -51,6 +53,7 @@ struct SortedEddy_tag {
 
 EA_TYPE(SortedEddy);
 EA_TYPE(unsigned);
+EA_TYPE(wchar_t);
 
 /* Whether or not to use UTF-16 codepoints above 0xd7ff for encoding
    integers.  Note that using codepoints 0xe000 to 0xffff requires
@@ -60,16 +63,19 @@ bool max_utf_range = false;
 unsigned tot_num_tracks;
 SortedEddy_array sorted_eddies;
 unsigned_array date_chunk_starts;
+/* Maximum number of eddies on a single date index.  */
+unsigned max_frame_eddies;
 
-/* [0] "Current dimension 0"
-   [1] "Current dimension 1"
-   [2] Temporary copy of current dimension 0.
+/* [0] "Relative dimension 0"
+   [1] "Relative dimension 1"
+   [2] Temporary copy of relative dimension 0.
 
-   "Current dimension 0" cycles between latitude and longitude,
+   "Relative dimension 0" cycles between latitude and longitude,
    depending on the current kd-tree construction iteration.  */
 #define KD_DIMS 2
-SortedEddy_array kd_curdim[KD_DIMS+1];
+SortedEddy *kd_reldim[KD_DIMS+1];
 
+void display_help(FILE *fout, const char *progname);
 bool put_short_in_range(FILE *fout, unsigned value);
 int parse_json(FILE *fp, unsigned eddy_type);
 int add_eddy(InputEddy *ieddy, unsigned eddy_type,
@@ -93,16 +99,21 @@ void display_help(FILE *fout, const char *progname) {
 "  -vv diag-file    Output data diagnostics to the given file.\n"
 "  -x    Enable extended output range (0x0000 to 0xf7fe).\n"
 "  -nk   Disable kd-tree construction.\n"
+"  -u    Write the contents of the given text file into the header of\n"
+"        the output data.  The text file must be encoded as UTF-16 little\n"
+"        endian with BOM.\n"
 "  -o OUTPUT    Send output to a named file (standard output by default).\n",
-fout);
+          fout);
 }
 
 int main(int argc, char *argv[]) {
   int retval = 0;
-  bool diag_proc = false;
+  bool diag_proc = false; /* Show processing diagnostics?  */
   bool build_kd = true;
   FILE *fdiag = NULL;
   FILE *fout = stdout;
+  FILE *fuser = NULL;
+  wchar_t_array user_info;
 
   if (argc < 2) {
     display_help(stderr, argv[0]);
@@ -136,6 +147,8 @@ int main(int argc, char *argv[]) {
       FOPEN_ARGV_OR_ERROR(fout, "wb");
     else if (!strcmp(*argv, "-nk"))
       build_kd = false;
+    else if (!strcmp(*argv, "-u"))
+      FOPEN_ARGV_OR_ERROR(fuser, "rb");
     else
       break;
     argv++;
@@ -146,18 +159,62 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
+  if (fuser != NULL) {
+    /* Read and sanity check the user header info.  */
+    const wchar_t *header_endsig = L"\n# BEGIN_DATA\n";
+    int c;
+
+    /* Check for the correct BOM.  */
+    if (getc(fuser) != 0xff || getc(fuser) != 0xfe) {
+      fputs("Error: User header text file must be encoded "
+	    "as UTF-16 little endian with BOM.\n", stderr);
+      return 1;
+    }
+
+#define GET_SHORT(value) \
+    c = getc(fuser); (value) = c & 0xff; \
+    c = getc(fuser); (value) = (value) | ((c & 0xff) << 8)
+
+    EA_INIT(wchar_t, user_info, 16);
+    while (true) {
+      wchar_t wc;
+      GET_SHORT(wc);
+      if (c == EOF) break;
+      /* Check for null characters during read.  */
+      if (wc == 0) {
+	fputs("Error: User header text file must not contain "
+	      "null characters.\n", stderr);
+	EA_DESTROY(user_info); return 1;
+      }
+      EA_APPEND(user_info, wc);
+    }
+    EA_APPEND(user_info, 0);
+    fclose(fuser); fuser = NULL;
+
+    /* Verify that the header end signature does not appear in the
+       user data.  */
+    if (wcsstr(user_info.d, header_endsig) != NULL) {
+      fputs(
+"Error: \"# BEGIN_DATA\" was found in the user header text file.\n"
+"You must not use this text as the only text on a line.\n",
+	    stderr);
+      EA_DESTROY(user_info); return 1;
+    }
+  } else
+    { user_info.d = NULL; user_info.len = 0; }
+
+  /* Error handling in regard to the command-line UI is finished.
+     Perform heavyweight startup procedures.  */
   tot_num_tracks = 0;
   EA_INIT(SortedEddy, sorted_eddies, 1048576);
   EA_INIT(unsigned, date_chunk_starts, 16);
-  EA_INIT(SortedEddy, kd_curdim[0], 16);
-  EA_INIT(SortedEddy, kd_curdim[1], 16);
-  EA_INIT(SortedEddy, kd_curdim[2], 16);
+  max_frame_eddies = 0;
 
-  /* Start by reading all of the input data into a data structure in
-     memory.  */
   if (diag_proc)
     fprintf(stderr, "Parsing input...\n");
 
+  /* Start by reading all of the input data into a data structure in
+     memory.  */
   while (*argv != NULL) {
     char *filename;
     FILE *fp;
@@ -226,8 +283,9 @@ int main(int argc, char *argv[]) {
        `last_date_index' to zero will guarantee that the first
        iteration adds a chunk start index.  */
     unsigned last_date_index = 0;
+    unsigned last_chunk_start = 0;
     if (sorted_eddies.d[0].date_index == 0) {
-      fputs("Error: Date indexes may not equal zero.\n", stderr);
+      fputs("Error: Date indexes must not equal zero.\n", stderr);
       EA_APPEND(date_chunk_starts, 0);
       retval = 1; /* goto cleanup; */
     }
@@ -235,8 +293,12 @@ int main(int argc, char *argv[]) {
       unsigned date_index_diff =
 	sorted_eddies.d[i].date_index - last_date_index;
       if (date_index_diff == 1) {
+	unsigned num_eddies = i - last_chunk_start;
 	EA_APPEND(date_chunk_starts, i);
+	if (num_eddies > max_frame_eddies)
+	  max_frame_eddies = num_eddies;
 	last_date_index = sorted_eddies.d[i].date_index;
+	last_chunk_start = i;
       } else if (date_index_diff != 0) {
 	fputs("Error: Every date index must be occupied by eddies.\n", stderr);
 	fprintf(stderr, "The eddies skip from date index %u to %u.\n",
@@ -259,48 +321,47 @@ int main(int argc, char *argv[]) {
     if (diag_proc)
       fprintf(stderr, "Building kd-trees...\n");
 
+#define CLEANUP_KD_RELDIM() \
+    for (i = 0; i < KD_DIMS + 1; i++) xfree(kd_reldim[i])
+
+    for (i = 0; i < KD_DIMS + 1; i++)
+      kd_reldim[i] = (SortedEddy*)xmalloc(sizeof(SortedEddy) *
+					  max_frame_eddies);
+
     for (i = 0; i < date_chunk_starts.len - 1; i++) {
       SortedEddy *start = sorted_eddies.d + date_chunk_starts.d[i];
       unsigned length = date_chunk_starts.d[i+1] - date_chunk_starts.d[i];
 
-      /* First sort the eddies by latitude.  */
-      EA_SET_SIZE(kd_curdim[0], length);
-      memcpy(kd_curdim[0].d, start, sizeof(SortedEddy) * length);
-      qsort(kd_curdim[0].d, kd_curdim[0].len,
-	    sizeof(SortedEddy), qs_lat_cmp);
-
-      /* Now sort by longitude.  */
-      EA_SET_SIZE(kd_curdim[1], length);
-      memcpy(kd_curdim[1].d, start, sizeof(SortedEddy) * length);
-      qsort(kd_curdim[1].d, kd_curdim[1].len,
-	    sizeof(SortedEddy), qs_lon_cmp);
-
-      /* Make sure to initialize the temporary array.  */
-      EA_SET_SIZE(kd_curdim[2], length);
+      /* Sort the eddies by latitude and longitude.  */
+      memcpy(kd_reldim[0], start, sizeof(SortedEddy) * length);
+      qsort(kd_reldim[0], length, sizeof(SortedEddy), qs_lat_cmp);
+      memcpy(kd_reldim[1], start, sizeof(SortedEddy) * length);
+      qsort(kd_reldim[1], length, sizeof(SortedEddy), qs_lon_cmp);
 
       /* Build the actual kd-tree for this date range.  */
       if (kd_tree_build(0, length) != 0)
-	{ retval = 1; goto cleanup; }
+	{ CLEANUP_KD_RELDIM(); retval = 1; goto cleanup; }
 
       { /* Copy the finished kd-tree back to the official location
 	   within `sorted_eddies', rebasing the pointers as
 	   necessary.  */
 	unsigned j;
 	for (j = 0; j < length; j++)
-	  kd_eddy_move(start + j, &kd_curdim[0].d[j]);
+	  kd_eddy_move(start + j, &kd_reldim[0][j]);
       }
     }
+    CLEANUP_KD_RELDIM();
   }
 
   if (diag_proc)
     fprintf(stderr, "Writing output...\n");
 
   { /* Output the new JSON data as UTF-16 characters.  Each character
-       will be treated as a 15-bit fixed point number on input.
-       (There is also support for quasi-16-bit unsigned integers that
-       range from 0x0000 to 0xd7fe, or even up to 0xf7fe.)  Newlines
-       are written out at regular intervals for safety.  Null
-       characters must never be stored in the output stream.  */
+       will be treated as an unsigned integer on input.  (Additional
+       decoding is applied for fixed-point numbers and bit-packed
+       fields.)  Newlines are written out at regular intervals for
+       safety.  Null characters must never be stored in the output
+       stream.  */
     unsigned i = 0;
 
     /* Little endian will be used for this encoding.  */
@@ -317,21 +378,34 @@ int main(int argc, char *argv[]) {
 
     { /* Start by writing a human-friendly information message that also
 	 serves as a file type.  */
-      const char *file_type =
+      const char *header_start =
 "# Binary eddy tracks data for the Ocean Eddies Web Viewer.\n"
 "# For more information on this file format, see the following webpage:\n"
-"# <http://example.com/dev_url>\n"
-"#\n"
-"# BEGIN_DATA\n";
-      const char *cur_pos = file_type;
-      while (*cur_pos != '\0') {
-	PUT_SHORT(*cur_pos);
-	cur_pos++;
+"# <http://example.com/dev_url>\n";
+      const char *header_end = "#\n# BEGIN_DATA\n";
+
+      const char *cur_pos = header_start;
+      while (*cur_pos != '\0')
+	{ PUT_SHORT(*cur_pos); cur_pos++; }
+
+      if (user_info.len > 0) {
+	/* Write out additional user header information into this
+	   area.  */
+	unsigned j;
+	const char *spacer = "#\n";
+	cur_pos = spacer;
+	while (*cur_pos != '\0')
+	  { PUT_SHORT(*cur_pos); cur_pos++; }
+	for (j = 0; j < user_info.len - 1; j++)
+	  { PUT_SHORT(user_info.d[j]); }
+	EA_DESTROY(user_info);
       }
+
+      cur_pos = header_end;
+      while (*cur_pos != '\0')
+	{ PUT_SHORT(*cur_pos); cur_pos++; }
     }
 
-    /* Write out the value that represents zero, since null characters
-       cannot be stored literally.  */
     { /* Write the format header.  */
       unsigned short format_bits = 0x01;
       if (max_utf_range)
@@ -345,14 +419,15 @@ int main(int argc, char *argv[]) {
 		       "Error: i = %u: Too many date indexes: %u\n");
     PUT_SHORT('\n');
     for (i = 1; i < date_chunk_starts.len; i++) {
-      unsigned num_dates = date_chunk_starts.d[i] - date_chunk_starts.d[i-1];
-      ERROR_OR_PUT_SHORT(num_dates,
-		 "Error: i = %u: Too many eddies on date index: %u.\n");
+      unsigned num_eddies = date_chunk_starts.d[i] - date_chunk_starts.d[i-1];
+      ERROR_OR_PUT_SHORT(num_eddies,
+		 "Error: i = %u: Too many eddies on a date index: %u.\n");
       if (i % 32 == 0)
 	{ PUT_SHORT('\n'); }
     }
 
-    /* Next output the optimized eddy entries.  */
+    /* Output the optimized eddy entries.  `next' and `prev' pointers
+       are converted to indexes relative to the current index.  */
     for (i = 0; i < sorted_eddies.len; i++) {
       SortedEddy *seddy = &sorted_eddies.d[i];
       unsigned int_lat = seddy->coords[0];
@@ -425,9 +500,6 @@ int main(int argc, char *argv[]) {
  cleanup:
   EA_DESTROY(sorted_eddies);
   EA_DESTROY(date_chunk_starts);
-  EA_DESTROY(kd_curdim[0]);
-  EA_DESTROY(kd_curdim[1]);
-  EA_DESTROY(kd_curdim[2]);
   if (fdiag != NULL && fclose(fdiag) == EOF) {
     fprintf(stderr, "Error closing diagnostics file: %s\n", strerror(errno));
     retval = 1;
@@ -440,7 +512,8 @@ int main(int argc, char *argv[]) {
 }
 
 /* Write a UTF-16 character, but only if the value is within the valid
-   numeric range.  */
+   range for unsigned integer encoding.  Returns `true' on success,
+   `false' on failure.  */
 bool put_short_in_range(FILE *fout, unsigned value) {
   unsigned max = 0xd7fe;
   if (max_utf_range)
@@ -543,9 +616,10 @@ int parse_json(FILE *fp, unsigned eddy_type) {
   return 0;
 }
 
-/* Add an eddy to the eddy-indexed array.  NOTE: Because the array's
-   base address is constantly changing during construction, the `next'
-   and `prev' pointers use zero as their base address.  */
+/* Add an eddy to the eddy-indexed array.  Returns zero on success,
+   one on failure.  NOTE: Because the `sorted_eddies' array's base
+   address is constantly changing during construction, the `next' and
+   `prev' pointers use zero as their base address.  */
 int add_eddy(InputEddy *ieddy, unsigned eddy_type, bool start_of_track) {
   SortedEddy *seddy = &sorted_eddies.d[sorted_eddies.len];
   seddy->type = eddy_type;
@@ -592,28 +666,28 @@ int qs_date_cmp(const void *p1, const void *p2, void *arg) {
   return (int)(se1->date_index - se2->date_index);
 }
 
-/* `qsorts_r()' latitude comparison function.  */
+/* `qsort()' latitude comparison function.  */
 int qs_lat_cmp(const void *p1, const void *p2) {
   const SortedEddy *se1 = (const SortedEddy*)p1;
   const SortedEddy *se2 = (const SortedEddy*)p2;
   return (int)(se1->coords[0] - se2->coords[0]);
 }
 
-/* `qsorts_r()' longitude comparison function.  */
+/* `qsort()' longitude comparison function.  */
 int qs_lon_cmp(const void *p1, const void *p2) {
   const SortedEddy *se1 = (const SortedEddy*)p1;
   const SortedEddy *se2 = (const SortedEddy*)p2;
   return (int)(se1->coords[1] - se2->coords[1]);
 }
 
-/* `qsorts_r()' swapping function that rearranges linked lists as
+/* `qsorts_r()' swapping function that modifies list links as
    necessary.  */
 void qs_eddy_swap(void *p1, void *p2, void *arg) {
   SortedEddy *se1 = (SortedEddy*)p1;
   SortedEddy *se2 = (SortedEddy*)p2;
   SortedEddy temp;
 
-  /* Rearrange the linked list indexes.  */
+  /* First correct the list links.  */
 
   if (se1->next == se2) se1->next = se1;
   else if (se1->next != NULL) se1->next->prev = se2;
@@ -627,15 +701,15 @@ void qs_eddy_swap(void *p1, void *p2, void *arg) {
   if (se2->prev == se1) se2->prev = se2;
   else if (se2->prev != NULL) se2->prev->next = se1;
 
-  /* Swap the memory quantities verbatim.  */
+  /* Then swap the memory quantities verbatim.  */
   memcpy(&temp, se1, sizeof(SortedEddy));
   memcpy(se1, se2, sizeof(SortedEddy));
   memcpy(se2, &temp, sizeof(SortedEddy));
 }
 
-/* Similar to the `swap()' function above, this function handles
-   rearranging the list links when an eddy gets moved to a new memory
-   address.  */
+/* Similar to the swap function above, this function handles
+   rearranging the list links when an eddy gets moved (i.e. copied) to
+   a new memory address.  */
 void kd_eddy_move(SortedEddy *dest, SortedEddy *src) {
   if (src->next != NULL) src->next->prev = dest;
   if (src->prev != NULL) src->prev->next = dest;
@@ -644,14 +718,7 @@ void kd_eddy_move(SortedEddy *dest, SortedEddy *src) {
 
 /* NOTE: Thanks to the glibc `qsort()' function for providing a good
    example of how to implement the software stack of `kd_tree_build()'
-   in an efficient way.
-
-   This function builds a 2D kd-tree based off of the latitudes and
-   longitudes of the given input eddies.  The input should have been
-   presorted by each dimension into `kd_curdim'.  The finished kd-tree
-   is stored in `kd_curdim[0]'.  You must copy `kd_curdim[0]' to a
-   separate storage location using `kd_eddy_move()' to have a useful
-   data structure.  */
+   in an efficient way.  */
 
 typedef struct {
   unsigned start;
@@ -666,6 +733,19 @@ typedef struct {
   ((void) (--top, (istart = top->start), (ilength = top->length), \
 	   (idepth = top->depth)))
 
+/* This function builds a 2D kd-tree based off of the latitudes and
+   longitudes of the given input eddies.  The input should have been
+   presorted by each dimension into `kd_reldim'.  The finished kd-tree
+   is stored in `kd_reldim[0]'.  You must copy `kd_reldim[0]' to a
+   separate storage location using `kd_eddy_move()' for each
+   SortedEddy for its list links to be useful.
+
+   Parameters:
+
+   begin_start -- First index in in each `kd_reldim' array to consider.
+   begin_length -- Length of `kd_reldim' arrays to consider.
+
+   Returns zero on sucess, one on failure.  */
 int kd_tree_build(unsigned begin_start, unsigned begin_length) {
   /* Note: The algorithms used to preprocess the data before this
      algorithm ensure that the number of eddies on a certain date
@@ -683,39 +763,42 @@ int kd_tree_build(unsigned begin_start, unsigned begin_length) {
   KD_PUSH(0, 3, 0);
 
   while (QS_STACK_NOT_EMPTY) {
-    unsigned real_curdim; /* "Real" current dimension (lat or lon) */
+    unsigned curdim; /* Current dimension (latitude (0) or longitude (1)) */
     unsigned median, end;
     unsigned median_val;
     unsigned eq_median;
-    SortedEddy eqm_eddies[16]; unsigned eqm_eddies_len = 0;
+    /* List of eddies equal to the median value that should belong in
+       the "left" (less-than) partition.  */
+#define MAX_EQM_EDDIES 16
+    SortedEddy eqm_eddies[MAX_EQM_EDDIES]; unsigned eqm_eddies_len = 0;
     unsigned i, j;
 
     /* 1. Pick the median point at the current dimension.  */
-    real_curdim = depth % 2;
+    curdim = depth % 2;
     median = start + (length - 1) / 2; end = start + length;
-    median_val = kd_curdim[0].d[median].coords[real_curdim];
+    median_val = kd_reldim[0][median].coords[curdim];
     /* If there are other points equal to the median in this
        dimension, find the `>=' division boundary.  */
     eq_median = median;
     while (eq_median > start &&
-	   kd_curdim[0].d[eq_median-1].coords[real_curdim] ==
+	   kd_reldim[0][eq_median-1].coords[curdim] ==
 	     median_val) {
       eq_median--;
-      if (eqm_eddies_len > 16) {
+      if (eqm_eddies_len > MAX_EQM_EDDIES) {
 	fputs("Error: kd-tree construction failed:\n"
 	      "Too many eddies have an identical coordinate.\n", stderr);
 	return 1;
       }
-      memcpy(&eqm_eddies[eqm_eddies_len++], &kd_curdim[0].d[eq_median],
+      memcpy(&eqm_eddies[eqm_eddies_len++], &kd_reldim[0][eq_median],
 	     sizeof(SortedEddy));
     }
 
-    /* 2. Make a temporary copy of kd_curdim[0].  */
-    memcpy(kd_curdim[KD_DIMS].d + start, kd_curdim[0].d + start,
+    /* 2. Make a temporary copy of kd_reldim[0].  */
+    memcpy(kd_reldim[KD_DIMS] + start, kd_reldim[0] + start,
 	   sizeof(SortedEddy) * length);
 
     /* 3. Shift to the next current dimension by constructing the
-       `curdim + 1' points in `curdim'.  Note that pointer rebasing
+       `reldim + 1' points in `reldim'.  Note that pointer rebasing
        can be delayed until the kd-tree construction is finished,
        since within a date index chunk, the pointers are either NULL
        (point to themselves) or point outside the current date index
@@ -726,15 +809,15 @@ int kd_tree_build(unsigned begin_start, unsigned begin_length) {
       unsigned left_subend = start, right_subend = median + 1;
       bool median_moved = false; unsigned eq_med_end = eq_median;
       for (i = start; i < end; i++) {
-	int cmp = (int)(kd_curdim[j+1].d[i].coords[real_curdim] - median_val);
+	int cmp = (int)(kd_reldim[j+1][i].coords[curdim] - median_val);
 	if (cmp < 0) /* Left */
-	  { memcpy(&kd_curdim[j].d[left_subend++], &kd_curdim[j+1].d[i],
+	  { memcpy(&kd_reldim[j][left_subend++], &kd_reldim[j+1][i],
 		   sizeof(SortedEddy)); continue; }
 	else if (!median_moved && cmp == 0 &&
-		 !memcmp(&kd_curdim[j+1].d[i],
-			 &kd_curdim[0].d[median],
+		 !memcmp(&kd_reldim[j+1][i],
+			 &kd_reldim[0][median],
 			 sizeof(SortedEddy))) { /* Median */
-	  memcpy(&kd_curdim[j].d[median], &kd_curdim[j+1].d[i],
+	  memcpy(&kd_reldim[j][median], &kd_reldim[j+1][i],
 		 sizeof(SortedEddy));
 	  median_moved = true; continue;
 	} else if (eq_med_end < median && cmp == 0) { /* Equal-to median */
@@ -743,17 +826,17 @@ int kd_tree_build(unsigned begin_start, unsigned begin_length) {
 	     dimensional sort orders in different partitions.  */
 	  unsigned k;
 	  for (k = 0; k < eqm_eddies_len; k++) {
-	      if (!memcmp(&eqm_eddies[k], &kd_curdim[j+1].d[i],
+	      if (!memcmp(&eqm_eddies[k], &kd_reldim[j+1][i],
 			  sizeof(SortedEddy)))
 		{ move_okay = true; break; }
 	  }
 	  if (move_okay) {
-	    memcpy(&kd_curdim[j].d[left_subend++], &kd_curdim[j+1].d[i],
+	    memcpy(&kd_reldim[j][left_subend++], &kd_reldim[j+1][i],
 		   sizeof(SortedEddy));
 	    eq_med_end++; continue;
 	  } /* else fall through */
 	} /* else Right */
-	memcpy(&kd_curdim[j].d[right_subend++], &kd_curdim[j+1].d[i],
+	memcpy(&kd_reldim[j][right_subend++], &kd_reldim[j+1][i],
 	       sizeof(SortedEddy));
       }
       if (left_subend != median || eq_med_end != median ||

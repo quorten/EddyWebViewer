@@ -187,31 +187,51 @@ If the length is too short, you must stop dividing.
 
 */
 
-/*
+// Create a list of track bounding boxes, latitude, longitude, and
+// date index.  When a certian date index passes, then erase the
+// track.  Don't redraw other tracks unless there are bounding
+// box intersections.
 
-// Check if a line intersects with the bounding box.
+// Check if a line is contained within a bounding box.
 
 // line and vbox must be [ minLat, minLon, maxLat, maxLon ]
-function(line, vbox) {
+function lineIntersect(line, vbox) {
   // NOTE: Here it is okay to conceptually use latitude as "x"
   // and longitude as "y".
   var vbox_min_x = vbox[0], vbox_min_y = vbox[1];
   var vbox_max_x = vbox[2], vbox_max_y = vbox[3];
   var p1_x = line[0], p1_y = line[1];
   var p2_x = line[2], p2_y = line[3];
+
+  // Check if either of the line's points are entirely within the
+  // bounding box.  We will know for sure the line is visible.
+
+  if ((vbox_min_x < p1_x && p1_x < vbox_max_x &&
+       vbox_min_y < p1_y && p1_y < vbox_max_y) ||
+      (vbox_min_x < p2_x && p2_x < vbox_max_x &&
+       vbox_min_y < p2_y && p2_y < vbox_max_y))
+    return true;
+
+  // ax + by + c = 0
   var a = p1_y - p2_y;
   var b = p2_x - p1_x;
   var c = p1_x * p2_y - p1_y * p2_x;
 
-  // ax + by + c = 0
-  // x = -(by + c) / a
   // y = -(ax + c) / b
+  // x = -(by + c) / a
 
-  var vbox_min_y_intersect
-  if (a != 0 && -(b * vbox_min_y) / a
+  // Compute the intersections.
+  var vbox_min_y_ict = -(b * vbox_min_y) / a;
+  var vbox_max_y_ict = -(b * vbox_max_y) / a;
+  var vbox_min_x_ict = -(a * vbox_min_x) / b;
+  var vbox_amx_x_ict = -(a * vbox_max_x) / b;
+  if ((vbox_min_x < vbox_min_y_ict && vbox_min_y_ict < vbox_max_x) ||
+      (vbox_min_x < vbox_max_y_ict && vbox_max_y_ict < vbox_max_x) ||
+      (vbox_min_y < vbox_min_x_ict && vbox_min_x_ict < vbox_max_y) ||
+      (vbox_min_y < vbox_max_x_ict && vbox_max_x_ict < vbox_max_y))
+    return true;
+  return false;
 }
-
-*/
 
 /* Kd-tree potential visibility traversal.  This function traverses
    the kd-tree at the current date to determine the smallest kd-tree

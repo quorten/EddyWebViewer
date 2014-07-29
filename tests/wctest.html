@@ -23,6 +23,19 @@ var cumDates = [];
 var startOfData; // Character offset where eddy records begin.
 
 var kdDbg;
+var exampleVboxes = [
+  [ 40, -170, 50, -160 ],
+  [ -40, -170, 50, -160 ],
+  [ 0, -170, 50, -130 ],
+  [ -50, -20, -30, 20 ],
+  [ -50, -20, 0, 20 ],
+  [ 30, 45, 50, 60 ],
+  [ 30, 75, 50, 90 ],
+  [ -50, -140, 0, -100 ],
+  [ -65, -100, -15, -60 ],
+  [ -70, -120, 70, 120 ],
+  [ -70, -70, 70, 70 ],
+  [ -20, 160, 20, -160 ] ];
 
 /*
 
@@ -104,7 +117,34 @@ function getEddy(outEddy, index) {
 
    * Viable implementation of a partial downloader.
 
-   * Kd-tree traversal for potential visible rendering.
+Although I was thinking of implementing a generic mmap() JavaScript
+module for byte/character oriented datastreams, I am deciding against
+this for the web viewer upon the assumption that performance would be
+better otherwise.  Maybe.  Data download is only efficient if it is
+done in reasonably large chunks.  Also, seeking to lots of random
+access locations on is ineficient due to the number of HTTP requests
+that have to be issued.  Then again, the exact same things can be said
+about hard drives, and it is up to the operating system to provide a
+reasonably optimized abstraction layer.
+
+Thus, I changed my mind once again.  My functions will provide for a
+full optimizing abstraction layer and generic code on mmap caching.
+Note, howver, that the size of the mmap cache must be user controlled,
+as the Web API provides no way for web applications to figure out how
+well a program is doing memory-wise.
+
+There's one caveat, though: Programs must make block alignment
+requests with the library.  This will facilitate efficient retrieval
+from user JavaScript code.  (Big win: block alignment requests for
+starts of date indexes.)  Programs must also use iterator contexts to
+access memory, in order for memory accesses to be reasonably fast.
+
+Once memory is box structured inside the library, it cannot be
+restructured.  JavaScript is assumed to be too inefficient for this.
+Rather, the chunk in question muts be XMLHttpRequested with the proper
+alignments.
+
+ChunkAlignSize (default one element), OptimalChunkStarts
 
 */
 
@@ -112,7 +152,8 @@ function getEddy(outEddy, index) {
 
 In the PVS traversal, eddies are primarily referenced by their
 indexes.  To read the value of an index, we must use getEddy() above.
-In the real code, getEddy() will be an inline function.
+In the real code, getEddy() will be an inline function.  Maybe.  It
+might be more than fast enough to use as non-inline, though.
 
 curdim = depth % 2;
 median = start + (0|((length - 1) / 2));
@@ -121,7 +162,11 @@ medianVal = curEddy[1+curdim];
 
 How to box split efficiently:
 
-Start by splitting into two boxes if wrap beyond edges
+Start by splitting into two boxes if wrap beyond edges.  Don't need to
+do this anymore: our algorithm handles wraparound boxes directly.
+
+Maybe it might be a good idea to separate the wraparound box testing
+logic into a separate function, though.
 
 Or clip to latitude edge
 
@@ -185,6 +230,43 @@ If the kdvbox is entirely within the vbox, then stop traversing.
 
 If the length is too short, you must stop dividing.
 
+Interesting...
+
+http://earth.usc.edu/~stott/Catalina/Oceans.html
+
+*/
+
+/*
+
+Note: In addition to only rendering what is in the user's view, when
+at low zoom levels, the algorithms should proceed to rendering the
+rest of the map at the current zoom level, to enable fast scrolling of
+the map.
+
+Another option that is important to consider is SVG.  This could
+possibly be better than HTML Canvas, considering that in some browsers
+(i.e. Firefox), Canvas API calls have a considerable overhead
+associated with them.
+
+Maybe its a deal: Prioritized rendering of the local view followed by
+rendering of the "scroll" view.  Only render the scroll view at
+1440x720 resolution.
+
+Don't use "tournament" selection of the user rendering option.  This
+will not result in a good user experience when the rendering options
+are automatically switched for hypothesis testing with vigilance.
+
+UI Rendering mechanisms:
+
+* 1. Full-scale canvas render.
+
+* 2. Local-only canvas render.
+
+* 3. SVG render.
+
+All mechanisms must be coded.  User-selection of one mechanism over
+another will be enabled based off of the user's browser capabilities.
+
 */
 
 // Create a list of track bounding boxes, latitude, longitude, and
@@ -192,16 +274,16 @@ If the length is too short, you must stop dividing.
 // track.  Don't redraw other tracks unless there are bounding
 // box intersections.
 
-// Check if a line is contained within a bounding box.
+// Check if a line is contained within a bounding box.  Note that for
+// this algorithm, we exclude lines that only touch the outside of the
+// box, but don't go through it.
 
 // line and vbox must be [ minLat, minLon, maxLat, maxLon ]
 function lineIntersect(line, vbox) {
-  // NOTE: Here it is okay to conceptually use latitude as "x"
-  // and longitude as "y".
-  var vbox_min_x = vbox[0], vbox_min_y = vbox[1];
-  var vbox_max_x = vbox[2], vbox_max_y = vbox[3];
-  var p1_x = line[0], p1_y = line[1];
-  var p2_x = line[2], p2_y = line[3];
+  var vbox_min_x = vbox[1], vbox_min_y = vbox[0];
+  var vbox_max_x = vbox[3], vbox_max_y = vbox[2];
+  var p1_x = line[1], p1_y = line[0];
+  var p2_x = line[3], p2_y = line[2];
 
   // Check if either of the line's points are entirely within the
   // bounding box.  We will know for sure the line is visible.
@@ -221,10 +303,10 @@ function lineIntersect(line, vbox) {
   // x = -(by + c) / a
 
   // Compute the intersections.
-  var vbox_min_y_ict = -(b * vbox_min_y) / a;
-  var vbox_max_y_ict = -(b * vbox_max_y) / a;
-  var vbox_min_x_ict = -(a * vbox_min_x) / b;
-  var vbox_amx_x_ict = -(a * vbox_max_x) / b;
+  var vbox_min_y_ict = (a != 0) ? (-(b * vbox_min_y) / a) : vbox_max_x * 2;
+  var vbox_max_y_ict = (a != 0) ? (-(b * vbox_max_y) / a) : vbox_max_x * 2;
+  var vbox_min_x_ict = (b != 0) ? (-(a * vbox_min_x) / b) : vbox_max_y * 2;
+  var vbox_max_x_ict = (b != 0) ? (-(a * vbox_max_x) / b) : vbox_max_y * 2;
   if ((vbox_min_x < vbox_min_y_ict && vbox_min_y_ict < vbox_max_x) ||
       (vbox_min_x < vbox_max_y_ict && vbox_max_y_ict < vbox_max_x) ||
       (vbox_min_y < vbox_min_x_ict && vbox_min_x_ict < vbox_max_y) ||
@@ -245,6 +327,22 @@ function lineIntersect(line, vbox) {
    curDate: Current date index
    vbox: [ minLat, minLon, maxLat, maxLon ]
    Units are degrees.
+
+   FIXME:
+   Better code organization.
+   Separate definitely visible and possibly visible results pushing.
+
+   Build a complement array of non-prioritized regions.
+
+   To build: Simply put, during traversal, put paths not taken as
+   ranges in this tree.
+
+   Return an array of three arrays in the following order:
+
+   [ definitely_visible, possibly_visible, not_visible ]
+
+   Referring to the eddies in the current date, not the visibility of
+   the tracks.
 
 */
 function kdPVS(curDate, vbox) {
@@ -307,10 +405,14 @@ function kdPVS(curDate, vbox) {
       var vbox_latsz = vbox[2] - vbox[0];
       var vbox_lonsz = vbox[3] - vbox[1];
 
-      // Guarantee at least 20 times faster. C * lg n.
+      // Guarantee at least 80 times faster. C * lg n.
+
+      // If this isn't fast enough, then the speed can be increased
+      // even further by using 12 and 3 instead.  3 and 1 is too
+      // small to be very useful.
 
       if (length > 1 &&
-          (numSplits < 19 && stack.length <= 4) &&
+          (numSplits < 25 && stack.length <= 4) &&
           ((vbox[3] - vbox[1] > 0 && (length > 128 ||
            (vbox[0] - kdVbox[0] > vbox_latsz * 1 ||
             kdVbox[2] - vbox[2] > vbox_latsz * 1 ||
@@ -336,11 +438,11 @@ function kdPVS(curDate, vbox) {
         if (vbox[3] - vbox[1] > 0 &&
             vbox[0] < curEddy[1] && curEddy[1] < vbox[2] &&
             vbox[1] < curEddy[2] && curEddy[2] < vbox[3])
-          results.push([ median, 1 ]);
+          results.push([ median, 1 ]); // DEFINITELY VISIBLE
         if (vbox[3] - vbox[1] < 0 &&
             (curEddy[2] < vbox[3] || curEddy[2] > vbox[1]) &&
             vbox[0] < curEddy[1] && curEddy[1] < vbox[2])
-          results.push([ median, 1 ]);
+          results.push([ median, 1 ]); // DEFINITELY VISIBLE
 
         numSplits++; depth++;
         var frame = new Array(4);
@@ -358,15 +460,17 @@ function kdPVS(curDate, vbox) {
         if (length == 1 &&
             vbox[0] < curEddy[1] && curEddy[1] < vbox[2] &&
             vbox[1] < curEddy[2] && curEddy[2] < vbox[3])
-          results.push([ start, length ]);
+          results.push([ start, length ]); // DEFINITELY VISIBLE
         if (length == 1 && vbox[3] - vbox[1] < 0 &&
             (curEddy[2] < vbox[3] || curEddy[2] > vbox[1]) &&
             vbox[0] < curEddy[1] && curEddy[1] < vbox[2])
-          results.push([ median, 1 ]);
+          results.push([ median, 1 ]); // DEFINITELY VISIBLE
         length = 0; // Force popping from the stack.
       } else {
         // This box is entirely within the viewport box.
-        results.push([ start, length ]);
+        // Or, the above check simply pruned the box due to
+        // algorithm runtime and stepping limits.
+        results.push([ start, length ]); // Possibly visible.
         length = 0; // Force popping from the stack.
       }
     }
@@ -378,7 +482,7 @@ function kdPVS(curDate, vbox) {
       start = frame[1]; length = frame[2]; depth = frame[3];
     }
   }
-  alert('' + numSplits + ' ' + numTrims);
+  // alert('' + numSplits + ' ' + numTrims);
   return results;
 }
 
@@ -440,10 +544,10 @@ function kdRender(curDate, canvas, scale, ranges, maxDepth) {
         ctx.moveTo((medianVal + 180) * scale, (-kdVbox[0] + 90) * scale);
         ctx.lineTo((medianVal + 180) * scale, (-kdVbox[2] + 90) * scale);
       }
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.arc((curEddy[2] + 180) * scale, (-curEddy[1] + 90) * scale,
-              2, 0, 2 * Math.PI, false);
+      var xcenter = (curEddy[2] + 180) * scale;
+      var ycenter = (-curEddy[1] + 90) * scale;
+      ctx.moveTo(xcenter + 2, ycenter);
+      ctx.arc(xcenter, ycenter, 2, 0, 2 * Math.PI, false);
       ctx.stroke();
     }
 
@@ -467,12 +571,12 @@ function kdRender(curDate, canvas, scale, ranges, maxDepth) {
   }
 }
 
-function drawVBox(canvas, initVbox) {
+function drawVBox(canvas, scale, initVbox) {
   var vbox = initVbox.slice(0);
-  vbox[0] = (-vbox[0] + 90) * 4;
-  vbox[2] = (-vbox[2] + 90) * 4;
-  vbox[1] = (vbox[1] + 180) * 4;
-  vbox[3] = (vbox[3] + 180) * 4;
+  vbox[0] = (-vbox[0] + 90) * scale;
+  vbox[2] = (-vbox[2] + 90) * scale;
+  vbox[1] = (vbox[1] + 180) * scale;
+  vbox[3] = (vbox[3] + 180) * scale;
   var ctx = canvas.getContext("2d");
   ctx.strokeStyle = "#ff0000";
   // ctx.lineWidth = 2;
@@ -487,12 +591,21 @@ function drawVBox(canvas, initVbox) {
     ctx.lineTo(0, vbox[2]);
     ctx.stroke();
     ctx.beginPath();
-    ctx.moveTo(360 * 4, vbox[0]);
+    ctx.moveTo(360 * scale, vbox[0]);
     ctx.lineTo(vbox[1], vbox[0]);
     ctx.lineTo(vbox[1], vbox[2]);
-    ctx.lineTo(360 * 4, vbox[2]);
+    ctx.lineTo(360 * scale, vbox[2]);
   }
   ctx.stroke();
+}
+
+// Convenience function for in-browser testing.
+function testKdWithParams(scale, vbidx, curDate) {
+  var ctx = kdDbg.getContext("2d");
+  ctx.clearRect(0, 0, kdDbg.width, kdDbg.height);
+  var pvsResults = kdPVS(curDate, exampleVboxes[vbidx]);
+  kdRender(curDate, kdDbg, scale, pvsResults);
+  drawVBox(kdDbg, scale, exampleVboxes[vbidx]);
 }
 
 function processTestFile() {
@@ -560,18 +673,7 @@ function processTestFile() {
           nextIdx = ++startIdx;
       }
 
-      // var vbox = [ 40, -170, 50, -160 ];
-      // var vbox = [ -40, -170, 50, -160 ];
-      // var vbox = [ 0, -170, 50, -130 ];
-      // var vbox = [ -50, -20, -30, 20 ];
-      // var vbox = [ -50, -20, 0, 20 ];
-      // var vbox = [ 30, 45, 50, 60 ];
-      // var vbox = [ 30, 75, 50, 90 ];
-      // var vbox = [ -50, -140, 0, -100 ];
-      // var vbox = [ -65, -100, -15, -60 ];
-      // var vbox = [ -70, -120, 70, 120 ];
-      var vbox = [ -70, -70, 70, 70 ];
-      // var vbox = [ -20, 160, 20, -160 ];
+      var vbox = exampleVboxes[10];
       var pvsResults = kdPVS(0, vbox);
       /* for (var i = 0, pvsRes_len = pvsResults.length; i < pvsRes_len; i++)
         dispArray(pvsResults[i]); */
@@ -582,7 +684,7 @@ function processTestFile() {
       kdDbg.height = 180 * 4;
       document.documentElement.children[1].appendChild(kdDbg);
       kdRender(0, kdDbg, 4, pvsResults);
-      drawVBox(kdDbg, vbox);
+      drawVBox(kdDbg, 4, vbox);
 
       /* Note: One possibly useful technique is to keep the entire
          data string in memory, but only keep a small window of

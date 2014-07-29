@@ -61,6 +61,7 @@ EA_TYPE(wchar_t);
    words.  */
 bool max_utf_range = false;
 unsigned tot_num_tracks;
+unsigned max_track_len;
 SortedEddy_array sorted_eddies;
 unsigned_array date_chunk_starts;
 /* Maximum number of eddies on a single date index.  */
@@ -206,6 +207,7 @@ int main(int argc, char *argv[]) {
   /* Error handling in regard to the command-line UI is finished.
      Perform heavyweight startup procedures.  */
   tot_num_tracks = 0;
+  max_track_len = 0;
   EA_INIT(SortedEddy, sorted_eddies, 1048576);
   EA_INIT(unsigned, date_chunk_starts, 16);
   max_frame_eddies = 0;
@@ -260,8 +262,9 @@ int main(int argc, char *argv[]) {
   }
 
   if (diag_proc) {
-    fprintf(stderr, "Done parsing: %u tracks, %u total eddies.\n",
-	    tot_num_tracks, sorted_eddies.len);
+    fprintf(stderr, "Done parsing: %u tracks, %u max. track length, "
+	    "%u total eddies.\n",
+	    tot_num_tracks, max_track_len, sorted_eddies.len);
     fprintf(stderr, "Sorting eddies by date...\n");
   }
 
@@ -535,6 +538,7 @@ int parse_json(FILE *fp, unsigned eddy_type) {
   int c;
   int nest_level = 0;
   bool start_of_track = false;
+  unsigned track_len = 0;
   /* nest_level == 1: Top-level tracks array
      nest_level == 2: Eddies array within one track
      nest_level == 3: Parameters of one eddy */
@@ -587,6 +591,7 @@ int parse_json(FILE *fp, unsigned eddy_type) {
       if (nest_level == 2) {
 	tot_num_tracks++;
 	start_of_track = true;
+	track_len = 0;
       } else if (nest_level == 3)
 	eddy_param_index = 0;
       break;
@@ -601,6 +606,10 @@ int parse_json(FILE *fp, unsigned eddy_type) {
 	if (add_eddy(&cur_eddy, eddy_type, start_of_track) != 0)
 	  return 1;
 	start_of_track = false;
+	track_len++;
+      } else if (nest_level == 2) {
+	if (track_len > max_track_len)
+	  max_track_len = track_len;
       }
       nest_level--;
       break;

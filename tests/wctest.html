@@ -10,7 +10,7 @@
 
 <p>This is the wchar test page.  Good luck!</p>
 
-<script type="text/javascript" src="../mylib.js"></script>
+<!-- <script type="text/javascript" src="../mylib.js"></script> -->
 <script type="text/javascript">
 
 var httpRequest;
@@ -21,6 +21,8 @@ var INPUT_ZERO_SYM;
 var eddiesOnDate = [];
 var cumDates = [];
 var startOfData; // Character offset where eddy records begin.
+
+var kdDbg;
 
 /*
 
@@ -173,6 +175,42 @@ c = 1*2 - 5*3 = 2 - 15 = -13
 2y = -3x + 13
 3x + 2y - 13 = 0
 
+When the vbox fits entirely in the left or right halves, keep
+down traversing as normal.
+
+When the vbox crosses through the median, you must divide the vbox
+and traverse both sides.
+
+If the kdvbox is entirely within the vbox, then stop traversing.
+
+If the length is too short, you must stop dividing.
+
+*/
+
+/*
+
+// Check if a line intersects with the bounding box.
+
+// line and vbox must be [ minLat, minLon, maxLat, maxLon ]
+function(line, vbox) {
+  // NOTE: Here it is okay to conceptually use latitude as "x"
+  // and longitude as "y".
+  var vbox_min_x = vbox[0], vbox_min_y = vbox[1];
+  var vbox_max_x = vbox[2], vbox_max_y = vbox[3];
+  var p1_x = line[0], p1_y = line[1];
+  var p2_x = line[2], p2_y = line[3];
+  var a = p1_y - p2_y;
+  var b = p2_x - p1_x;
+  var c = p1_x * p2_y - p1_y * p2_x;
+
+  // ax + by + c = 0
+  // x = -(by + c) / a
+  // y = -(ax + c) / b
+
+  var vbox_min_y_intersect
+  if (a != 0 && -(b * vbox_min_y) / a
+}
+
 */
 
 /* Kd-tree potential visibility traversal.  This function traverses
@@ -195,13 +233,12 @@ function kdPVS(curDate, vbox) {
   var stack = [];
   var results = [];
   var numSplits = 0;
+  var numTrims = 0;
 
   var kdVbox = [ -90, -180, 90, 180 ];
   var start = cumDates[curDate];
   var length = cumDates[curDate+1] - cumDates[curDate];
   var depth = 0;
-  var lastStart = start;
-  var lastLength = length;
 
   while (length > 0) {
     // Current dimension (latitude (0) or longitude (1))
@@ -212,61 +249,139 @@ function kdPVS(curDate, vbox) {
     var medianVal = curEddy[1+curdim];
     var vbox_min = vbox[curdim];
     var vbox_max = vbox[2+curdim];
-    if (vbox_min < medianVal && vbox_max < medianVal) {
+    var vbox_order = vbox_max - vbox_min;
+    if (length > 1 &&
+        ((vbox_order > 0 &&
+          vbox_min < medianVal && vbox_max < medianVal) ||
+         (vbox_order < 0 &&
+          kdVbox[2+curdim] < vbox_min &&
+          medianVal > vbox_max))) {
       // Choose the less-than side.
       kdVbox[2+curdim] = medianVal;
-      lastStart = start; lastLength = length;
-      /* start = start; */ length = median - start;
-      depth++;
-    } else if (vbox_min > medianVal && vbox_max > medianVal) {
+      /* start = start; */ length = median - start; depth++;
+      numTrims++;
+    } else if (length > 1 &&
+               ((vbox_order > 0 &&
+                 vbox_min > medianVal && vbox_max > medianVal) ||
+                (vbox_order < 0 &&
+                 kdVbox[curdim] > vbox_max &&
+                 medianVal < vbox_min))) {
       // Choose the greater-than side.
       kdVbox[curdim] = medianVal;
-      lastStart = start; lastLength = length;
-      start = median + 1; length = end - start;
-      depth++;
+      start = median + 1; length = end - start; depth++;
+      numTrims++;
     } else {
+      /* Split the traversal box into two boxes if the traversal box
+         does not fit entirely within the viewport box.  */
+
+      // If the traversal box's edges exceed the edges of the viewport box
+      // by one width or there are too many points within the traversal
+      // box (thus potentially outside the viewport box), definitely
+      // consider splitting it.
+
       // Split this into two boxes if the dimensions are oversized
       // by a factor of 4, and the maximum number of splits has
       // not been exceeded.
-      if (numSplits < 3 && stack.length <= 1 &&
-          ((vbox[2] - vbox[0] > (kdVbox[2] - kdVbox[0]) * 4) ||
-           (vbox[3] - vbos[1] > (kdVbox[3] - kdVbox[1]) * 4))) {
+      // Note: numSplits was 3 and stack.length was 1
+
+      var vbox_latsz = vbox[2] - vbox[0];
+      var vbox_lonsz = vbox[3] - vbox[1];
+
+      // Guarantee at least 20 times faster. C * lg n.
+
+      if (length > 1 &&
+          (numSplits < 19 && stack.length <= 4) &&
+          ((vbox[3] - vbox[1] > 0 && (length > 128 ||
+           (vbox[0] - kdVbox[0] > vbox_latsz * 1 ||
+            kdVbox[2] - vbox[2] > vbox_latsz * 1 ||
+            vbox[1] - kdVbox[1] > vbox_lonsz * 1 ||
+            kdVbox[3] - vbox[3] > vbox_lonsz * 1))) ||
+           ((vbox[3] - vbox[1] < 0 && (length > 128 ||
+            vbox[0] - kdVbox[0] > vbox_latsz * 1 ||
+            kdVbox[2] - vbox[2] > vbox_latsz * 1 ||
+            kdVbox[3] - vbox[3] < 360 + vbox_lonsz * 1 ||
+            vbox[1] - kdVbox[1] < 360 + vbox_lonsz * 1 )))
+           ) &&
+          /* (kdVbox[2] - kdVbox[0] > (vbox[2] - vbox[0]) * 1 ||
+           kdVbox[3] - kdVbox[1] > (vbox[3] - vbox[1]) * 1) && */
+          !(vbox_order > 0 &&
+            kdVbox[0] > vbox[0] && kdVbox[2] < vbox[2] &&
+            kdVbox[1] > vbox[1] && kdVbox[3] < vbox[3]) &&
+          !(vbox[3] - vbox[1] < 0 &&
+            ((kdVbox[1] < vbox[3] && kdVbox[3] < vbox[3]) ||
+             (kdVbox[1] > vbox[1] && kdVbox[3] > vbox[1])) &&
+            kdVbox[0] > vbox[0] && kdVbox[2] < vbox[2])) {
+
+        // Include the median if it is within the viewport box.
+        if (vbox[3] - vbox[1] > 0 &&
+            vbox[0] < curEddy[1] && curEddy[1] < vbox[2] &&
+            vbox[1] < curEddy[2] && curEddy[2] < vbox[3])
+          results.push([ median, 1 ]);
+        if (vbox[3] - vbox[1] < 0 &&
+            (curEddy[2] < vbox[3] || curEddy[2] > vbox[1]) &&
+            vbox[0] < curEddy[1] && curEddy[1] < vbox[2])
+          results.push([ median, 1 ]);
+
         numSplits++; depth++;
-        var frame = new Array(6);
+        var frame = new Array(4);
         frame[0] = kdVbox.slice(0);     // kdVbox
         frame[0][2+curdim] = medianVal;
         frame[1] = start;               // start
         frame[2] = median - start;      // length
         frame[3] = depth;               // depth
-        frame[4] = start;               // lastStart
-        frame[5] = length;              // lastLength
         stack.push(frame);
 
         kdVbox[curdim] = medianVal;
-        lastStart = start; lastLength = length;
         start = median + 1; length = end - start;
+      } else if (length <= 1) {
+        // Cannot split a partition of minimum size.
+        if (length == 1 &&
+            vbox[0] < curEddy[1] && curEddy[1] < vbox[2] &&
+            vbox[1] < curEddy[2] && curEddy[2] < vbox[3])
+          results.push([ start, length ]);
+        if (length == 1 && vbox[3] - vbox[1] < 0 &&
+            (curEddy[2] < vbox[3] || curEddy[2] > vbox[1]) &&
+            vbox[0] < curEddy[1] && curEddy[1] < vbox[2])
+          results.push([ median, 1 ]);
+        length = 0; // Force popping from the stack.
       } else {
-        // Otherwise, we're done.
-        results.push([ lastStart, lastLength ]);
-        // Process any entries remaining on the stack.
-        if (stack.length > 0) {
-          var frame = stack.pop();
-          kdVbox = frame[0]; start = frame[1]; length = frame[2];
-          depth = frame[3]; lastStart = frame[4]; lastLength = frame[5];
-        } else
-          return results;
+        // This box is entirely within the viewport box.
+        results.push([ start, length ]);
+        length = 0; // Force popping from the stack.
       }
     }
-    if (length == 0 && stack.length > 0) {
-        var frame = stack.pop();
-        kdVbox = frame[0]; start = frame[1]; length = frame[2];
-        depth = frame[3]; lastStart = frame[4]; lastLength = frame[5];
+
+    // Process any entries remaining on the stack.
+    while (length == 0 && stack.length > 0) {
+      var frame = stack.pop();
+      kdVbox = frame[0];
+      start = frame[1]; length = frame[2]; depth = frame[3];
     }
   }
+  alert('' + numSplits + ' ' + numTrims);
+  return results;
 }
 
+/*
+
+/Prioritized/ rendering: Sort the definitely visible ranges to the
+front of a range rendering array, then append the remaining ranges
+onto the end.  Process the entire array to render.
+
+Check how many eddies are within a cell.  If there are a lot of eddies
+in a cell AND it is oversized, then try to break it up.  Otherwise,
+leave it.
+
+Need a separate list of ranges definitely within the view, i.e. no
+linear vis testing necessary.
+
+MAKE SURE to match min and max correctly before sending to the
+algorithm!
+
+*/
+
 // Recursively draw a kd-tree's structure.
-function kdRender(curDate, canvas, scale, maxDepth) {
+function kdRender(curDate, canvas, scale, ranges, maxDepth) {
   var curEddy = new Array(5);
   var ctx = canvas.getContext("2d");
   ctx.strokeStyle = "#800080";
@@ -276,8 +391,6 @@ function kdRender(curDate, canvas, scale, maxDepth) {
   var start = cumDates[curDate];
   var length = cumDates[curDate+1] - cumDates[curDate];
   var depth = 0;
-  var lastStart = start;
-  var lastLength = length;
 
   while (length > 0) {
     // Current dimension (latitude (0) or longitude (1))
@@ -287,7 +400,18 @@ function kdRender(curDate, canvas, scale, maxDepth) {
     getEddy(curEddy, median);
     var medianVal = curEddy[1+curdim];
 
-    if (!maxDepth || depth < maxDepth) {
+    if ((!maxDepth || depth < maxDepth)) {
+      if (!ranges)
+        ctx.strokeStyle = "#800080";
+      else {
+        ctx.strokeStyle = "#000000";
+        for (var i = 0, ranges_length = ranges.length;
+             i < ranges_length; i++) {
+          if (median >= ranges[i][0] &&
+              median < ranges[i][0] + ranges[i][1])
+            ctx.strokeStyle = "#800080";
+        }
+      }
       ctx.beginPath();
       if (curdim == 0) {
         ctx.moveTo((kdVbox[1] + 180) * scale, (-medianVal + 90) * scale);
@@ -304,26 +428,51 @@ function kdRender(curDate, canvas, scale, maxDepth) {
     }
 
     depth++;
-    var frame = new Array(6);
+    var frame = new Array(4);
     frame[0] = kdVbox.slice(0);
     frame[0][2+curdim] = medianVal;
     frame[1] = start;               // start
     frame[2] = median - start;      // length
     frame[3] = depth;               // depth
-    frame[4] = start;               // lastStart
-    frame[5] = length;              // lastLength
     stack.push(frame);
 
     kdVbox[curdim] = medianVal;
-    lastStart = start; lastLength = length;
     start = median + 1; length = end - start;
 
     while (length == 0 && stack.length > 0) {
       var frame = stack.pop();
-      kdVbox = frame[0]; start = frame[1]; length = frame[2];
-      depth = frame[3]; lastStart = frame[4]; lastLength = frame[5];
+      kdVbox = frame[0];
+      start = frame[1]; length = frame[2]; depth = frame[3];
     }
   }
+}
+
+function drawVBox(canvas, initVbox) {
+  var vbox = initVbox.slice(0);
+  vbox[0] = (-vbox[0] + 90) * 4;
+  vbox[2] = (-vbox[2] + 90) * 4;
+  vbox[1] = (vbox[1] + 180) * 4;
+  vbox[3] = (vbox[3] + 180) * 4;
+  var ctx = canvas.getContext("2d");
+  ctx.strokeStyle = "#ff0000";
+  // ctx.lineWidth = 2;
+  ctx.beginPath();
+  if (vbox[1] < vbox[3])
+    ctx.rect(vbox[1], vbox[0],
+		   vbox[3] - vbox[1], vbox[2] - vbox[0]);
+  else {
+    ctx.moveTo(0, vbox[0]);
+    ctx.lineTo(vbox[3], vbox[0]);
+    ctx.lineTo(vbox[3], vbox[2]);
+    ctx.lineTo(0, vbox[2]);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(360 * 4, vbox[0]);
+    ctx.lineTo(vbox[1], vbox[0]);
+    ctx.lineTo(vbox[1], vbox[2]);
+    ctx.lineTo(360 * 4, vbox[2]);
+  }
+  ctx.stroke();
 }
 
 function processTestFile() {
@@ -391,12 +540,29 @@ function processTestFile() {
           nextIdx = ++startIdx;
       }
 
+      // var vbox = [ 40, -170, 50, -160 ];
+      // var vbox = [ -40, -170, 50, -160 ];
+      // var vbox = [ 0, -170, 50, -130 ];
+      // var vbox = [ -50, -20, -30, 20 ];
+      // var vbox = [ -50, -20, 0, 20 ];
+      // var vbox = [ 30, 45, 50, 60 ];
+      // var vbox = [ 30, 75, 50, 90 ];
+      // var vbox = [ -50, -140, 0, -100 ];
+      // var vbox = [ -65, -100, -15, -60 ];
+      // var vbox = [ -70, -120, 70, 120 ];
+      var vbox = [ -70, -70, 70, 70 ];
+      // var vbox = [ -20, 160, 20, -160 ];
+      var pvsResults = kdPVS(0, vbox);
+      /* for (var i = 0, pvsRes_len = pvsResults.length; i < pvsRes_len; i++)
+        dispArray(pvsResults[i]); */
+
       // First create a drawing canvas.
-      var kdDbg = document.createElement("canvas");
+      kdDbg = document.createElement("canvas");
       kdDbg.width = 360 * 4;
       kdDbg.height = 180 * 4;
       document.documentElement.children[1].appendChild(kdDbg);
-      kdRender(0, kdDbg, 4);
+      kdRender(0, kdDbg, 4, pvsResults);
+      drawVBox(kdDbg, vbox);
 
       /* Note: One possibly useful technique is to keep the entire
          data string in memory, but only keep a small window of
@@ -433,7 +599,10 @@ function processTestFile() {
       window.location = downloadText; */
 
       // Cleanup
+      /* None of these deletes will succeed, though, since all of the
+         variables were declared with `var'.  */
       delete httpRequest;
+      delete textBuf;
       delete INPUT_ZERO_SYM;
       delete eddiesOnDate;
       delete cumDates;

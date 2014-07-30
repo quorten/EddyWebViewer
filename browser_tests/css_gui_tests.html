@@ -193,10 +193,12 @@ function init() {
     drawingContainer.style.height = sidebar.style.height;
 
     // This breaks modern versions of IE.
-    var ieRepImgs = getElementsByClassName('ieImgFix');
+    // Now that we use PNG optimization, it is no longer needed either.
+    // 8-bit PNG transparency works just fine.
+    /* var ieRepImgs = getElementsByClassName('ieImgFix');
     for (var i = 0; i < ieRepImgs.length; i++) {
       ieRepImgs[i].src = ieRepImgs[i].src.replace(/\.png$/, '.gif');
-    }
+    } */
   }
 
   // JavaScript Pointer and HTML Canvas Test
@@ -297,8 +299,8 @@ document.getElementById('scriptWrapper').style.cssText = '';
       of this UI, the surrounding sidebars will be able to be hidden
       when not in use.</p>
       <p style="text-align: center">
-	<object type="image/svg+xml" data="../css_gui/loading_composite.svg">
-	  <img class="ieImgFix" src="../css_gui/loading_composite.png"
+	<object type="image/svg+xml" data="../slim_gui/loading_composite.svg">
+	  <img class="ieImgFix" src="../slim_gui/loading_composite.png"
 	       alt="Decorative Loading Icon." />
 	</object><br />
 	<strong>Loading</strong>

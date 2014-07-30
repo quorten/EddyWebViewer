@@ -1722,7 +1722,7 @@ var timeoutIter = this.i + numIters;
 
 lastTime = Date.now();
 
-for (; i &lt; timeoutIter && condition; i++) {
+for (; i &lt; timeoutIter &amp;&amp; condition; i++) {
 }
 
 lastElapTime = Date.now() - lastTime;
@@ -2118,7 +2118,13 @@ of the changes and links to additional resources:</p>
   documents with <code>"application/xhtml+xml"</code>.<br />
   Setup Apache to serve XHTML: <br />
   <a href="http://protempore.net/~calvins/howto/xhtml-apache/">
-    http://protempore.net/~calvins/howto/xhtml-apache/</a></li>
+    http://protempore.net/~calvins/howto/xhtml-apache/</a><br />
+
+  Note, however, that it is better to
+  use <code>REQUEST_FILENAME</code> in place
+  of <code>REQUEST_URI</code>, since that will also work when URLs are
+  requested without filename extensions.</li>
+
   <li>This article details proper authoring of XHTML, abeit being a
   little outdated:<br />
   <a href="http://www.456bereastreet.com/archive/200501/the_perils_of_using_xhtml_properly/">
@@ -2462,7 +2468,7 @@ polling code.</p>
 
 <p>The best possible cross-browser compatibility for
 <code>requestAnimationFrame()</code> involves defining a polyfill
-shim:<br/ >
+shim:<br />
 <a href="http://www.paulirish.com/2011/requestanimationframe-for-smart-animating/">
 http://www.paulirish.com/2011/requestanimationframe-for-smart-animating/</a></p>
 
@@ -2715,7 +2721,7 @@ language to JavaScript.  Designed with performance in mind.</p>
   <li><a href="http://haxe.org/">Haxe</a> &mdash; A language with a
   multi-target optimizing compiler, with JavaScript and C++ targets
   available.  The C++ target, however does not yield code that is as
-  efficient as can be achieved from handwritten C++.</a></li>
+  efficient as can be achieved from handwritten C++.</li>
   <li>Cjs &mdash; Currently a sub-component of the Ocean Eddies Web
   Viewer, this is a very minimalistic translator that can translate
   JavaScript-like code to either C/C++ or JavaScript.</li>

@@ -412,6 +412,7 @@ FThostObjects = function() {
   var testEl = document.createElement('p');
   testEl.id = 'testEl';
   if (!isHostObject(testEl, 'style') ||
+      !isHostObject(testEl.style, 'cssText') ||
       !isHostMethod(testEl, 'appendChild') ||
       !isHostMethod(testEl, 'insertBefore') ||
       !isHostCollection(testEl, 'childNodes'))

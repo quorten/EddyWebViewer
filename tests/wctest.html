@@ -5,13 +5,20 @@
 <head>
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
   <title>wchar test page</title>
+  <style type="text/css">
+    #daCntr { height: 400px; overflow: auto; border-style: solid;
+              margin: 8px; padding: 8px; }
+  </style>
 </head>
 <body>
 
 <p>This is the wchar test page.  Good luck!</p>
 
-<!-- <script type="text/javascript" src="../mylib.js"></script> -->
+<div id="daCntr"></div>
+
+<script type="text/javascript" src="../mylib.js"></script>
 <script type="text/javascript">
+<!--//--><![CDATA[//><!--
 
 var httpRequest;
 
@@ -22,6 +29,8 @@ var eddiesOnDate = [];
 var cumDates = [];
 var startOfData; // Character offset where eddy records begin.
 
+var body; // = API.getBodyElement();
+var daCntr = document.getElementById('daCntr');
 var kdDbg;
 var exampleVboxes = [
   [ 40, -170, 50, -160 ],
@@ -36,6 +45,8 @@ var exampleVboxes = [
   [ -70, -120, 70, 120 ],
   [ -70, -70, 70, 70 ],
   [ -20, 160, 20, -160 ] ];
+var binDisplay;
+var genSLink;
 
 /*
 
@@ -61,7 +72,7 @@ normal downloads.
 function dispDiag(diagText) {
   var dispInfo = document.createElement("pre");
   dispInfo.appendChild(document.createTextNode(diagText));
-  document.documentElement.children[1].appendChild(dispInfo);
+  body.appendChild(dispInfo);
 }
 
 function dispArray(array) {
@@ -72,7 +83,7 @@ function dispArray(array) {
   var dispInfo = document.createElement("code");
   dispInfo.appendChild(document.createTextNode(diagText));
   wrapper.appendChild(dispInfo);
-  document.documentElement.children[1].appendChild(wrapper);
+  daCntr.appendChild(wrapper);
 }
 
 /* Compute the byte range to download for the given date index.  */
@@ -601,16 +612,77 @@ function drawVBox(canvas, scale, initVbox) {
 
 // Convenience function for in-browser testing.
 function testKdWithParams(scale, vbidx, curDate) {
-  var ctx = kdDbg.getContext("2d");
-  ctx.clearRect(0, 0, kdDbg.width, kdDbg.height);
+  kdDbg.width = 360 * scale;
+  kdDbg.height = 180 * scale;
+  // var ctx = kdDbg.getContext("2d");
+  // ctx.clearRect(0, 0, kdDbg.width, kdDbg.height);
   var pvsResults = kdPVS(curDate, exampleVboxes[vbidx]);
   kdRender(curDate, kdDbg, scale, pvsResults);
   drawVBox(kdDbg, scale, exampleVboxes[vbidx]);
 }
 
+// Generate a downloadable static HTML page.
+function generateStaticPage(event) {
+  // Remove/replace troublesome elements from the page.  That includes
+  // script elements.
+  var slParent = genSLink.parentNode;
+  body.removeChild(binDisplay);
+  body.removeChild(slParent);
+  body.removeChild(kdDbg);
+  var staticImage = new Image(kdDbg.width, kdDbg.height);
+  staticImage.src = kdDbg.toDataURL();
+  body.appendChild(staticImage);
+  var sEBTN = API.getEBTN('script', body);
+  var scriptEls = new Array();
+  for (var i = 0, se_len = sEBTN.length; i < se_len; i++)
+    scriptEls.push(sEBTN[i]);
+  for (var i = 0, se_len = scriptEls.length; i < se_len; i++)
+    body.removeChild(scriptEls[i]);
+
+  { // Remove any injected scripts (i.e. Firebug).
+    var docEl = document.documentElement;
+    var sEBTN = API.getEBTN('script');
+    var injScriptEls = new Array();
+    for (var i = 0, se_len = sEBTN.length; i < se_len; i++)
+      injScriptEls.push(sEBTN[i]);
+    var sEBTN = API.getEBTN('html:script');
+    for (var i = 0, se_len = sEBTN.length; i < se_len; i++)
+      injScriptEls.push(sEBTN[i]);
+    for (var i = 0, se_len = injScriptEls.length; i < se_len; i++) {
+      var parentNode = injScriptEls[i].parentNode;
+      parentNode.removeChild(injScriptEls[i]);
+    }
+  }
+
+  var doctype = document.doctype;
+  var dtstr = [ "<!DOCTYPE ", doctype.name,
+                " PUBLIC \"", doctype.publicId,
+                "\"\n  \"", doctype.systemId, "\">" ].join('');
+  var docHtml = [ dtstr,
+    API.getElementOuterHtml(document.documentElement, true) ].join('\n');
+  var downloadText = [
+    "data:application/octet-stream;charset=utf-8;base64,",
+    btoa(docHtml) ].join('');
+
+  // Add removed elements back to the page after the static version
+  // has been generated.
+  body.removeChild(staticImage);
+  body.appendChild(kdDbg);
+  body.appendChild(slParent);
+  body.appendChild(binDisplay);
+  for (var i = 0, se_len = scriptEls.length; i < se_len; i++)
+    body.appendChild(scriptEls[i]);
+
+  // window.location = downloadText;
+  genSLink.href = downloadText;
+
+  return true;
+}
+
 function processTestFile() {
   if (httpRequest.readyState === 4) {
     if (httpRequest.status === 200) {
+      body = API.getBodyElement();
       textBuf = new String(httpRequest.responseText);
       var textBuf_length = textBuf.length;
 
@@ -646,7 +718,6 @@ function processTestFile() {
       curPos++; // Skip the newline immediately at the end of the header.
       startOfData = curPos;
       // console.log(eddiesOnDate);
-      // console.log(cumDates);
       // dispArray(cumDates);
 
       /* Rather than parsing out all data into JavaScript objects at
@@ -682,7 +753,7 @@ function processTestFile() {
       kdDbg = document.createElement("canvas");
       kdDbg.width = 360 * 4;
       kdDbg.height = 180 * 4;
-      document.documentElement.children[1].appendChild(kdDbg);
+      body.appendChild(kdDbg);
       kdRender(0, kdDbg, 4, pvsResults);
       drawVBox(kdDbg, 4, vbox);
 
@@ -697,28 +768,26 @@ function processTestFile() {
          lists format is a dud: the numbers do indeed get too large
          for it to work.  */
 
+      // Provide a link to generate a static version of the page.
+      var slParent = document.createElement('p');
+      genSLink = document.createElement('a');
+      genSLink.href = "#generateStaticPage";
+      genSLink.innerHTML = 'Download a static version of this page.';
+      genSLink.download = 'wctest.html';
+      genSLink.onclick = generateStaticPage;
+      slParent.appendChild(genSLink);
+      body.appendChild(slParent);
+
       /* This test is bound to create serious problems with most
          browsers on most computers.  Thus, we limit the number of
          characters displayed to 4096.  */
-      dispInfo = document.createElement("pre");
-      dispInfo.appendChild(document.
+      binDisplay = document.createElement("pre");
+      binDisplay.appendChild(document.
         createTextNode(textBuf.substr(0, 4096)));
-      document.documentElement.children[1].appendChild(dispInfo);
+      body.appendChild(binDisplay);
 
       // console.log("Done processing.");
       alert("Done processing.");
-
-      // Generate a downloadable static HTML page.
-      /* var doctype = document.doctype;
-      var dtstr = [ "<!DOCTYPE ", doctype.name,
-                    " PUBLIC \"", doctype.publicId,
-                    "\"\n  \"", doctype.systemId, "\">" ].join('');
-      var docHtml = [ dtstr,
-        API.getElementOuterHtml(document.documentElement) ].join('\n');
-      var downloadText = [ "data:text/html;charset=utf-8;base64,",
-        btoa(docHtml) ].join('');
-
-      window.location = downloadText; */
 
       // Cleanup
       /* None of these deletes will succeed, though, since all of the
@@ -751,6 +820,7 @@ httpRequest.open("GET", "../data/tracks.wtxt", true);
 httpRequest.overrideMimeType("text/plain; charset=utf-16le");
 httpRequest.send();
 
+//--><!]]>
 </script>
 
 </body>

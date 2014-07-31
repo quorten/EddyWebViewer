@@ -25,8 +25,8 @@ var httpRequest;
 var textBuf;
 // The character code that represents zero in the input.
 var INPUT_ZERO_SYM;
-var eddiesOnDate = [];
-var cumDates = [];
+var eddiesPerDate = [];
+var dateChunkStarts = [];
 var startOfData; // Character offset where eddy records begin.
 
 var body; // = API.getBodyElement();
@@ -71,12 +71,14 @@ normal downloads.
 
 */
 
+// Display an object as text for diagnostics.
 function dispDiag(diagText) {
   var dispInfo = document.createElement("pre");
   dispInfo.appendChild(document.createTextNode(diagText));
   body.appendChild(dispInfo);
 }
 
+// Display an array with brackets bounding the edges.
 function dispArray(array) {
   var length = array.length;
   var diagText = "" + length + ": [ " + array + " ]";
@@ -90,10 +92,10 @@ function dispArray(array) {
 
 /* Compute the byte range to download for the given date index.  */
 function getDate(outRange, index) {
-  var eddyIndex = cumDates[index];
+  var eddyIndex = dateChunkStarts[index];
   var numNls = 0|(eddyIndex / 32);
   outRange[0] = startOfData + eddyIndex * 4 + numNls;
-  eddyIndex = cumDates[index+1];
+  eddyIndex = dateChunkStarts[index+1];
   numNls = 0|(eddyIndex / 32);
   outRange[1] = startOfData + eddyIndex * 4 + numNls;
   return outRange;
@@ -376,8 +378,8 @@ function kdPVS(curDate, vbox) {
   var numTrims = 0;
 
   var kdVbox = [ -90, -180, 90, 180 ];
-  var start = cumDates[curDate];
-  var length = cumDates[curDate+1] - cumDates[curDate];
+  var start = dateChunkStarts[curDate];
+  var length = dateChunkStarts[curDate+1] - dateChunkStarts[curDate];
   var depth = 0;
 
   while (length > 0) {
@@ -534,8 +536,8 @@ function kdRender(curDate, canvas, scale, ranges, maxDepth) {
 
   var stack = [];
   var kdVbox = [ -90, -180, 90, 180 ];
-  var start = cumDates[curDate];
-  var length = cumDates[curDate+1] - cumDates[curDate];
+  var start = dateChunkStarts[curDate];
+  var length = dateChunkStarts[curDate+1] - dateChunkStarts[curDate];
   var depth = 0;
 
   while (length > 0) {
@@ -665,6 +667,8 @@ function generateStaticPage(event) {
     }
   }
 
+  // NOTE: Since Internet Explorer cannot navigate to Data URIs,
+  // this function will not work in Internet Explorer as-is.
   var doctype = document.doctype;
   var dtstr = [ "<!DOCTYPE ", doctype.name,
                 " PUBLIC \"", doctype.publicId,
@@ -717,19 +721,19 @@ function processTestFile() {
       // Read the entire dates header.
       var numDates = textBuf.charCodeAt(curPos++);
       var lastCumDates = 0;
-      cumDates.push(lastCumDates);
+      dateChunkStarts.push(lastCumDates);
       for (var i = 0; i < numDates; i++) {
         if (i % 32 == 0)
           curPos++; // Skip the newline character.
         var numEddies = textBuf.charCodeAt(curPos++);
-        eddiesOnDate.push(numEddies);
+        eddiesPerDate.push(numEddies);
         lastCumDates += numEddies;
-        cumDates.push(lastCumDates);
+        dateChunkStarts.push(lastCumDates);
       }
       curPos++; // Skip the newline immediately at the end of the header.
       startOfData = curPos;
-      // console.log(eddiesOnDate);
-      // dispArray(cumDates);
+      // console.log(eddiesPerDate);
+      // dispArray(dateChunkStarts);
 
       /* Rather than parsing out all data into JavaScript objects at
          this point, we will only parse out the data when we need it.
@@ -792,10 +796,7 @@ function processTestFile() {
       /* This test is bound to create serious problems with most
          browsers on most computers.  Thus, we limit the number of
          characters displayed to 4096.  */
-      binDisplay = document.createElement("pre");
-      binDisplay.appendChild(document.
-        createTextNode(textBuf.substr(0, 4096)));
-      body.appendChild(binDisplay);
+      dispDiag(textBuf.substr(0, 4096), body);
 
       // console.log("Done processing.");
       alert("Done processing.");
@@ -806,8 +807,8 @@ function processTestFile() {
       delete httpRequest;
       delete textBuf;
       delete INPUT_ZERO_SYM;
-      delete eddiesOnDate;
-      delete cumDates;
+      delete eddiesPerDate;
+      delete dateChunkStarts;
       delete startOfData;
     } else {
       alert("There was a problem with the request.");

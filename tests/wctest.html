@@ -23,7 +23,7 @@
 var httpRequest;
 
 var textBuf;
-/* The character code that represents zero in the input.  */
+// The character code that represents zero in the input.
 var INPUT_ZERO_SYM;
 var eddiesOnDate = [];
 var cumDates = [];
@@ -49,6 +49,8 @@ var binDisplay;
 var genSLink;
 
 /*
+
+http://stackoverflow.com/questions/654112/how-do-you-detect-support-for-vml-or-svg-in-a-browser
 
 Array of date records:
 
@@ -156,6 +158,15 @@ Rather, the chunk in question muts be XMLHttpRequested with the proper
 alignments.
 
 ChunkAlignSize (default one element), OptimalChunkStarts
+
+Implement joining?  Chunk splitting okay?  Or redownload entire chunk?
+All customizable.  Max. number of chunks?  (Avoid array overhead.)
+
+Join threshold, concat, min block size
+
+Define file structure nobreak points.  Complicated...
+
+Need header first.
 
 */
 
@@ -698,7 +709,7 @@ function processTestFile() {
         INPUT_ZERO_SYM = 0xffff;
       else
         INPUT_ZERO_SYM = 0xd7ff;
-      if (formatBits & 0x03) /* Track-keyed format */
+      if (formatBits & 0x04) /* Track-keyed format */
         ;
       else
         /* Eddy-keyed format */;

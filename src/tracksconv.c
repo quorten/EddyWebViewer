@@ -60,6 +60,8 @@ EA_TYPE(wchar_t);
    more effort on the side of the decoder, or is slower, in other
    words.  */
 bool max_utf_range = false;
+bool tracks_keyed = false;
+bool pad_newlines = true;
 unsigned tot_num_tracks;
 unsigned max_track_len;
 SortedEddy_array sorted_eddies;
@@ -100,6 +102,7 @@ void display_help(FILE *fout, const char *progname) {
 "  -vv diag-file    Output data diagnostics to the given file.\n"
 "  -x    Enable extended output range (0x0000 to 0xf7fe).\n"
 "  -nk   Disable kd-tree construction.\n"
+"  -np   Disable padding the output data with newlines.\n"
 "  -u    Write the contents of the given text file into the header of\n"
 "        the output data.  The text file must be encoded as UTF-16 little\n"
 "        endian with BOM.\n"
@@ -148,6 +151,8 @@ int main(int argc, char *argv[]) {
       FOPEN_ARGV_OR_ERROR(fout, "wb");
     else if (!strcmp(*argv, "-nk"))
       build_kd = false;
+    else if (!strcmp(*argv, "-np"))
+      pad_newlines = false;
     else if (!strcmp(*argv, "-u"))
       FOPEN_ARGV_OR_ERROR(fuser, "rb");
     else
@@ -413,6 +418,10 @@ int main(int argc, char *argv[]) {
       unsigned short format_bits = 0x01;
       if (max_utf_range)
 	format_bits |= 0x02;
+      if (tracks_keyed)
+	format_bits |= 0x04;
+      if (pad_newlines)
+	format_bits |= 0x08;
       PUT_SHORT(format_bits);
     }
 
@@ -420,12 +429,12 @@ int main(int argc, char *argv[]) {
        date index structure, and output that structure.  */
     ERROR_OR_PUT_SHORT(date_chunk_starts.len - 1,
 		       "Error: i = %u: Too many date indexes: %u\n");
-    PUT_SHORT('\n');
+    if (pad_newlines) { PUT_SHORT('\n'); }
     for (i = 1; i < date_chunk_starts.len; i++) {
       unsigned num_eddies = date_chunk_starts.d[i] - date_chunk_starts.d[i-1];
       ERROR_OR_PUT_SHORT(num_eddies,
 		 "Error: i = %u: Too many eddies on a date index: %u.\n");
-      if (i % 32 == 0)
+      if (pad_newlines && i % 32 == 0)
 	{ PUT_SHORT('\n'); }
     }
 
@@ -454,7 +463,7 @@ int main(int argc, char *argv[]) {
 	 stored in the latitude field.  */
       int_lat |= seddy->type << 14;
 
-      if (i % 32 == 0)
+      if (pad_newlines && i % 32 == 0)
 	{ PUT_SHORT('\n'); }
 
       PUT_SHORT(int_lat);
@@ -496,7 +505,7 @@ int main(int argc, char *argv[]) {
     }
 
     /* Put a newline at the end of the data for good measure.  */
-    PUT_SHORT('\n');
+    if (pad_newlines) { PUT_SHORT('\n'); }
   }
 
   /* retval = 0; */

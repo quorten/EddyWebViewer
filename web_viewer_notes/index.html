@@ -593,7 +593,8 @@ embedded objects. -->
 </object>
 </p>
 
-<script type="text/javascript">
+<!-- <script type="text/javascript">
+// Dual HTML/XHTML script safety wrapper on this line.
 /* Adjust the height of the object container to be the actual height
    of its content, but only after the document has finished loading
    AND MathJax processing has finished.  */
@@ -614,7 +615,8 @@ window.setTimeout(function setupPM1() {
     });
 
 */
-</script>
+// Dual HTML/XHTML script safety wrapper on this line.
+</script> -->
 
 <p>Once the "Y" coordinate, which is actually the Z coordinate, of the
 near point is found, the near point's X coordinate can be found simply
@@ -668,7 +670,8 @@ equations.</p>
 </object>
 </p>
 
-<script type="text/javascript">
+<!-- <script type="text/javascript">
+// Dual HTML/XHTML script safety wrapper on this line.
 /* Adjust the height of the object container to be the actual height
    of its content, but only after the document has finished loading
    AND MathJax processing has finished.  */
@@ -689,7 +692,8 @@ window.setTimeout(function setupPM2() {
     });
 
 */
-</script>
+// Dual HTML/XHTML script safety wrapper on this line.
+</script> -->
 
 <h3>Display Considerations</h3>
 
@@ -763,6 +767,7 @@ equal -1.  Now for the solution:</p>
 <pre>
 (x_g, y_g) = point on surface of globe
 (0, y_f) = focal point
+r = 1 = radius of globe
 
 (y_g - y_f) / (x_g - 0) * y_g / x_g  = -1
 (y_g^2 - y_f * y_g) / x_g^2  = -1
@@ -773,10 +778,16 @@ x_g^2 = 1 - y_g^2
 
 y_g^2 - y_f * y_g + 1 - y_g^2  = 0
 -y_f * y_g + 1 = 0
-y_g = 1 / y_f</pre>
+y_g = 1 / y_f
 
-<p>One the y coordinate of the point on the globe has been found, the
-longitudinal range can be trivially derived.</p>
+fov = field of view, radians from left edge of view to right edge
+max_lat = asin(y_g)
+scale = (fov / 2) / max_lat
+scale = fov / (2 * asin(1 / y_f))</pre>
+
+<p>Actually, since this equation is so simple, this same mechanism can
+be accurately used both when the globe does fill the entire screen and
+when it does not.</p>
 
 <hr />
 <!-- ________________________________________ -->
@@ -1069,9 +1080,10 @@ visible range of latitudes or longitudes.</p>
 <h2><a name="tracks_format" id="tracks_format">
     Optimized Eddy Tracks Storage Format</a></h2>
 
-<p>In the first version of the web viewer, the eddy tracks were stored
-as a simple series of nested arrays in JSON format.  This was the
-structure of the JSON files:</p>
+<p>In the alpha version of the web viewer, the eddy tracks were stored
+as a simple series of nested arrays in JSON format.  Two separate JSON
+files were used: one for anticyclonic tracks, the other for cyclonic
+tracks.  This was the structure of the JSON files:</p>
 
 <ol>
   <li>Top level: [ list of tracks ]</li>
@@ -1092,22 +1104,19 @@ structure of the JSON files:</p>
 
 <p>However, the advantage at the time was that the format was easy and
 simple to put together.  Thus, it made it possible to push an alpha
-version of the web viewer before the viewer was actually finished.</p>
+version of the web viewer before the viewer was actually finished.
+Solving the problems above to create a better tracks data storage
+format was nontrivial, though.  Before the optimized tracks data
+format is presented, the analyzing processes will be presented in the
+following sections.</p>
 
-<p>The easiest solution to the random access problem is to pad each
-field out to be an equal byte length.  Storing the data in a binary
-numeric format would help alleviate the burden on excess storage space
-and download time.  However, it would also make for tremendously slow
-data parsing on browsers that do not support the typed arrays
-JavaScript extensions.</p>
+<h3>Building an Optimized Render Tree</h3>
 
-<h3>Building the Tree</h3>
-
-<p>For the tree building problem, the analysis is a bit more
-complicated.  At a first glance, it seems that there are two
-possibilities: quadtrees/octrees and kd-trees.  Quadtrees/octrees can
-have O(1) lookup time, but kd-trees have O(log n) lookup time.  For
-memory consumption, quadtrees/octrees consume O(n + b) memory (the
+<p>The tree building problem involves a more complicated analysis than
+the random access problem.  At a first glance, it seems that there are
+two possibilities: quadtrees/octrees and kd-trees.  Quadtrees/octrees
+can have O(1) lookup time, but kd-trees have O(log n) lookup time.
+For memory consumption, quadtrees/octrees consume O(n + b) memory (the
 total memory consumed is the memory consumed from all the original
 data points plus the bucketing structure of the quadtree/octree),
 while kd-trees consume O(n) memory, exactly the same amount of memory
@@ -1124,7 +1133,8 @@ performance improvements, sometimes making the difference between
 having a usable program versus not being able to run the program at
 all.  Thus, even though kd-trees have longer lookup times, the lower
 memory consumption is their big win, and the lookup time is well
-justified at O(log n).</p>
+justified at O(log n).  (Some kd-tree algorithms have a worst-case
+runtime of O(n).)</p>
 
 <p>Now that a tree building algorithm has been picked, how should the
 data be built into the tree?  The most natural choice would be to
@@ -1138,24 +1148,50 @@ A kd-tree does not yield a perfect ordering in this regard.  The
 solution to this problem starts with sorting eddies by date.  All
 eddies on the same date will be grouped together.  Within each date
 grouping, build the eddies into a 2D kd-tree based off of the latitude
-and longitude.  Lookup time on this structure will be O(log(n) +
+and longitude.  The lookup time on this structure will be O(log(n) +
 log(n)) = O(log n).  Thus, performance of a group of 2D kd-trees
 sorted by date is identical to that of a 3D kd-tree, except that there
-may be a different constant on the asymptotic runtime.</p>
+may be a different constant on the asymptotic runtime.  (The worst
+case runtime of this structure is still O(n).)</p>
 
-<p>The kd-trees are stored as a binary-search style tree: The root
-element is approximately in the middle of the array.</p>
+<p>The tree structure of the kd-trees is serialized as a binary-search
+style tree: The root element is approximately in the middle of the
+array.  Since this structure of storing the tracks data is primarily
+keyed on eddies rather than tracks, tracks are formed by creating
+doubly-linked lists of eddies via forward and reverse pointers on each
+eddy record.</p>
 
-<p>For efficient network transmission, the track connectivity
-information is stored as a singly-linked list as follows.  Each eddy
-has a "next" pointer that indicates the next eddy in the track.  If
-the pointer points backwards, than that indicates that the current
-eddy is the end of the track, and the "next" eddy is actually the
-beginning of the track.  All "pointers" are actually stored as indexes
-relative to the current eddy index, since this allows for smaller
-integers with less digits.  Once the data have been downloaded, "prev"
-pointers can be created and relative indexes can be converted to
-absolute indexes.</p>
+<h4>Kd-tree Construction Algorithm</h4>
+
+<p>The kd-tree construction algorithm used for this project presorts
+the elements in each dimension before building the kd-tree.  The
+algorithms keep track of the "current dimension" with starts at zero,
+goes up to one, then cycles back to zero, for latitude and longitude
+respectively.  Initially, the current dimension is zero.  The sorted
+latitudes are in a first array slot for the current dimension plus
+zero, and the sorted longitudes are in a second array slot for the
+current dimension plus one.  The median is picked in the current
+dimension.  Then, elements from the current dimension plus one are
+copied into the space of the current dimension array.  Each element is
+compared with the median in the current dimension and sent to either
+the left half or the right half.  Thus, each subarray built in will
+still be in sorted order for the current dimension plus one.  Now, the
+current dimension can be cycled to the next dimension, and the process
+can be repeated for the new subarrays now in the current dimension
+plus zero array.  When this process is finished, the complete kd-tree
+will be located in the current dimension plus zero array.  Then, the
+kd-tree is built by cycling the current dimension and copying.  This
+algorithm has been obtained from the following Wikipedia article.
+Although.  Linear time median finding algorithm may not work, since
+this algorithm handles points equal to the median by splitting them
+between the left and right halves rather than exclusively including
+all such points in the right half.</p>
+
+<p>This algorithm has been obtained from the following Wikipedia
+article, although the Wikipedia article does not do as good of a job
+explaining it:<br />
+<a href="http://en.wikipedia.org/wiki/K-d_tree">
+  http://en.wikipedia.org/wiki/K-d_tree</a></p>
 
 <h3>Rendering from the Tree</h3>
 
@@ -1164,12 +1200,15 @@ kd-tree at the current date.  The next step is to do a kd-tree
 traversal until the selected partition in the kd-tree is the smallest
 possible partition that entirely surrounds the viewport rectangle.
 This partition of the kd-tree corresponds to the potentially visibile
-set of eddies to render at the current date.</p>
+set of eddies to render at the current date.  Since the uppermost
+levels of the kd-tree only provide coarse boundaries on major sections
+of the data, it is permissible to diverge to multiple traversal paths
+when at the uppermost partitions.</p>
 
-<p>Proceed by traversing the forward and reverse pointers to find the
-eddies on the adjacent dates that are on the same tracks.  Once all
-the visible eddies are found, draw lines to connect the eddies in the
-visible tracks.</p>
+<p>Proceed by traversing the forward and reverse pointers of each eddy
+to find the eddies on the adjacent dates that are on the same tracks.
+Once all the eddies on the visible tracks are found, draw lines to
+connect the eddies in the visible tracks.</p>
 
 <p>Unfortunately, there are a few problems with the above simplified
 procedure:</p>
@@ -1192,11 +1231,214 @@ procedure:</p>
   kd-tree.</li>
 </ul>
 
-<p>Finally, one last option is to just avoid the entire optimized
-rendering tree build process and just generate a random-access index
-to prepend to the tracks data.  It will also be more convenient to
-have the tracks stored in only one file or format.  I guess I could
-use additional header data for that.</p>
+<p>Though some of the solutions proposed above for the last two
+problems might be viable, this is the chosen solution to the last two
+problems: after rendering the defintely visible tracks, perform a
+second pass on non-visible eddies on the current date to determine if
+any of their tracks also cross through the visible region.  This is
+permissible to perform since it operates in O(n) time, and it is
+deprioritized to be performed only after the definitely visible tracks
+are rendered.</p>
+
+<h3>Solving the Random Access Problem</h3>
+
+<p>The easiest solution to the random access problem is to pad each
+textual field out to be an equal byte length.  Another solution would
+be to store the data in a binary numeric format.  This would help
+alleviate the burden on excess storage space and download time;
+however, it would also make for tremendously slow data parsing on
+browsers that do not support the typed arrays JavaScript extensions.
+Or so one would think&hellip;</p>
+
+<p>An ingenious solution to this problem is the realization that all
+browsers that support scripting must support UTF-16: the DOM Level 1
+standard mandates that each character in a DOM string is stored as a
+16-bit integer.  Thus, one way to encode the data is to use a subset
+of UTF-16-encoded Unicode code points that avoids null characters
+(<code>0x0000</code>) and surrogate pairs (<code>0xd7ff</code>
+through <code>0xdfff</code>) to encode integers.  This solution
+provides for a variety of advantages:</p>
+
+<ul>
+  <li>Excellent browser compatibility: The <code>charCodeAt()</code>
+  string method can be used to read the character value into an
+  integer data type.  JavaScript typed array extensions are not
+  needed.</li>
+  <li>Full random access: Each encoded integer takes up exactly two
+  bytes of space, so the address of an element at a known index can be
+  calculated in advance for downloading only a select portion of the
+  data.</li>
+  <li>Excellent in-browser memory efficiency: No object prototypes or
+  garbage collection is required for characters within the string.
+  Additionally, the exact in-memory overhead of the string is known to
+  the web application.  Vanilla JavaScript arrays, by contrast,
+  consume over 25 times more system memory than the actual data are
+  worth, <em>at least as has been observed in fast and efficient
+  browsers</em>.</li>
+  <li>Excellent lookup performance: Probably all browsers excel at
+  processing the <code>charCodeAt()</code> method quickly and
+  efficiently.  Dynamically decoding the data still stored in
+  JavaScript strings can have virtually zero overhead.</li>
+</ul>
+
+<p>It should be obvious that for any of these efficiency gains that
+have been observed on fairly fast and efficient browsers, their effect
+will multiply to gains of dramatically larger factors for the less
+efficient browsers.  Thus, all hands are down for using UTF-16-encoded
+integer quantities in the 15/16-bit range.  ("All hands are down" as
+in "Any objections?"  None.  "Good.")</p>
+
+<p>One problem with this encoding is that it requires linked list
+pointers to be encoded in such a way that they can fit within the
+15/16-bit range of a single UTF-16 character.  Here is how the
+encoding process goes.  The "next" pointer is encoded as the relative
+offset from the current eddy record index to the next eddy record
+index, encoded as an unsigned integer.  In the case of eddies at the
+end of the track, the integer stored is one beyond the maximum
+allowable offset value (since zero cannot be stored literally).  The
+"prev" pointer is encoded similarly, except its unsigned value points
+in the opposite direction, backward in the data to an eddy located on
+a previous date index rather than forward.  For the current data, this
+allows for the "next" and "prev" pointers to be faithfully encoded
+without running afoul of the 15/16-bit range's limits.</p>
+
+<h3>Technical Specifications for the Optimized Eddy-Keyed Tracks
+Format</h3>
+
+<p>The tracks data is a text file, encoded in UTF-16 little endian
+with byte order mask (BOM).  Little endian was chosen mainly for
+performance: the vast majority of computers (especially older PCs) are
+natively little endian, and many computers that are big endian are
+very fast at handling little endian data.  The data is encoded such
+that null characters (<code>0x0000</code>) and surrogate pairs
+(<code>0xd7ff</code> through <code>0xdfff</code>) never appear in the
+file.</p>
+
+<p>Unsigned integers are generally encoded as 1:1 representations of
+the integer value as the character code point value.  The normal
+encoding range is limited to code points <code>0x0001</code>
+to <code>0xd7ff</code>.  If zero needs to be encoded, it is normally
+encoded as <code>0xd7ff</code>, and the maximum unsigned integer value
+is reduced to <code>0xd7fe</code>.  If <em>extended range</em> is
+enabled, then integer values <code>0xd800</code>
+to <code>0xf7ff</code> can be encoded by adding <code>0x0800</code> to
+avoid the surrogate pairs range, and <code>0xffff</code> is reserved
+for encoding zero if zero needs to be encoded.  Signed integers and
+fixed-point numbers can first be encoded into unsigned integers, then
+the unsigned integer encoding mechanism can be applied on top of the
+previous encoding to obtain a character code point.</p>
+
+<h4>Human Readable Header</h4>
+
+<p>At the start of the file is a "human readable header."  This serves
+both as a file type and as a convenient place to embed additional
+information about the data, such as author credits, origin, etc.  By
+convention, each line of the human readable header starts with a
+number sign (#).  Within the first section of the header is a short
+informative message describing what the data is for and where to go to
+learn more about the format, mostly of interest to curious and
+technically literate users.  Following this messsage is a line with
+only a number sign on it (a blank line), followed by a data-specific
+message, if any.</p>
+
+<p>The human readable header is terminated via the text "<code>#
+BEGIN_DATA</code>" on a single line by itself.  A newline must
+immediately follow this string.  The machine-readable header starts
+immediately after the terminating newline.</p>
+
+<h4>Machine Readable Header</h4>
+
+<p>The machine readable header is currently a single UTF-16 character
+with the following fields defined in the given bit positions.  Bit
+position zero is the least significant bit in the integer derived from
+the character code point.</p>
+
+<p>0. Must be set to one.  Used to prevent the header from being a
+null character.</p>
+
+<ol>
+  <li>Extended range flag.  Normally, integers are only encoded in the
+  range <code>0x0001</code> through <code>0xd7ff</code>.  When the
+  extended range flag is set (1), the range <code>0xe000</code>
+  to <code>0xffff</code> is also used to encode integer values.  The
+  non-use of the extended range can result in performance gains during
+  decoding.</li>
+  <li>Eddy-keyed format (0) or tracks-keyed format (1).  This field
+  currently must be clear (0).</li>
+  <li>Newline padding flag.  When set (1), newlines are inserted
+  at major data divisions, such as between the headers and the data,
+  and one newline is written out for every 32 continuous records of
+  data.  This is primarily for safety so that the data can faithfully
+  pass through proxies.  When clear (0), no such newlines are written
+  out to pad the data.  This field currently must be set (1).</li>
+</ol>
+
+<p>14. Extended header size flag.  Must be set to zero.</p>
+
+<p>15. Must be set to zero.  Disused to avoid generating a surrogate
+pair code point.</p>
+
+<h4>Date Index Sizes Header</h4>
+
+<p>Immediately following the machine readable header is a character
+that indicates the number of date indexes that the data spans.  This
+field's value cannot be equal to zero.  After this character, a
+newline will follow, if newline padding has been enabled.</p>
+
+<p>Next comes a series of characters, one for each date index.  Each
+character indicates the number of eddy records on each date index.
+None of these characters may be equal to zero.  The first character in
+the array is for date index zero, the next character in the array is
+for date index one, &hellip; and so on.  A newline character is added
+after every 32 consecutive characters in this array, if newline
+padding has been enabled.</p>
+
+<p>At the end of the date indexes array, a newline is character is
+inserted, if newline padding has been enabled.  Note that in some
+cases, this may result in there being two newlines padding the end of
+this structure.</p>
+
+<h4>Eddy Records Array</h4>
+
+<p>Immediately following the date indexes array is the eddy records
+themselves.  The date index sizes array above is used to figure out
+which date index an eddy record belongs to.  Starting from eddy record
+zero, one newline character is inserted for every 32 eddy records,
+independent of whether an eddy record is at the start of a date index
+chunk or not.  No newline character will ever be inserted after the
+last eddy record by this newline insertion mechanism.  (If newline
+padding is disabled, no newlines are inserted, of course.)</p>
+
+<p>Each eddy record is 4 characters in length and contains the
+following fields:</p>
+
+<ol>
+  <li>Character 0, bit 14: Eddy Type: Anticyclonic (0) or Cyclonic
+  (1)</li>
+  <li>Character 0, bits 13-0: Latitude in degrees.  Fixed point number
+  with 6 bits after the decimal point and 8 bits before it.  Negative
+  numbers are shifted to the unsigned value range by adding
+  128.0, <em>not</em> by using two's complement encoding.</li>
+  <li>Character 1, bits 14-0: Longitude in degrees.  Fixed point
+  number with 6 bits after the decimal point and 9 bits before it.
+  Negative numbers are shifted to the unsigned value range by adding
+  256.0,
+  <em>not</em> by using two's complement encoding.</li>
+  <li>Character 2: Relative offset to the next eddy in the same track.
+  Unsigned integer, measures displacement in eddy records.  At the end
+  of the track, the maximum encodable integer value is used to encode
+  "zero."</li>
+  <li>Character 3: Relative offset to the previous eddy in the same
+  track.  Unsigned integer, measures displacement in eddy records,
+  implied to point in the negative direction.  At the start of the
+  track, the maximum encodable integer value is used to encode
+  "zero."</li>
+</ol>
+
+<p>If newline padding is enabled, one newline will be inserted at the
+end of all the data for safety.  (The mechanism for inserting this
+terminating newline is different than the newline insertion mechanism
+above.)</p>
 
 <hr />
 <!-- ________________________________________ -->
@@ -1440,6 +1682,16 @@ web development.</p>
 
 <p>The HTTP 1.1 Specification is useful for constructing
 XMLHttpRequest objects.</p>
+
+<h4>HTML 4.01 Specification</h4>
+
+<p><a href="http://www.w3.org/TR/1999/REC-html401-19991224/">
+    http://www.w3.org/TR/1999/REC-html401-19991224/</a></p>
+
+<h4>CSS 2.1 Specification</h4>
+
+<p><a href="http://www.w3.org/TR/2011/REC-CSS2-20110607/">
+    http://www.w3.org/TR/2011/REC-CSS2-20110607/</a></p>
 
 <h4>Microsoft Windows Server 2003 R2 Platform SDK.</h4>
 
@@ -1927,9 +2179,9 @@ http://stackoverflow.com/questions/5418536/create-and-go-to-url-with-javascript
 <h3>Web Development</h3>
 
 <p>Many modern browsers disable or severely impair scripts from HTML
-read from regular files on the filesystem.  As far as the web browser
-knows, the DocumentRoot of the "website" is just the root of the
-filesystem, which is considered very insecure.  Although it is
+to read from regular files on the filesystem.  As far as the web
+browser knows, the DocumentRoot of the "website" is just the root of
+the filesystem, which is considered very insecure.  Although it is
 sometimes possible to configure the web browser to have different
 security settings, this cannot be done efficiently with different
 versions of the same browser.  Thus, serverless web development won't
@@ -1992,11 +2244,10 @@ there are a
   <a href="https://developer.mozilla.org/en-US/docs/Web/SVG/SVG_as_an_Image#Restrictions">
     variety of limitations applied to the SVG image.</a></p>
 
-<p>You cannot embed and SVG image within an HTML 4.01 page by
-inserting the SVG source code verbatim.  You must use XHTML in order
-to embed an SVG image by inserting the source code verbatim;
-otherwise, you should use a script to add the SVG image during
-document loading.</p>
+<p>You cannot embed an SVG image within an HTML 4.01 page by inserting
+the SVG source code verbatim.  You must use XHTML in order to embed an
+SVG image by inserting the source code verbatim; otherwise, you should
+use a script to add the SVG image during document loading.</p>
 
 <h3>Image Compatibility</h3>
 
@@ -2110,8 +2361,8 @@ going to be able to read extended characters correctly.</p>
 
 <h3>XHTML Compatibility</h3>
 
-<p>HTML presents many breaking changes from HTML 4.01.  Here is a list
-of the changes and links to additional resources:</p>
+<p>XHTML presents many breaking changes from HTML 4.01.  Here is a
+list of the changes and links to additional resources:</p>
 
 <ul>
   <li>You need to make sure your web server is setup to serve XHTML
@@ -2325,7 +2576,12 @@ browser <em>forever</em>.</p>
   JavaScript library</li>
   <li><a href="https://github.com/rassie/jessie">Jessie</a> &mdash;
   Another newer cross-browser library, made by the same author of My
-  Library</li>
+  Library.  Jessie appears not to provide as much in the way of wide
+  cross-browser compatibility: the author apparently concedes with the
+  use of compatible programming in My Library for very old versions of
+  Internet Explorer, upon the realization that the downloading of such
+  compatibility code puts undue burden on the bandwidth limitations of
+  mobile devices.</li>
   <li><a href="http://www.fortybelow.ca/Projects/JavaScript/Utils/">
   Matt's DOM Utils</a> &mdash; Modular, general-purpose DOM library</li>
   <li><a href="http://modernizr.com/">Modernizr</a> &mdash; A library
@@ -2828,26 +3084,6 @@ way it is.</p>
 <p><a href="http://www.html5canvastutorials.com/">
     http://www.html5canvastutorials.com/</a></p>
 
-<h3>Mozilla Developer Network</h3>
-
-<p><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Canvas">
-    https://developer.mozilla.org/en-US/docs/Web/HTML/Canvas</a></p>
-
-<p><a href="https://developer.mozilla.org/en-US/docs/Web/API">
-    https://developer.mozilla.org/en-US/docs/Web/API</a></p>
-
-<p><a href="https://developer.mozilla.org/en-US/docs/Web/API/Event">
-    https://developer.mozilla.org/en-US/docs/Web/API/Event</a></p>
-
-<p><a href="https://developer.mozilla.org/en-US/docs/Web/Reference/Events">
-    https://developer.mozilla.org/en-US/docs/Web/Reference/Events</a></p>
-
-<p><a href="https://developer.mozilla.org/en-US/docs/Web/API/CSS_Object_Model/Determining_the_dimensions_of_elements">
-    https://developer.mozilla.org/en-US/docs/Web/API/CSS_Object_Model/Determining_the_dimensions_of_elements</a></p>
-
-<p><a href="https://developer.mozilla.org/en-US/docs/Web/API/window.requestAnimationFrame">
-    https://developer.mozilla.org/en-US/docs/Web/API/window.requestAnimationFrame</a></p>
-
 <h3>JavaScript</h3>
 
 <p>You have to manually resize an HTML canvas to fit the window:<br />
@@ -2858,10 +3094,7 @@ way it is.</p>
   <a href="http://joshondesign.com/p/books/canvasdeepdive/title.html">
     http://joshondesign.com/p/books/canvasdeepdive/title.html</a></p>
 
-<p><a href="http://en.wikipedia.org/wiki/Equirectangular_projection">
-    http://en.wikipedia.org/wiki/Equirectangular_projection</a></p>
-
-<p>Very important to note when maintaining compatibility with IE6:
+<p>Very important to note when maintaining compatibility with IE6:<br />
 <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Memory_Management">
 https://developer.mozilla.org/en-US/docs/Web/JavaScript/Memory_Management</a></p>
 
@@ -2871,6 +3104,10 @@ http://stackoverflow.com/questions/10652513/html5-dynamically-create-canvas</a><
 <p>Possible solution to my MathML embedding problems:
   <a href="http://webdesignerwall.com/tutorials/css-elastic-videos">
     http://webdesignerwall.com/tutorials/css-elastic-videos</a></p>
+
+<p>Definite solution:
+  <a href="http://stackoverflow.com/questions/6934747/passing-javascript-global-variable-between-embeded-pages-or-from-main-to-embed">
+    http://stackoverflow.com/questions/6934747/passing-javascript-global-variable-between-embeded-pages-or-from-main-to-embed</a></p>
 
 <p><a href="https://developers.google.com/maps/documentation/javascript/v2/overlays?csw=1#Google_Maps_Coordinates">
     https://developers.google.com/maps/documentation/javascript/v2/overlays?csw=1#Google_Maps_Coordinates</a></p>
@@ -2888,8 +3125,12 @@ http://stackoverflow.com/questions/10652513/html5-dynamically-create-canvas</a><
 <p><a href="http://stackoverflow.com/questions/13987300/how-to-trigger-enter-key-press-of-textbox">
     http://stackoverflow.com/questions/13987300/how-to-trigger-enter-key-press-of-textbox</a></p>
 
-<p><a href="http://www.scriptingmaster.com/html/versions-of-HTML.asp">
-    http://www.scriptingmaster.com/html/versions-of-HTML.asp</a></p>
+<p>History of HTML:<br />
+  <a href="http://www.scriptingmaster.com/html/versions-of-HTML.asp">
+    http://www.scriptingmaster.com/html/versions-of-HTML.asp</a><br />
+Note, however, that SGML implementations that preceded HTML had good
+support for separation of content and style, which was not always the
+case in the history of HTML.</p>
 
 <p><a href="http://stackoverflow.com/questions/4002234/do-we-need-semicolon-at-the-end">
     http://stackoverflow.com/questions/4002234/do-we-need-semicolon-at-the-end</a></p>
@@ -2904,10 +3145,6 @@ http://stackoverflow.com/questions/10652513/html5-dynamically-create-canvas</a><
     http://en.wikipedia.org/wiki/List_of_unit_testing_frameworks#JavaScript</a></p>
 
 <h3>CSS</h3>
-
-<p>CSS 2 Specification:<br />
-  <a href="http://www.w3.org/TR/2011/REC-CSS2-20110607/">
-    http://www.w3.org/TR/2011/REC-CSS2-20110607/</a></p>
 
 <p>Flexible layouts for responsive design:<br />
   <a href="http://www.lukew.com/ff/entry.asp?1514">

@@ -79,16 +79,27 @@ function dispDiag(diagText) {
 }
 
 // Display an array with brackets bounding the edges.
-function dispArray(array) {
+function genTextArray(array) {
   var length = array.length;
-  var diagText = "" + length + ": [ " + array + " ]";
-  diagText = diagText.replace(/,/g, ", ");
+  var textArray = [];
+  for (var i = 0; i < length; i++) {
+    var elmtText;
+    if (array[i].constructor == Array)
+      elmtText = genTextArray(array[i]);
+    else elmtText = array[i].toString();
+    textArray.push(elmtText);
+  }
+  return "" + length + ":[" + textArray.join(', ') + "]";
+}
+
+// Call `genTextArray()' and place the result in `daCntr'.
+function dispArray(array) {
+  var diagText = genTextArray(array);
   var wrapper = document.createElement("p");
   var dispInfo = document.createElement("code");
   dispInfo.appendChild(document.createTextNode(diagText));
   wrapper.appendChild(dispInfo);
   daCntr.appendChild(wrapper);
-  // if (array[i].constructor == Array) recurse
 }
 
 /* Compute the byte range to download for the given date index.  */
@@ -764,6 +775,7 @@ function processTestFile() {
       var pvsResults = kdPVS(0, vbox);
       /* for (var i = 0, pvsRes_len = pvsResults.length; i < pvsRes_len; i++)
         dispArray(pvsResults[i]); */
+      dispArray(pvsResults);
 
       // First create a drawing canvas.
       kdDbg = document.createElement("canvas");

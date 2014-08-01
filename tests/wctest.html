@@ -88,6 +88,7 @@ function dispArray(array) {
   dispInfo.appendChild(document.createTextNode(diagText));
   wrapper.appendChild(dispInfo);
   daCntr.appendChild(wrapper);
+  // if (array[i].constructor == Array) recurse
 }
 
 /* Compute the byte range to download for the given date index.  */
@@ -144,9 +145,9 @@ reasonably optimized abstraction layer.
 
 Thus, I changed my mind once again.  My functions will provide for a
 full optimizing abstraction layer and generic code on mmap caching.
-Note, howver, that the size of the mmap cache must be user controlled,
-as the Web API provides no way for web applications to figure out how
-well a program is doing memory-wise.
+Note, however, that the size of the mmap cache must be user
+controlled, as the Web API provides no way for web applications to
+figure out how well a program is doing memory-wise.
 
 There's one caveat, though: Programs must make block alignment
 requests with the library.  This will facilitate efficient retrieval

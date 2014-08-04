@@ -2768,8 +2768,10 @@ all input values.</p>
 <p><strong>Is named object member access significantly slower than
 array element access?</strong>  No.  At least on Firefox 3.6, table
 access and object member access are essentially identical in
-performance, at least in simple cases.  Newer browsers might provide
-more performance optimizations for plain numeric arrays, though.</p>
+performance, at least in simple cases.  In other words, plain arrays
+don't provide a performance advantage over objects.  Newer browsers
+might provide more performance optimizations for plain numeric arrays,
+though.</p>
 
 <p><strong>Are global variables really slower than local
 variables?</strong>  Not for simple programs.  However, it's always a
@@ -2784,14 +2786,24 @@ garbage accumulation issues within long-running loops.</p>
 <p><strong>So where do the real slowdowns happen?</strong></p>
 
 <ul>
-  <li>Creation of dictionary and array objects</li>
+  <li>Creation of non-primitive objects, such as dictionary and array
+  objects</li>
   <li>Assigning to an array element is slow, at least on Firefox
   3.6.</li>
   <li>Assigning to a named property is also likely to be just as
   slow.</li>
   <li>Even simple table lookups on plain numeric arrays are slow, at
-  least on Firefox 3.6.  This might not be as true on newer browsers,
-  though.</li>
+  least on Firefox 3.6.  Large numbers of elements in an array seems
+  to play a big role.  Both old and new browsers suffer when dealing
+  with large arrays, <em>except when the "array" is actually
+  characters in a string or a typed JavaScript array</em>.
+  The <code>charCodeAt()</code> method on strings seems to
+  consistently offer high performance.</li>
+  <li>Web API function calls can be slow.</li>
+  <li>Accessing objects that are actually wrappers can be slow.  Two
+  examples are the <code>arguments</code> object that contains a
+  function's arguments and the <code>responseText</code> member of
+  an <code>XMLHttpRequest</code>.</li>
 </ul>
 
 <p>Thus, it is good to avoid creation of any objects, whether it be
@@ -2832,6 +2844,12 @@ the condition check of a loop.</p>
       data are processed in, as explained in the last part of this article:<br />
       <a href="http://www.webreference.com/programming/javascript/jkm3/index.html">
       http://www.webreference.com/programming/javascript/jkm3/index.html</a></li>
+      <li>Use typed arrays whenever you must deal with very large
+      amounts of memory.  In particular, if you have integer array
+      data that is feasible to pack inside a string, doing so will
+      provide a big win in both performance and compatibility: Older
+      browsers don't support typed arrays, but they do support UTF-16
+      strings.</li>
     </ul>
   </li>
   <li>Do not write long-running loops that don't return after a couple
@@ -2864,6 +2882,9 @@ the condition check of a loop.</p>
   <li>Some browsers optimize certain Web API calls more than others.
   Avoid as many Web API calls as possible in performance-critical
   JavaScript.</li>
+  <li>For objects that are actually wrappers, try to only access the
+  object once in order to save its value into a JavaScript variable to
+  avoid slowdowns.</li>
   <li>If function calls do prove to be an overhead, then you can
   inline the functions where the call is a bottleneck.  Note that the
   Google Closure Compiler is not an optimizing compiler in this
@@ -2941,23 +2962,32 @@ to use <code>performance.now()</code>, when the browser supports it.
 This function returns the elapsed times accurate to microseconds, and
 it does not jump when the system time is updated from the network.</p>
 
-<h3>XMLHttpRequest Performance</h3>
-
-<p>Many browsers incur a significant overhead when accessing
-the <code>responseText</code> member of an <code>XMLHttpRequest</code>
-object.  This is due to the overhead of translating a DOMString to a
-native JavaScript String.  Thus, if you want to obtain download
-progress in a high performance manner, then you should
-use <code>onprogress</code> event handling if it is available.</p>
-
 <ul>
   <li><a href="http://updates.html5rocks.com/2012/08/When-milliseconds-are-not-enough-performance-now">
     http://updates.html5rocks.com/2012/08/When-milliseconds-are-not-enough-performance-now</a></li>
   <li><a href="http://ejohn.org/blog/accuracy-of-javascript-time/">
     http://ejohn.org/blog/accuracy-of-javascript-time/</a></li>
-  <li><a href="http://www.sitepoint.com/javascript-fast-string-concatenation/">
-    http://www.sitepoint.com/javascript-fast-string-concatenation/</a></li>
 </ul>
+
+<h3>XMLHttpRequest Performance</h3>
+
+<p>Many browsers incur a significant overhead when accessing
+the <code>responseText</code> member of an <code>XMLHttpRequest</code>
+object.  This is due to the overhead of translating a DOMString to a
+native JavaScript String.  When possible, store the value of
+the <code>responseText</code> member in a separate variable for
+repeated accesses within JavaScript code.  If you want to obtain
+download progress in a high performance manner, then you should
+use <code>onprogress</code> event handling if it is available.
+Unfortunately, <code>onprogress</code> events can also come with
+performance penalties in some old browsers that don't fire the events
+very efficiently.  Thus, the only safe way to efficiently
+use <code>XMLHttpRequest</code> objects is to only listen for when the
+data are completely loaded, or poll the length of
+the <code>responseText</code> at long time intervals.  (Runtime
+statistical hypothesis testing could be used to select
+<code>onprogress</code> progress measurement if it performs
+sufficiently well.)</p>
 
 <h3>Higher Level Languages</h3>
 
@@ -3012,6 +3042,8 @@ near the bottom.</p>
   <li>Important root of a tree of performance-oriented links:<br />
   <a href="http://stackoverflow.com/questions/1246408/use-of-javascript-array-new-arrayn-declaration">
     http://stackoverflow.com/questions/1246408/use-of-javascript-array-new-arrayn-declaration</a></li>
+  <li><a href="http://www.sitepoint.com/javascript-fast-string-concatenation/">
+    http://www.sitepoint.com/javascript-fast-string-concatenation/</a></li>
   <li>ActionScript trigonometry lookup table implementation (you'll
   have to convert it to JavaScript to use it):<br />
   <a href="http://jacksondunstan.com/articles/1190">

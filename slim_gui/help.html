@@ -68,40 +68,41 @@ Good luck and have a great day!
 water that are on the scale of 10 kilometers to 200 kilometers in
 diameter.  These eddies influence a three-dimensional region of the
 ocean that extends from the ocean's surface to a depth of 20 to 40
-meters.  These eddies' structure last from 14 days to 6 months before
+meters, and the eddy lasts from 14 days to 6 months before
 disintegrating.  Mesoscale ocean eddies are classified by their
 rotational direction as follows:</p>
 
 <ul>
-  <li>Cyclonic eddies: Counterclockwise rotation in the northern
-  hemisphere, clockwise rotation in the sothern hemisphere</li>
-  <li>Anticyclonic eddies: Clockwise rotation in the northern
-  hemisphere, counterclockwise rotation in the sothern hemisphere</li>
+  <li>Cyclonic eddies: <strong>Counterclockwise</strong> in the
+  northern hemisphere (and clockwise in the sothern hemisphere)</li>
+  <li>Anticyclonic eddies: <strong>Clockwise</strong> in the northern
+  hemisphere (and counterclockwise in the sothern hemisphere)</li>
 </ul>
 
 <h3>Why are these eddies important?</h3>
 
-<p>Ocean eddies influence various characteristics of the ocean, such
-as heat, salt, nutrients, color, kinetic energy, subsurface density
-surfaces, and sea surface height.  Consequentially, marine ecosystems
-are also influenced by mesoscale ocean eddies.  For example, "one
-study found that 7000-year-old coral reefs were asphyxiated due to
-massive phytoplankton blooms, which were enhanced by a large eddy
-[24]."</p>
+<p>Ocean eddies influence the intensity and distribution of various
+parameters of the ocean, such as heat, salt concentration, nutrients,
+color, kinetic energy, subsurface density, and sea surface height.
+Consequentially, marine ecosystems are also influenced by mesoscale
+ocean eddies.  For example, "one study found that 7000-year-old coral
+reefs were asphyxiated due to massive phytoplankton blooms, which were
+enhanced by a large eddy [24]."</p>
 
-<p>Eddies are also the dominant source of the ocean's kinetic energy,
-thereby influencing other phenomenon that carry large amounts of large
-kinetic energy.  For example, "some of the recent devastating
-landfalling hurricanes, including Hurricane Katrina, gained intensity
-in the Gulf of Mexico when passing over a warm-core eddy [18].  As a
-result, hurricane intensity forecasts now account for eddy activity
-when making projections [25]."</p>
+<p>Because eddies are also the dominant source of the ocean's kinetic
+energy, they have a significant influence on other phenomenon that
+carry large amounts of kinetic energy, such as hurricanes.  For
+example, "some of the recent devastating landfalling hurricanes,
+including Hurricane Katrina, gained intensity in the Gulf of Mexico
+when passing over a warm-core eddy [18].  As a result, hurricane
+intensity forecasts now account for eddy activity when making
+projections [25]."</p>
 
 <p>Accurately identifying and tracking mesoscale ocean eddies is
 crucial for understanding the future of marine and terrestrial
 ecosystems.</p>
 
-<h3>How are they identified?</h3>
+<h3>How are the eddies identified?</h3>
 
 <p>Our methods use a suite of algorithms to automatically identify
 mesoscale ocean eddies by their effect on the sea surface height (SSH)
@@ -116,6 +117,178 @@ amplitude of one centimeter.</p>
 
 <p>For more information on the identification algorithms, see the
 publications.</p>
+
+<hr />
+
+<h2>Minimum System Requirements</h2>
+
+<p>What are the minimum system requirements to run the interactive web
+viewer?  It's interesting that you would even dare ask such a
+question on today's Internet&hellip;</p>
+
+<h3>A Brief Review of the Trend in Modern Software</h3>
+
+<p>Unfortunately, the growing trend in modern software is to not
+correctly specify the minimum system requirements.  Oh sure, a
+"modern" computer is all you need.  Define modern, please?  Uh, well,
+just go to a big-box store near you and buy a new computer there.  It
+will work as long as it is recent.  Recent, as in new enough to run
+the latest versions of popular browsers, in addition to antivirus
+software that would consume a prohibitive amount of system resources
+on older computers.  Right&hellip; most individual computer owners
+would rather buy a new computer to run the latest browsers and
+antivirus software than "learn Linux," as they say.  (For those who
+really know free and open-source software, there's more complications
+than this, but those aren't worth covering here.)</p>
+
+<p>In any case, if you're one of those people who went out and bought
+a new computer, then for all you care, there are no minimum system
+requirements for this web application and no finite list of supported
+browers either, any browser running on any computer will do.</p>
+
+<p>If that's not the case, or you want more in-depth coverage of why
+the web application performs the way it does on your computer, then
+read on&hellip;</p>
+
+<h3>The Fundamental Issues of the Web Platform</h3>
+
+<p>The web platform is not the world's best software development
+platform.  Although modern open-source web browsers are developed in
+Unix environments of paramount quality that boast record-breaking
+uptime figures, web browsers themselves are not Unix.  Thus, the
+discussion of system requirements starts not with what the web
+platform has, but what it has not.</p>
+
+<p><strong>Web browsers do not have formalized system
+requirements.</strong>  How many megabytes of RAM do you need to run a
+web browser?  Does the memory have to literally be main memory RAM?
+What are the memory speed requirements for virtualization?  How do you
+plan a shared display server that can host N user browser
+sessions?  <em>These are all questions that go unanswered by modern
+browser developers.</em>  Browser development is too informal to
+provide hard and strong answers to these questions.  Really, the only
+answer that browser developers provide is "however much it takes to
+get the browser to run reasonably fast."  In other words, the browser
+platform itself is a major hog of system resources that must be
+factored into consideration.  Once you've got a browser running on a
+system that is powerful enough to provide subjectively reasonable
+performance for browsing average web pages, the next issue
+ensues&hellip;</p>
+
+<p><strong>The web platform makes no provisions for web applications
+to know the order of magnitude of real system resources that they are
+consuming.</strong>  Suddenly, the web application's automatic
+benchmarking system notices a jerk in elasped time from its
+performance timers.  Was the jerk caused by over-computation within
+the application?  Is the web application using so much memory that it
+is causing the browser's memory to swap to disk?  Or was the jerk
+simply caused due to a surge in CPU consumption caused by other
+concurrent processes on the system?  No one will ever know: the user
+will not have the patience to diagnose the exact problem themself and
+the browser fails to provide sufficient system diagnostics to a web
+application for it to automatically diagnose and respond to the real
+problem.</p>
+
+<p><strong>The two core technologies of web applications, DOM and
+JavaScript, are both extremely memory inefficient.</strong>  To make
+matters go from bad to worse, in addition to web applications being
+unable to determine real memory consumption, for every logical byte of
+data managed via JavaScript objects, the real memory consumption can
+be over 20 times larger in some scenarios.  A notable exception to
+this trend is large JavaScript string objects.</p>
+
+<p><strong>The web platform does not provide a reliable de facto
+standard for feature detection.</strong>  Newer browsers introduce
+additional features, but not all new browsers include all features
+from every other new browser, and it is important to write scripts
+that can gracefully handle the absence of an extended feature.
+Although there are <em>de jure</em> standardized ways of checking
+whether a browser supports a certain named feature, a long history of
+many browsers not correctly implementing the standard has effectively
+rendered it useless.  Thus, web developers must resort to other, often
+less reliable, methods to test if a feature exists in the current
+browser.</p>
+
+<p>Taking all these factors into consideration, it's very hard indeed
+accurately detail hardware system requirements for a web application.
+Browser requirements, on the other hand, can at least be specified and
+checked for in crude detail, for as much detail as the browser allows
+the web application to glean.</p>
+
+<h3>Ways around the Issues of the Web Platform</h3>
+
+<p>For hardware requirements, simple order of magnitude estimates can
+be made rather than measurements of ideal detail.  Most conventional
+application software depends more on the size and speed of the RAM
+than the speed of the CPU.  This has been a long observed trend: users
+of older computers often find that they can get average application
+performance to match that of newer computers simply by upgrading the
+RAM.  Is this true for web browers?  You bet!  Due to the multiple
+memory inefficiencies of web browsers documented above, browsers
+definitely demand large amounts of high speed RAM, pushing all
+recommendations for best software development practices aside.  The
+fundamental design concepts behind web browsers that can support web
+applications simply don't allow them to be memory efficient.  Although
+I'm not an expert on the internals of browsers, I think its safe to
+say that browers definitely aren't the kind of software whose entire
+working set, or even only the working set that the browser spends 80%
+of time processing, can fit entirely within 2 MB of CPU cache.
+Usually, the bandwidth of main memory is slower than the bandwidth of
+cache memory, so if a program exhibits a behavior of simply accessing
+bytes in sequence or at random for a chunk of memory that is larger
+than the cache size, the performance of the program will be
+effectively limited to the speed of the main memory.</p>
+
+<h3>Finally, the Requirements!</h3></p>
+
+<p>128 MB of memory that can be random accessed at a speed of 17056
+MB/second.</p>
+
+<p>Beyond the minimum requirements, the web app makes use of feature
+detection to enable various niceties.  This manual will document all
+such features along the way, making use of JavaScript to interactively
+inform you of whether your browser has support of the feature in
+question or not, using the exact same feature detects that are used by
+the web application at startup.</p>
+
+<p>Include this as an appendix, please, just before the end.</p>
+
+<p>And if you thought that was interesting to learn about, then you
+should move on to the <a>developer documentation.</a></p>
+
+<p>"Hey, it's those silly Americans again, big box stores can't be
+physically nearby <em>you</em>, and they definitely aren't nearby me."
+True, there's a cultural problem going on here in relation to computer
+software and US cultural norms.  Cultural problem adjust for and
+hopefully completely eliminate this, including the rhetoric that it
+will only work on the newest computers within research universities.
+The truth of this software development endeavor, though, is that alpha
+versions were involved that exploited the fact that the university
+computers were overpowered enough to compensate for the software
+deficiencies of the earlier versions.</p>
+
+<hr />
+
+<h2>HTML Canvas</h2>
+
+<p>Your browser
+<span id="hts" style="color: white; background-color: #cc0000">
+does not support</span> this feature.</p>
+
+<script type="text/javascript">
+(function() {
+  var hts = document.getElementById('hts');
+  var tcanv = document.createElement('canvas');
+  if (tcanv.getContext && tcanv.getContext('2d')) {
+    hts.style.cssText = 'color: white; background-color: green';
+    hts.innerHTML = 'supports';
+  }
+})();
+</script>
+
+<p>HTML Canvas rendering renders graphics via a raster graphics
+interface.  The performance will depend on the efficiency of your
+browser's implementation of the functions.</p>
 
 </body>
 </html>

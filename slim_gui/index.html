@@ -181,8 +181,7 @@ filter:progid:DXImageTransform.Microsoft.gradient(startColorstr=#40000000, endCo
                        outline: none; }
   </style>
 </head>
-<body id="topBody" style="height: auto; margin: 0.5em"
-      onload="bodyInit()">
+<body id="topBody" style="height: auto; margin: 0.5em">
 
 <div id="noscriptJSCtl">
 
@@ -273,7 +272,7 @@ FTfnStmt(5, 9, 20.5);
 // Check for dictionary (object) and array syntax.
 FTtestObj = {};
 FTtestObj.prop1 = 9;
-FTtestObj["prop1"] = 4;
+FTtestObj["prop1"] = 4; FTtestObj['prop2'] = 8;
 delete FTtestObj.prop1;
 
 FTtestArray = [];
@@ -412,7 +411,8 @@ FThostObjects = function() {
   var testEl = document.createElement('p');
   testEl.id = 'testEl';
   if (!isHostObject(testEl, 'style') ||
-      !isHostObject(testEl.style, 'cssText') ||
+      /* !isHostObject(testEl.style, 'cssText') || */
+      typeof(testEl.style.cssText) != 'string' ||
       !isHostMethod(testEl, 'appendChild') ||
       !isHostMethod(testEl, 'insertBefore') ||
       !isHostCollection(testEl, 'childNodes'))
@@ -580,9 +580,9 @@ element in the document.  -->
 --><div class="spacer"></div><!--
 
 --><div class="quickcfg">
-   <input id="cfg-curDate" type="text" value="1992-10-14"
+   <input id="cfg-curDate" type="text" value="N/A"
 	  title="Current Date" />
-   <input id="cfg-latLon" type="text" value="0 N 0 E"
+   <input id="cfg-latLon" type="text" value="N/A"
 	  title="Latitude, Longitude" />
    </div>
 
@@ -591,7 +591,7 @@ element in the document.  -->
 	  title="Scale Factor">
      <img src="scale.png" alt="Scale Factor:" />
    </label>
-   <input id="cfg-scaleFac" type="text" value="1.0"
+   <input id="cfg-scaleFac" type="text" value="N/A"
 	  title="Scale Factor" />
    </div>
 
@@ -599,7 +599,7 @@ element in the document.  -->
    <label for="cfg-graticule" title="Graticule (degrees/line)">
      <img src="graticule.png" alt="Graticule (degrees/line):" />
    </label>
-   <input id="cfg-graticule" type="text" value="15"
+   <input id="cfg-graticule" type="text" value="N/A"
 	  title="Graticule (degrees/line)" />
    </div>
 
@@ -609,15 +609,15 @@ element in the document.  -->
 
 <script type="text/javascript">
 <!--//--><![CDATA[//><!--
-/* General Event Handling and GUI Management */
+/* GUI Event Handling and Management */
 
 // Preload the button images.
 function loadImages() {
-  var files = [ "minimize_light.png", "beginning_light.png",
-    "rewind_light.png", "step_back_light.png", "pause.png",
-    "pause_light.png", "play_light.png", "step_fwd_light.png",
-    "fast_forward_light.png", "end_light.png", "config_light.png",
-    "help_light.png", "close_light.png" ];
+  var files = [ 'minimize_light.png', 'beginning_light.png',
+    'rewind_light.png', 'step_back_light.png', 'pause.png',
+    'pause_light.png', 'play_light.png', 'step_fwd_light.png',
+    'fast_forward_light.png', 'end_light.png', 'config_light.png',
+    'help_light.png', 'close_light.png' ];
 
   var i = 0;
   for (i = 0; i < files.length; i++) {
@@ -969,41 +969,35 @@ document.getElementById('btn-help').target = '_blank';
 <!--//--><![CDATA[//><!--
 /* Script Main Body Loader */
 
-function downloadJSAtOnload() {
-  var element = document.createElement("script");
-  element.src = "defer.js";
-  document.body.appendChild(element);
+function loadScript(src, callback) {
+  var body = document.getElementById('topBody');
+  var script = document.createElement('script');
+  done = false;
+  script.setAttribute('type', 'text\/javascript');
+  script.type = 'text\/javascript';
+  // script.setAttribute('charset', 'utf-8');
+  // script.charset = 'utf-8';
+  script.onload = script.onreadstatechange = function() {
+    if (!done && (!this.readyState || this.readyState == 'loaded' ||
+                  this.readyState == 'complete')) {
+      done = true;
+      script.onload = script.onreadystatechange = null;
+      if (callback) callback();
+    }
+  }
+  body.appendChild(script);
+  script.setAttribute('src', src);
+  script.src = src;
 }
-if (isHostMethod(window, 'addEventListener'))
+
+function downloadJSAtOnload()
+{ return loadScript('../src/bundle.js', bodyInit); }
+
+/* if (isHostMethod(window, 'addEventListener'))
   window.addEventListener("load", downloadJSAtOnload, false);
 else if (isHostMethod(window, 'attachEvent'))
   window.attachEvent("onload", downloadJSAtOnload);
-else window.onload = downloadJSAtOnload;
-
-document.body or
-document.documentElement.childNodes[1]
-
-function loadScript(src, callback) {
-    var head = document.getElementsByTagName('head')[0],
-        script = document.createElement('script');
-    done = false;
-    script.setAttribute('src', src);
-    script.setAttribute('type', 'text/javascript');
-    script.setAttribute('charset', 'utf-8');
-    script.onload = script.onreadstatechange = function() {
-        if (!done && (!this.readyState || this.readyState == 'loaded' || this.readyState == 'complete')) {
-            done = true;
-            script.onload = script.onreadystatechange = null;
-                if (callback) {
-                    callback();
-                }
-            }
-    }
-    head.insertBefore(script, head.firstChild);
-}
- 
-// load the my-script-file.js and display an alert dialog once the script has been loaded
-loadScript('my-script-file.js', function() { alert('my-script-file.js loaded.'); });
+else window.onload = downloadJSAtOnload; */
 
 //--><!]]>
 </script>

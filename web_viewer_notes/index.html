@@ -2800,10 +2800,8 @@ garbage accumulation issues within long-running loops.</p>
   The <code>charCodeAt()</code> method on strings seems to
   consistently offer high performance.</li>
   <li>Web API function calls can be slow.</li>
-  <li>Accessing objects that are actually wrappers can be slow.  Two
-  examples are the <code>arguments</code> object that contains a
-  function's arguments and the <code>responseText</code> member of
-  an <code>XMLHttpRequest</code>.</li>
+  <li>Accessing objects that are actually wrappers of native objects
+  can be slow.</li>
 </ul>
 
 <p>Thus, it is good to avoid creation of any objects, whether it be
@@ -2882,9 +2880,18 @@ the condition check of a loop.</p>
   <li>Some browsers optimize certain Web API calls more than others.
   Avoid as many Web API calls as possible in performance-critical
   JavaScript.</li>
-  <li>For objects that are actually wrappers, try to only access the
-  object once in order to save its value into a JavaScript variable to
-  avoid slowdowns.</li>
+  <li><code>Array.prototype.join()</code> is not always the fastest
+  way to join together a string.  The <code>+=</code>
+  and <code>+</code> operators can sometimes provide a faster code
+  path.  <code>String.prototype.concat()</code> is known to be slow,
+  but only runtime testing can tell the truth on a particular
+  browser.</li>
+  <li>For objects that are actually wrappers of native objects, try to
+  only access the object once in order to save its value into a
+  JavaScript variable to avoid slowdowns.  Two examples of such
+  objects are the <code>arguments</code> object that contains a
+  function's arguments and the <code>responseText</code> member of
+  an <code>XMLHttpRequest</code>.</li>
   <li>If function calls do prove to be an overhead, then you can
   inline the functions where the call is a bottleneck.  Note that the
   Google Closure Compiler is not an optimizing compiler in this

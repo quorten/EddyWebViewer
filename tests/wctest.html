@@ -52,22 +52,67 @@ var genSLink;
 
 http://stackoverflow.com/questions/654112/how-do-you-detect-support-for-vml-or-svg-in-a-browser
 
-Array of date records:
+Provide a special mode for hypothesis testing peformance, disabled by
+default.
 
-[ list of downloaded chunk starts ]
-[ list of data strings ]
+Buffer eddies to draw into arrays of one thousand, then join them like
+so.  Also use benchmarking to find the optimal buffer size.
 
-First request: download linearly.
+Make djs files for the docs that exclude import statements.
 
-User seeks to an undownloaded position: abort current request.
-Start new request (insert new request chunk)
-Download a couple of date indexes in front of request for performance
-Keep downloading
-When finished, download any missing chunks in between
-Always start download at date boundary.
+Statistical hypothesis testing is the first thing that came to my mind.
 
-Provision for a time where backwards downloads are requested before
-normal downloads.
+Multiple rendering paths:
+
+* CSS
+
+* VML via excanvas
+
+* Canvas 2D
+
+* SVG
+
+* WebGL
+
+Test diagnostic display in UI.
+
+http://www.cnet.com/products/dell-dimension-2350/
+http://www.cyberciti.biz/faq/check-ram-speed-linux/
+
+133 MHz SDRAM
+533 MHz DDR2 SDRAM
+667 MHz DDR2 SDRAM
+
+All DIMM packages, 64-bit transfers at a time.
+
+computers built around 2006 or later.  Using a customized operating
+system can greatly help improve performance, though, perhaps to the
+point that these minimum requirements may not be applicable to users
+this Microsoft Windows XP.
+
+*/
+
+/*
+
+The above module was the basis for a multi-chunk request library.  It
+is cothreaded (of course) and can be built on top of the Cothreaded
+XHR Ajax Loader.
+
+The next layer on top of the previous one is an mmap proxy library.
+This is an abstraction that allows you to simply think of reading a
+byte at a position, with download requests and caching automated.
+There are a few caveats, though:
+
+To access the data efficiently, you must use an iterator object,
+because true random access on its own is not very efficient.
+(Nonetheless, the programming mechanism will be provided for
+convenience.)
+
+For additional optimization, you can set chunk sizes and download
+anchors.  At any time during the use, of course.  And you can cleanup
+to meet the expectations at any time during the use, or automate
+(cothread) such work to happen on each memory access (NOT
+RECOMMENDED).
 
 */
 
@@ -113,7 +158,7 @@ function getDate(outRange, index) {
   return outRange;
 }
 
-/* Parse out an eddy from the text stream at the given position.  */
+// Parse out an eddy from the text stream at the given position.
 function getEddy(outEddy, index) {
   var numNls = 0|(index / 32);
   var curPos = startOfData + index * 4 + numNls;
@@ -140,95 +185,28 @@ function getEddy(outEddy, index) {
   return outEddy;
 }
 
-/* TODO:
-
-   * Viable implementation of a partial downloader.
-
-Although I was thinking of implementing a generic mmap() JavaScript
-module for byte/character oriented datastreams, I am deciding against
-this for the web viewer upon the assumption that performance would be
-better otherwise.  Maybe.  Data download is only efficient if it is
-done in reasonably large chunks.  Also, seeking to lots of random
-access locations on is ineficient due to the number of HTTP requests
-that have to be issued.  Then again, the exact same things can be said
-about hard drives, and it is up to the operating system to provide a
-reasonably optimized abstraction layer.
-
-Thus, I changed my mind once again.  My functions will provide for a
-full optimizing abstraction layer and generic code on mmap caching.
-Note, however, that the size of the mmap cache must be user
-controlled, as the Web API provides no way for web applications to
-figure out how well a program is doing memory-wise.
-
-There's one caveat, though: Programs must make block alignment
-requests with the library.  This will facilitate efficient retrieval
-from user JavaScript code.  (Big win: block alignment requests for
-starts of date indexes.)  Programs must also use iterator contexts to
-access memory, in order for memory accesses to be reasonably fast.
-
-Once memory is box structured inside the library, it cannot be
-restructured.  JavaScript is assumed to be too inefficient for this.
-Rather, the chunk in question muts be XMLHttpRequested with the proper
-alignments.
-
-ChunkAlignSize (default one element), OptimalChunkStarts
-
-Implement joining?  Chunk splitting okay?  Or redownload entire chunk?
-All customizable.  Max. number of chunks?  (Avoid array overhead.)
-
-Join threshold, concat, min block size
-
-Define file structure nobreak points.  Complicated...
-
-Need header first.
-
-*/
+// Clip a bounding box to a resonable region.
+function clipVbox(vbox) {
+  var vbox = new Array(4);
+  if (vbox[0] < -90) vbox[0] = -90;
+  if (vbox[2] > 90) vbox[2] = 90;
+  if (vbox[1] < -180 && vbox[3] > 180)
+    { vbox[1] = -180; vbox[3] = 180; }
+  // Split the vbox into two separate bounding boxes if it crosses the
+  // 0 or 360 degrees longitude.
+  if (vbox[1] < -180) {
+    vbox2[0] = vbox[0]; vbox2[2] = vbox[2];
+    vbox2[1] = 360 + vbox[1]; vbox2[3] = 180;
+    vbox[1] = -180;
+  }
+  if (vbox[3] > 180) {
+    vbox2[0] = vbox[0]; vbox2[2] = vbox[2];
+    vbox2[3] = vbox[3] - 360; vbox2[1] = -180;
+    vbox[3] = 180;
+  }
+}
 
 /*
-
-In the PVS traversal, eddies are primarily referenced by their
-indexes.  To read the value of an index, we must use getEddy() above.
-In the real code, getEddy() will be an inline function.  Maybe.  It
-might be more than fast enough to use as non-inline, though.
-
-curdim = depth % 2;
-median = start + (0|((length - 1) / 2));
-getEddy(curEddy);
-medianVal = curEddy[1+curdim];
-
-How to box split efficiently:
-
-Start by splitting into two boxes if wrap beyond edges.  Don't need to
-do this anymore: our algorithm handles wraparound boxes directly.
-
-Maybe it might be a good idea to separate the wraparound box testing
-logic into a separate function, though.
-
-Or clip to latitude edge
-
-Divide up box into 4 subboxes if go through major divisions
-
-Use variables instead of arrays as much as possible, for performance.
-
-var vbox = new Array(4);
-if (vbox[0] < -90) vbox[0] = -90;
-if (vbox[2] > 90) vbox[2] = 90;
-if (vbox[1] < -180 && vbox[3] > 180)
-  { vbox[1] = -180; vbox[3] = 180; }
-// Split the vbox into two separate bounding boxes if it crosses the
-// 0 or 360 degrees longitude.
-if (vbox[1] < -180) {
-  vbox2[0] = vbox[0]; vbox2[2] = vbox[2];
-  vbox2[1] = 360 + vbox[1]; vbox2[3] = 180;
-  vbox[1] = -180;
-}
-if (vbox[3] > 180) {
-  vbox2[0] = vbox[0]; vbox2[2] = vbox[2];
-  vbox2[3] = vbox[3] - 360; vbox2[1] = -180;
-  vbox[3] = 180;
-}
-
-Run kdPVS twice for above division.
 
 (y - y0) = m(x - x0)
 (y - y0) = (y1 - y0)(x - x0) / (x1 - x0)
@@ -617,10 +595,14 @@ function drawVBox(canvas, scale, initVbox) {
   ctx.strokeStyle = "#ff0000";
   // ctx.lineWidth = 2;
   ctx.beginPath();
-  if (vbox[1] < vbox[3])
-    ctx.rect(vbox[1], vbox[0],
-		   vbox[3] - vbox[1], vbox[2] - vbox[0]);
-  else {
+  if (vbox[1] < vbox[3]) {
+    // NOTE: Some old canvas implementations don't support strokeRect.
+    ctx.moveTo(vbox[1], vbox[0]);
+    ctx.lineTo(vbox[3], vbox[0]);
+    ctx.lineTo(vbox[3], vbox[2]);
+    ctx.lineTo(vbox[1], vbox[2]);
+    ctx.lineTo(vbox[1], vbox[0]);
+  } else {
     ctx.moveTo(0, vbox[0]);
     ctx.lineTo(vbox[3], vbox[0]);
     ctx.lineTo(vbox[3], vbox[2]);

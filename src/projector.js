@@ -42,7 +42,7 @@ var MapProjector = function() {
 
 OEV.MapProjector = MapProjector;
 MapProjector.prototype = new Projector();
-MapProjector.constructor = MapProjector;
+MapProjector.prototype.constructor = MapProjector;
 
 /**
  * Project a latitude-longitude polar coordinate in degrees to a map
@@ -186,7 +186,7 @@ var TDMapProjector = function() {
 
 OEV.TDMapProjector = TDMapProjector;
 TDMapProjector.prototype = new MapProjector();
-TDMapProjector.constructor = TDMapProjector;
+TDMapProjector.prototype.constructor = TDMapProjector;
 
 TDMapProjector.prototype.project = function(polToMap) {
   throw new Error("Not implemented!");

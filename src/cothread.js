@@ -251,7 +251,7 @@ var SeriesCTCtl = function(jobList) {
 
 OEV.SeriesCTCtl = SeriesCTCtl;
 SeriesCTCtl.prototype = new Cothread();
-SeriesCTCtl.constructor = SeriesCTCtl;
+SeriesCTCtl.prototype.constructor = SeriesCTCtl;
 SeriesCTCtl.QUIT = 1;
 
 SeriesCTCtl.prototype.startExec = function() {
@@ -342,7 +342,7 @@ var ParallelCTCtl = function(jobList) {
 
 OEV.ParallelCTCtl = ParallelCTCtl;
 ParallelCTCtl.prototype = new Cothread();
-ParallelCTCtl.constructor = ParallelCTCtl;
+ParallelCTCtl.prototype.constructor = ParallelCTCtl;
 
 ParallelCTCtl.prototype.startExec = function() {
   /* Create a copy of the list for keeping track of remaining jobs to

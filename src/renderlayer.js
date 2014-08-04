@@ -170,7 +170,7 @@ var RayTracer = function(frontBuf, backBuf, backBufType, maxOsaPasses) {
 
 OEV.RayTracer = RayTracer;
 RayTracer.prototype = new Cothread();
-RayTracer.constructor = RayTracer;
+RayTracer.prototype.constructor = RayTracer;
 
 /**
  * If the width or height of the front buffer has changed, call this

@@ -9,6 +9,7 @@ var RAD2DEG = 180 / Math.PI;
 /**
  * Polar coordinate point.
  * @constructor
+ * @memberof OEV
  * @param {Number} lat - latitude
  * @param {Number} lon - longitude
  */
@@ -66,6 +67,7 @@ PolarPoint.prototype.toPoint3D = function() {
 /**
  * 2D rectangular coordinates point.
  * @constructor
+ * @memberof OEV
  * @param x
  * @param y
  */
@@ -99,6 +101,7 @@ Point2D.prototype.normalize = function() {
 /**
  * 3D rectangular coordinates point.
  * @constructor
+ * @memberof OEV
  * @param x
  * @param y
  * @param z

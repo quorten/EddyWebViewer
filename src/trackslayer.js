@@ -1,11 +1,13 @@
 /* Render layer for display of the eddy tracks layer.  */
 
+import "oevns";
 import "renderlayer";
 import "ajaxloaders";
 
 import "dates";
 
-TracksLayer = new RenderLayer();
+var TracksLayer = new RenderLayer();
+OEV.TracksLayer = TracksLayer;
 
 /* Important parameters for TracksLayer: */
 
@@ -30,14 +32,14 @@ TracksLayer.setCacheLimits = function(dataCache, renderCache) {
 TracksLayer.acLoad = new XHRLoader("../data/tracks/acyc_bu_tracks.json",
 				   execTime);
 
-TracksLayer.acLoad.procData = function(httpRequest) {
+TracksLayer.acLoad.procData = function(httpRequest, responseText) {
   var doneProcData = false;
   var procError = false;
 
   // Program timed cothread loop here.
   if (httpRequest.readyState == 4) {
     try {
-      TracksLayer.acTracksData = JSON.parse(httpRequest.responseText);
+      TracksLayer.acTracksData = JSON.parse(responseText);
       doneProcData = true;
     }
     catch (e) {
@@ -70,14 +72,14 @@ TracksLayer.acLoad.procData = function(httpRequest) {
 TracksLayer.cLoad = new XHRLoader("../data/tracks/cyc_bu_tracks.json",
 				   execTime);
 
-TracksLayer.cLoad.procData = function(httpRequest) {
+TracksLayer.cLoad.procData = function(httpRequest, responseText) {
   var doneProcData = false;
   var procError = false;
 
   // Program timed cothread loop here.
   if (httpRequest.readyState == 4) {
     try {
-      TracksLayer.cTracksData = JSON.parse(httpRequest.responseText);
+      TracksLayer.cTracksData = JSON.parse(responseText);
       doneProcData = true;
     }
     catch (e) {

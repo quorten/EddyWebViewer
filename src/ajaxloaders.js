@@ -1,8 +1,13 @@
 /* Cothreaded base implementations of asynchronous XMLHttpRequest and
    Image loaders.  */
 
+import "oevns";
 import "compat";
 import "cothread";
+
+/* NOTE IOWAIT was introduced due to the slowness in browsers for
+   converting from a DOM string to a JavaScript string for
+   responseText to compute the length.  */
 
 /**
  * Cothreaded XMLHttpRequest data loading function, class prototype.
@@ -38,8 +43,8 @@ import "cothread";
  *   XMLHttpRequest to return more data.  This preemption code is
  *   useful in telling the cothread controller that more work will
  *   only arrive by waiting, so if the cothread controller has no
- *   other work to do, it can quit.  The notification function will
- *   resume it when there is more data to process.
+ *   other work to do, it can quit.  The notification function can
+ *   resume this cothread when there is more data to process.
  *
  * * `CothreadStatus.PROC_DATA` -- The cothread has been preempted when it
  *   was processing data rather than waiting for data.  This
@@ -47,6 +52,7 @@ import "cothread";
  *   and only data processing remains.
  *
  * @constructor
+ * @memberof OEV
  * @param {String} url - URL of data to download.
  * @param {Function} notifyFunc - Notification function to use, as
  * explained above.
@@ -57,6 +63,7 @@ var XHRLoader = function(url, notifyFunc) {
   this.httpRequest = null;
 };
 
+OEV.XHRLoader = XHRLoader;
 XHRLoader.prototype = new Cothread();
 XHRLoader.constructor = XHRLoader;
 
@@ -68,7 +75,7 @@ XHRLoader.constructor = XHRLoader;
   XHRLoader.MAX_ENUM = i++; // Useful for derived classes
 })();
 
-XHRLoader.prototype.alertContents = function() {
+XHRLoader.prototype.alertContents = function(event) {
   var httpRequest = this.httpRequest;
   if (!httpRequest)
     return;
@@ -94,6 +101,12 @@ XHRLoader.prototype.alertContents = function() {
   }
 };
 
+XHRLoader.prototype.updateProgress = function(event) {
+  /* if (!this.reqLen)
+    this.reqLen = event.total; */
+  this.progLen = event.loaded;
+};
+
 XHRLoader.prototype.startExec = function() {
   if (this.httpRequest)
     this.httpRequest.abort();
@@ -117,12 +130,18 @@ XHRLoader.prototype.startExec = function() {
     // Error: Could not create XMLHttpRequest (or compatible) object.
     this.httpRequest = null;
     this.retVal = XHRLoader.CREATE_FAILED;
+    this.status.returnType = CothreadStatus.FINISHED;
+    this.status.preemptCode = 0;
+    this.status.percent = CothreadStatus.MAX_PERCENT;
     return;
   }
 
   if (this.notifyFunc) {
     httpRequest.onreadystatechange = makeEventWrapper(this, "alertContents");
   }
+  /* NOTE: Unfortunately, onprogress events can cause dramatic
+     throughput slowdowns on some (old) browsers.  */
+  // httpRequest.onprogress = makeEventWrapper(this, "updateProgress");
   httpRequest.open("GET", this.url, true);
   if (this.byteRange) {
     var min = this.byteRange[0];
@@ -130,6 +149,7 @@ XHRLoader.prototype.startExec = function() {
     httpRequest.setRequestHeader("Range", "bytes=" + min + "-" + max);
   }
   httpRequest.send();
+  this.progLen = null; // Used for progress meters
   this.reqLen = 0; // Used for progress meters
   this.readySyncProcess = false; // Non-preemptable data processing
 
@@ -155,8 +175,11 @@ XHRLoader.prototype.contExec = function() {
     if (!this.reqLen && httpRequest.readyState >= 2) // HEADERS_RECEIVED
       this.reqLen = +httpRequest.getResponseHeader("Content-Length");
     if (this.reqLen) {
-      this.status.percent = httpRequest.responseText.length * 
-	CothreadStatus.MAX_PERCENT / this.reqLen;
+      if (this.progLen)
+	this.status.percent = this.progLen *
+	  CothreadStatus.MAX_PERCENT / this.reqLen;
+      else this.status.percent = httpRequest.responseText.length *
+	     CothreadStatus.MAX_PERCENT / this.reqLen;
     } else
       this.status.percent = 0;
 
@@ -165,13 +188,14 @@ XHRLoader.prototype.contExec = function() {
 
   // (httpRequest.readyState == 4)
 
+  var responseText = httpRequest.responseText;
   this.retVal = httpRequest.status;
   /* For our purposes, we'll only consider status codes 200 and 206 as
      acceptable.  */
   if (httpRequest.status != 200 && httpRequest.status != 206 ||
-      httpRequest.responseText == null) {
+      responseText == null) {
     // Error
-    if (httpRequest.responseText == null)
+    if (responseText == null)
       this.retVal = XHRLoader.LOAD_FAILED;
     httpRequest.onreadystatechange = null;
     this.httpRequest = null;
@@ -194,28 +218,36 @@ XHRLoader.prototype.contExec = function() {
   }
 
   this.status.percent = CothreadStatus.MAX_PERCENT;
-  return this.procData(httpRequest);
+  return this.procData(httpRequest, responseText);
 };
 
 /**
  * Example data processing function that parses JSON synchronously.
  * You should replace this with a better function in a instantiated
- * object.  This function is called from `contExec()`.  It should be
- * preemptable and should set and return the `CothreadStatus` object.
+ * object.  This function is called from `contExec()` after the data
+ * have been entirely downloaded.  It should be preemptable and should
+ * set and return the `CothreadStatus` object.
  *
  * @param {XMLHttpRequest} httpRequest - Convenience parameter so that
  * the variable does not have to be fetched from `this`.
  *
+ * @param {XMLHttpRequest} responseText - Convenience parameter so
+ * that the variable does not have to be fetched from `httpRequest`.
+ * Every access to `httpRequest.responseText` has significant overhead
+ * due to translation from a DOMString to a JavaScript String.  Thus,
+ * you should use this variable to access the response text to avoid
+ * performance penalties.
+ *
  * @returns {@linkcode CothreadStatus} object
  */
-XHRLoader.prototype.procData = function(httpRequest) {
+XHRLoader.prototype.procData = function(httpRequest, responseText) {
   var doneProcData = false;
   var procError = false;
 
-  // Program timed cothread loop here.
+  // Program timed processing cothread loop here.
   if (httpRequest.readyState == 4) {
     try {
-      this.procObject = JSON.parse(httpRequest.responseText);
+      this.procObject = JSON.parse(responseText);
       doneProcData = true;
     }
     catch (e) {
@@ -281,8 +313,8 @@ XHRLoader.prototype.procData = function(httpRequest) {
  *   data.  This preemption code is useful in telling the cothread
  *   controller that more work will only arrive by waiting, so if the
  *   cothread controller has no other work to do, it can quit.  The
- *   notification function will resume it when there is more data to
- *   process.
+ *   notification function can resume this cothread when there is more
+ *   data to process.
  *
  * * `CothreadStatus.PROC_DATA` -- The cothread has been preempted when
  *   it was processing data rather than waiting for data.  This
@@ -290,6 +322,7 @@ XHRLoader.prototype.procData = function(httpRequest) {
  *   and only data processing remains.
  *
  * @constructor
+ * @memberof OEV
  * @param {String} url - URL of data to download.
  * @param {Function} notifyFunc - Notification function to use, as
  * explained above.
@@ -297,8 +330,10 @@ XHRLoader.prototype.procData = function(httpRequest) {
 var ImageLoader = function(url, notifyFunc) {
   this.url = url;
   this.notifyFunc = notifyFunc;
+  this.image = null;
 };
 
+OEV.ImageLoader = ImageLoader;
 ImageLoader.prototype = new Cothread();
 ImageLoader.constructor = ImageLoader;
 
@@ -312,21 +347,27 @@ ImageLoader.constructor = ImageLoader;
   ImageLoader.MAX_ENUM = i++; // Useful for derived classes
 })();
 
-ImageLoader.prototype.alertContents = function() {
+ImageLoader.prototype.updateProgress = function(event) {
+  if (!this.reqLen)
+    this.reqLen = event.total;
+  this.progLen = event.loaded;
+};
+
+ImageLoader.prototype.alertContents = function(event) {
   this.loaded = true;
   this.retVal = ImageLoader.SUCCESS;
   if (this.notifyFunc)
     return this.notifyFunc();
 };
 
-ImageLoader.prototype.alertError = function() {
+ImageLoader.prototype.alertError = function(event) {
   this.image = null;
   this.retVal = ImageLoader.LOAD_FAILED;
   if (this.notifyFunc)
     return this.notifyFunc();
 };
 
-ImageLoader.prototype.alertAbort = function() {
+ImageLoader.prototype.alertAbort = function(event) {
   this.image = null;
   this.retVal = ImageLoader.LOAD_ABORTED;
   if (this.notifyFunc)
@@ -339,16 +380,23 @@ ImageLoader.prototype.startExec = function() {
     // Error: Could not create an HTMLImageElement.
     this.image = null;
     this.retVal = ImageLoader.CREATE_FAILED;
+    this.status.returnType = CothreadStatus.FINISHED;
+    this.status.preemptCode = 0;
+    this.status.percent = CothreadStatus.MAX_PERCENT;
     return;
   }
   this.loaded = false;
   this.readySyncProcess = false; // Non-preemptable data processing
-  // image.onloadstart = this.alertLoadStart; // Works only on recent browsers
-  // image.onprogress = this.alertProgress; // Works only on recent browsers
+  // this.image.onloadstart = makeEventWrapper(this, "alertLoadStart");
+  /* NOTE: Unfortunately, onprogress events can cause dramatic
+     throughput slowdowns on some (old) browsers.  */
+  // this.image.onprogress = makeEventWrapper(this, "updateProgress");
   this.image.onload = makeEventWrapper(this, "alertContents");
   this.image.onerror = makeEventWrapper(this, "alertError");
   this.image.onabort = makeEventWrapper(this, "alertAbort");
   this.image.src = this.url;
+  this.progLen = null; // Used for progress meters
+  this.reqLen = 0; // Used for progress meters
 
   this.status.returnType = CothreadStatus.PREEMPTED;
   this.status.preemptCode = CothreadStatus.IOWAIT;
@@ -363,7 +411,10 @@ ImageLoader.prototype.contExec = function() {
   } else if (!this.loaded) {
     this.status.returnType = CothreadStatus.PREEMPTED;
     this.status.preemptCode = CothreadStatus.IOWAIT;
-    this.status.percent = 0;
+    if (this.reqLen && this.progLen)
+      this.status.percent =
+	this.progLen * CothreadStatus.MAX_PERCENT / this.reqLen;
+    else this.status.percent = 0;
     return this.status;
   }
   // (this.image.loaded == true)

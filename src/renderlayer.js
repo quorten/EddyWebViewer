@@ -1,5 +1,6 @@
 /* Abstract class for a render layer.  */
 
+import "oevns";
 import "cothread";
 import "projector";
 
@@ -7,6 +8,7 @@ import "projector";
  * Abstract class for a render layer.  A derived class must be created
  * that has methods that do something useful.
  * @constructor
+ * @memberof OEV
  */
 var RenderLayer = function() {
   /**
@@ -19,6 +21,7 @@ var RenderLayer = function() {
   this.frontBuf = document.createElement("canvas");
 };
 
+OEV.RenderLayer = RenderLayer;
 RenderLayer.READY = 0;
 RenderLayer.NEED_DATA = 1;
 
@@ -147,6 +150,7 @@ RenderLayer.prototype.render = function() {
  * factor greater than 8 is effectively useless.
  *
  * @constructor
+ * @memberof OEV
  *
  * @param {Canvas} frontBuf
  * @param {ImageData} backBuf
@@ -164,6 +168,7 @@ var RayTracer = function(frontBuf, backBuf, backBufType, maxOsaPasses) {
   this.mapToPol = [ NaN, NaN ];
 };
 
+OEV.RayTracer = RayTracer;
 RayTracer.prototype = new Cothread();
 RayTracer.constructor = RayTracer;
 

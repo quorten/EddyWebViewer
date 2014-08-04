@@ -2,21 +2,23 @@
    array of Date objects needed to calculate the real time intervals
    of the dates.  */
 
+import "oevns";
 import "ajaxloaders";
 
 var Dates = new XHRLoader("../data/dates.dat", execTime);
+OEV.Dates = Dates;
 
 /* Important parameter: the current date index selected by the
    user.  */
 Dates.curDate = 0;
 
-Dates.procData = function(httpRequest) {
+Dates.procData = function(httpRequest, responseText) {
   var doneProcData = false;
   var procError = false;
 
   // Program timed cothread loop here.
   if (httpRequest.readyState == 4) {
-    Dates.dateList = httpRequest.responseText.split("\n");
+    Dates.dateList = responseText.split("\n");
     /* Remove the last element created from the newline at the end of
        the file.  */
     Dates.dateList.pop();

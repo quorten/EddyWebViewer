@@ -1,10 +1,12 @@
 /* Render layer for display of the Sea Surface Height (SSH).  */
 
+import "oevns";
 import "renderlayer";
 import "csv";
 import "ajaxloaders";
 
-SSHLayer = new RenderLayer();
+var SSHLayer = new RenderLayer();
+OEV.SSHLayer = SSHLayer;
 
 /* Important parameters for TracksLayer: */
 

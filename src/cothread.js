@@ -1,6 +1,8 @@
 /* JavaScript base class for cothreaded procedures, along with basic
    sequencer implementations.  */
 
+import "oevns";
+
 /**
  * Creates a new Cothread object.
  *
@@ -22,6 +24,7 @@
  * how to use the {@linkcode Cothread} class.
  *
  * @constructor
+ * @memberof OEV
  *
  * @param {function} startExec - The internal function to execute at
  * initialization of a new Cothread run context.  See the
@@ -85,6 +88,8 @@ var Cothread = function(startExec, contExec) {
    */
   this.retVal = null;
 };
+
+OEV.Cothread = Cothread;
 
 /**
  * Set the exit status of a cothread based off of a condition.
@@ -156,6 +161,7 @@ Cothread.prototype.loop = function() {
  * fields of the same name.
  *
  * @constructor
+ * @memberof OEV
  * @param {integer} returnType - See {@linkcode CothreadStatus#returnType}
  * @param {integer} preemptCode - See {@linkcode CothreadStatus#preemptCode}
  * @param {integer} percent - See {@linkcode CothreadStatus#percent}
@@ -237,18 +243,20 @@ CothreadStatus.MAX_PERCENT = 32767;
  * @param {Array} jobList - The list of jobs to execute.
  *
  * @constructor
+ * @memberof OEV
  */
 var SeriesCTCtl = function(jobList) {
   this.jobList = jobList;
 };
 
+OEV.SeriesCTCtl = SeriesCTCtl;
 SeriesCTCtl.prototype = new Cothread();
 SeriesCTCtl.constructor = SeriesCTCtl;
 SeriesCTCtl.QUIT = 1;
 
 SeriesCTCtl.prototype.startExec = function() {
   this.curJob = 0;
-  this.jobList[0].start();
+  this.jobList[0].startExec();
 };
 
 SeriesCTCtl.prototype.contExec = function() {
@@ -285,7 +293,7 @@ SeriesCTCtl.prototype.contExec = function() {
 	return this.status;
       }
 
-      jobList[curJob].start();
+      jobList[curJob].startExec();
 
     } else if (status.preemptCode == CothreadStatus.IOWAIT) {
       this.status.returnType = CothreadStatus.PREEMPTED;
@@ -326,11 +334,13 @@ SeriesCTCtl.prototype.contExec = function() {
  * @param {Array} jobList - The list of jobs to execute.
  *
  * @constructor
+ * @memberof OEV
  */
 var ParallelCTCtl = function(jobList) {
   this.jobList = jobList;
 };
 
+OEV.ParallelCTCtl = ParallelCTCtl;
 ParallelCTCtl.prototype = new Cothread();
 ParallelCTCtl.constructor = ParallelCTCtl;
 
@@ -344,12 +354,7 @@ ParallelCTCtl.prototype.startExec = function() {
      for I/O.  */
   this.waitList = [];
 
-  // Queue for returning jobs that exited the wait state.
-  this.dewaitList = [];
-
-  this.doneJobs = 0;
-
-  // Initialize all the jobs.
+  /* Initialize all the jobs.  */
   var numJobs = jobList.length;
   var timeSlice = this.timeout / numJobs;
   for (var i = 0; i < numJobs; i++) {
@@ -361,10 +366,9 @@ ParallelCTCtl.prototype.startExec = function() {
 ParallelCTCtl.prototype.contExec = function() {
   var numJobs = this.jobList.length;
   var execList = this.execList;
-  var remJobs = execList.length; // Remaining jobs
+  var remJobs = execList.length; /* Remaining jobs */
   var waitList = this.waitList;
   var numWaitJobs = waitList.length;
-  var dewaitList = this.dewaitList;
   var status;
   var execPercent = 0;
 
@@ -377,8 +381,11 @@ ParallelCTCtl.prototype.contExec = function() {
       execPercent += status.percent;
 
       if (status.preemptCode != CothreadStatus.IOWAIT) {
-	// Queue this job for return to the normal execution list.
-	dewaitList.push(waitList[i]);
+	/* Queue this job for return to the normal execution list.
+	   Since the value of `remJobs' has already been set, this job
+	   will not get accidentally executed twice in the same
+	   iteration.  */
+	execList.push(waitList[i]);
 	waitList.splice(i--, 1);
 	numWaitJobs--;
       }
@@ -394,7 +401,7 @@ ParallelCTCtl.prototype.contExec = function() {
       execPercent += status.percent;
 
       if (status.preemptCode == CothreadStatus.IOWAIT) {
-	// Add this job to the IOWAIT list.
+	/* Add this job to the IOWAIT list.  */
 	waitList.push(execList[i]);
 	execList.splice(i--, 1);
 	remJobs--;
@@ -402,21 +409,18 @@ ParallelCTCtl.prototype.contExec = function() {
     }
   }
 
-  var numDewaitJobs = dewaitList.length;
-  for (var i = 0; i < numDewaitJobs; i++)
-    execList.push(dewaitList[i]);
-  dewaitList.splice(0, numDewaitJobs);
+  remJobs = execList.length + waitList.length;
 
-  if (waitList.length != 0) {
-    this.status.preemptCode = CothreadStatus.IOWAIT;
-  } else if (remJobs == 0) {
+  if (remJobs == 0) {
     this.status.returnType = CothreadStatus.FINISHED;
     this.status.preemptCode = 0;
     this.status.percent = CothreadStatus.MAX_PERCENT;
     return this.status;
-  } else
-    this.status.preemptCode = 0;
+  }
 
+  if (waitList.length != 0)
+    this.status.preemptCode = CothreadStatus.IOWAIT;
+  else this.status.preemptCode = 0;
   this.status.returnType = CothreadStatus.PREEMPTED;
   this.status.percent = ((execPercent +
 			  (numJobs - remJobs) * CothreadStatus.MAX_PERCENT) /

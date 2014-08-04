@@ -4,6 +4,7 @@
 // Prevent errors, please...
 var execTime = null;
 
+import "oevns";
 import "compat";
 import "oevmath";
 import "projector";
@@ -25,6 +26,7 @@ var persp_altitude = 35786;
 var persp_fov = 17.5;
 
 var Compositor = {};
+OEV.Compositor = Compositor;
 
 // Important parameters:
 
@@ -881,3 +883,9 @@ function zoomGlobe(event) {
   event.preventDefault();
   return false;
 }
+
+/* Since `compositor.js' is the main JavaScript file, all other
+   dependent JavaScripts will be included before this file.  Close the
+   OEV namespace now that there are no more JavaScripts to be
+   included.  */
+import "oevnsend";

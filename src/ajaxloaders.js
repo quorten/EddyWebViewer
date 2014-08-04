@@ -20,6 +20,11 @@ import "cothread";
  * range of bytes to download [ min, max ].  Either of the two entries
  * can be an integer or the empty string.
  *
+ * "charRange" (this.charRange) -- (optional) If specified, this
+ * assumes the text encoding is UTF-16 with BOM and automatically
+ * calculates `byteRange` from the given [ min, max ] values in
+ * `charRange`.
+ *
  * "notifyFunc" (this.notifyFunc) -- (optional) The notification
  * callback function to use when there is either more data available
  * or the transfer is complete.  This is typically the cothread
@@ -61,11 +66,13 @@ var XHRLoader = function(url, notifyFunc) {
   this.url = url;
   this.notifyFunc = notifyFunc;
   this.httpRequest = null;
+  this.byteRange = null;
+  this.charRange = null;
 };
 
 OEV.XHRLoader = XHRLoader;
 XHRLoader.prototype = new Cothread();
-XHRLoader.constructor = XHRLoader;
+XHRLoader.prototype.constructor = XHRLoader;
 
 (function() {
   var i = 0;
@@ -143,6 +150,11 @@ XHRLoader.prototype.startExec = function() {
      throughput slowdowns on some (old) browsers.  */
   // httpRequest.onprogress = makeEventWrapper(this, "updateProgress");
   httpRequest.open("GET", this.url, true);
+  if (this.charRange) {
+    this.byteRange =
+      [ (this.charRange[0]) ? 2 + this.charRange * 2 : "",
+	(this.charRange[1]) ? 2 + this.charRange * 2 : "" ];
+  }
   if (this.byteRange) {
     var min = this.byteRange[0];
     var max = this.byteRange[1];
@@ -335,7 +347,7 @@ var ImageLoader = function(url, notifyFunc) {
 
 OEV.ImageLoader = ImageLoader;
 ImageLoader.prototype = new Cothread();
-ImageLoader.constructor = ImageLoader;
+ImageLoader.prototype.constructor = ImageLoader;
 
 (function() {
   var i = 0;
@@ -417,7 +429,7 @@ ImageLoader.prototype.contExec = function() {
     else this.status.percent = 0;
     return this.status;
   }
-  // (this.image.loaded == true)
+  // (this.loaded == true)
   this.status.returnType = CothreadStatus.PREEMPTED;
   this.status.preemptCode = CothreadStatus.PROC_DATA;
   this.status.percent = CothreadStatus.MAX_PERCENT;

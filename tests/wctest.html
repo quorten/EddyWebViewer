@@ -90,7 +90,41 @@ system can greatly help improve performance, though, perhaps to the
 point that these minimum requirements may not be applicable to users
 this Microsoft Windows XP.
 
+Generate a SVG circle as a path:
+
+Use an array of strings, 1000 each.
+
+Parse to the beginning of the track using fast inline code.  Then walk
+to the end and draw.  Don't worry about partial download.
+
+Need strict feature tests for canvas.
+
+Nonsense!  I can't even rely on `join()' being faster!  I guess I've
+got to do a browser specific performance test at startup, then.  I
+guess it's due to array creation overhead.
+
+Super Array Class.
+
+Auto chunking into groups of 1024, string management, typed classes
+for 16-bit data types, structure access, abstraction.  Feature
+detection, performance benchmarking.  Dynamically construct the
+function bodies.
+
+Moral of the story: You have to test /everything/.  From now on,
+accept this mantra hard and fast: test /everything/.
+
 */
+
+function genCircle(cx, cy, r) {
+  return [ 'M', cx + r, cy,
+    'A', r, r, 0, /* rx, ry, x-axis-rotation */
+    0, 0, /* large-arc-flag, sweep-flag */
+    cx - r, cy, /* x, y */
+    r, r, 0, /* rx, ry, x-axis-rotation */
+    0, 0, /* large-arc-flag, sweep-flag */
+    cx + r, cy, /* x, y */
+    'z' ].join(' ');
+}
 
 /*
 
@@ -100,7 +134,7 @@ XHR Ajax Loader.
 
 The next layer on top of the previous one is an mmap proxy library.
 This is an abstraction that allows you to simply think of reading a
-byte at a position, with download requests and caching automated.
+character at a position, with download requests and caching automated.
 There are a few caveats, though:
 
 To access the data efficiently, you must use an iterator object,
@@ -113,6 +147,29 @@ anchors.  At any time during the use, of course.  And you can cleanup
 to meet the expectations at any time during the use, or automate
 (cothread) such work to happen on each memory access (NOT
 RECOMMENDED).
+
+Local only caching
+
+Go ahead download entire file or only download what's needed
+
+htio -- High level buffered HTTP I/O library
+
+htopen htseek httell htread htwrite htclose
+
+lots of buffering mode functions
+
+setvbuf
+
+convenience functions for reading a character at a time and support
+for one character of pushback (actually multiple for each stream
+instance opened).
+
+Wait, so you open a stream instance on an existing chunk object?  No,
+you need an even higher level buffer manager, and then on top of that
+there are multiple stream instances.  Think cothreading and fopen()
+multiple times.
+
+xhrlopen
 
 */
 
@@ -691,6 +748,7 @@ function generateStaticPage(event) {
 function processTestFile() {
   if (httpRequest.readyState === 4) {
     if (httpRequest.status === 200) {
+      alert(httpRequest.getResponseHeader('Content-Type'));
       body = API.getBodyElement();
       textBuf = new String(httpRequest.responseText);
       var textBuf_length = textBuf.length;

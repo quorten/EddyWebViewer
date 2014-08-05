@@ -6,13 +6,13 @@ TARGETS = $(SOURCES:.js=.hjs)
 .SUFFIXES:: .c .js .hjs .hjs.d .djs
 
 .c.js:
-	$(cjs_dir)/converter <$< >$@
+	CPP=$(CPP) $(cjs_dir)/converter <$< >$@
 
 .js.hjs:
-	$(cjs_dir)/hjsprep.sh $< -o $@
+	CPP=$(CPP) $(cjs_dir)/hjsprep.sh $< -o $@
 
 .js.djs:
-	$(cjs_dir)/djsprep.sh $< -o $@
+	CPP=$(CPP) $(cjs_dir)/djsprep.sh $< -o $@
 
 .hjs.hjs.d: $(TARGETS)
 	@set -e; $(CPP) -M $< | \

@@ -7,9 +7,11 @@ multiple JavaScript files into a single bundle for inclusion on a
 website.
 
 GNU Make Makefile rules for the JavaScript bundling build steps are
-available in the `cjs.mak` Makefile fragments.  The following is a
-simple example Makefile that includes `cjs.mak` for building a bundled
-JavaScript:
+available in the `cjs.mak` Makefile fragments.  Note, however, that
+the modifications required to get the makefile rules working on
+non-GNU makes are relatively simple, abeit yielding less overall
+convenience.  The following is a simple example Makefile that includes
+`cjs.mak` for building a bundled JavaScript:
 
 ~~~
 CPP = cpp # The C preprocessor command to use
@@ -24,7 +26,7 @@ all: bundle.js
 include $(cjs_dir)/cjs.mak
 
 bundle.js: main.hjs
-	$(cjs_dir)/hjssmash.sh $< -o $@
+	CPP=$(CPP) $(cjs_dir)/hjssmash.sh $< -o $@
 
 clean::
 	rm -f bundle.js

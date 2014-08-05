@@ -41,6 +41,9 @@ Brief Summary of Included Commands
 * hjsprep.sh --- Convert JavaScript to "hjs" ("header" JavaScript):
   JavaScript with a C preprocessor statements.
 
+* djsprep.sh --- Remove import statements from a JavaScript file so
+  that it can be processed with JSDoc.
+
 * hjssmash.sh --- Merge all JavaScript files included from the given
   input `hjs` file into an output JavaScript bundle.
 

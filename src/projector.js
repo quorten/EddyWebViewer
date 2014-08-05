@@ -6,7 +6,6 @@ import "oevmath";
 /**
  * Abstract projector class.
  * @constructor
- * @memberof OEV
  */
 var Projector = function() {
 };
@@ -34,8 +33,9 @@ Projector.prototype.unproject = function() {
  * Base class for 2D map projections.  This is an abstract class that
  * specifies the calling convention.  Use one of the concrete classes
  * for the actual projection.
+ *
+ * Base class: {@linkcode Projector}
  * @constructor
- * @memberof OEV
  */
 var MapProjector = function() {
 };
@@ -75,7 +75,10 @@ MapProjector.prototype.unproject = function(mapToPol) {
   throw new Error("Must be implemented by a subclass!");
 };
 
-/** Equirectangular map projector.  */
+/**
+ * Equirectangular map projector.
+ * @type MapProjector
+ */
 var EquirectMapProjector = new MapProjector();
 OEV.EquirectMapProjector = EquirectMapProjector;
 
@@ -89,7 +92,10 @@ EquirectMapProjector.unproject = function(mapToPol) {
   mapToPol[0] = mapToPol[0] * 180;
 };
 
-/** Mercator map projector.  */
+/**
+ * Mercator map projector.
+ * @type MapProjector
+ */
 var MercatorMapProjector = new MapProjector();
 OEV.MercatorMapProjector = MercatorMapProjector;
 
@@ -107,7 +113,10 @@ MercatorMapProjector.unproject = function(mapToPol) {
   mapToPol[0] = mapToPol[0] * 180;
 };
 
-/** Robinson map projector.  */
+/**
+ * Robinson map projector.
+ * @type MapProjector
+ */
 var RobinsonMapProjector = new MapProjector();
 OEV.RobinsonMapProjector = RobinsonMapProjector;
 
@@ -178,8 +187,9 @@ RobinsonMapProjector.unproject = function(mapToPol) {
 
 /**
  * 3D map projectors.
+ *
+ * Base class: {@linkcode MapProjector}
  * @constructor
- * @memberof OEV
  */
 var TDMapProjector = function() {
 };
@@ -266,14 +276,20 @@ TDMapProjector.prototype.unproject = function(mapToPol, projType) {
 
 // TODO: Fix this projector member variable problem.
 
-/** Orthographic map projector.  */
+/**
+ * Orthographic map projector.
+ * @type TDMapProjector
+ */
 var OrthoMapProjector =  new TDMapProjector();
 OEV.OrthoMapProjector = OrthoMapProjector;
 OrthoMapProjector.unproject = function(mapToPol) {
   return TDMapProjector.prototype.unproject(mapToPol, 0);
 };
 
-/** Perspective map projector.  */
+/**
+ * Perspective map projector.
+ * @type TDMapProjector
+ */
 var PerspMapProjector = new TDMapProjector();
 OEV.PerspMapProjector = PerspMapProjector;
 PerspMapProjector.unproject = function(mapToPol) {

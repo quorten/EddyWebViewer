@@ -8,7 +8,6 @@ import "projector";
  * Abstract class for a render layer.  A derived class must be created
  * that has methods that do something useful.
  * @constructor
- * @memberof OEV
  */
 var RenderLayer = function() {
   /**
@@ -150,7 +149,6 @@ RenderLayer.prototype.render = function() {
  * factor greater than 8 is effectively useless.
  *
  * @constructor
- * @memberof OEV
  *
  * @param {Canvas} frontBuf
  * @param {ImageData} backBuf

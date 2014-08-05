@@ -6,6 +6,10 @@ var Global = this;
 
 /**
  * Ocean Eddies Web Viewer namespace.
+ *
+ * Note that all documented objects are members of the OEV namespace.
+ * However, they are not marked as such in the JSDocs because JSDoc
+ * isn't sophisticated enough to gracefully handle default namespaces.
  * @namespace
  */
 var OEV;

@@ -207,10 +207,80 @@ HPCArray.prototype.binaryJoin = function(sep) {
    programmer, and the programmer only needs to use this high-level
    interface.  */
 
-/* Chunking, with small integers packed as Unicode characters.
+HPCArray.prototype.chunkedInit = function(chunkSize, autoStringify) {
+  this.chunkSize = chunkSize;
+  this.autoStringify = autoStringify;
+  this[0] = [];
+  this.chunkedLength = 0;
+};
+
+HPCArray.prototype.chunkedPush(elmt) {
+  var chunkSize = this.chunkSize;
+  var lastIdx = this.length - 1;
+  var lastChunk = this[lastIdx];
+  if (lastChunk.length >= chunkSize) {
+    /* Create a new chunk.  */
+    var newChunk = [ elmt ];
+    if (autoStringify)
+      this[lastIdx] = lastChunk.toString();
+    this.push(newChunk);
+  } else {
+    /* Append to the existing chunk.  */
+    lastChunk.push(elmt);
+  }
+  return ++this.chunkedLength;
+};
+
+HPCArray.prototype.chunkedPop() {
+  if (this.length == 0)
+    return; /* undefined */
+  this.chunkedLength--;
+  var lastIdx = this.length - 1;
+  var lastChunk = this[lastIdx];
+  if (lastChunk.length > 0)
+    return lastChunk.pop();
+  else {
+    this.pop();
+    return this[lastIdx-1].pop();
+  }
+};
+
+/* Get the element at the given logical index of a chunked array.  */
+HPCArray.prototype.chunkedAt(index) {
+  var chunkSize = this.chunkSize;
+  var chunkIdx = 0|(index / chunkSize), chunkOffset = index % chunkSize;
+  if (chunkIdx < this.length)
+    return this[chunkIdx][chunkOffset];
+  /* return undefined */
+}
+
+/* Get the element at the given logical index of a chunked array.  No
+   assumptions are made that chunks earlier in the array are of the
+   expected length.  */
+HPCArray.prototype.disorgChunkedAt(index) {
+  var length = this.length, chunkSize = this.chunkSize;
+  var curChunk = 0;
+  var i = 0;
+  while (curChunk < length && i < index) {
+    var curChunk_len = this[curChunk].length;
+    if (i + curChunk_len < index)
+      { i += curChunk_len; churChunk++; }
+    else {
+      var chunkOffset = index - i;
+      if (chunkOffset < curChunk_len)
+	return this[curChunk][chunkOffset];
+    }
+  }
+  /* return undefined */
+}
+
+/* Replace the element at the given index with the new element.  */
+
+/* Chunking, with 8/16-bit integers packed as Unicode characters.
    JavaScript implementations are more efficient when dealing with
-   strings that don't change very much than is the case for
-   arrays.  */
+   large strings that don't change very much than is the case for
+   large arrays of small data elements.  However, modifying large
+   strings is expensive.  */
 
 /* Wrappers.  If typed array extensions are available, use them.
    Otherwise, resort to the most efficient fallback.  */

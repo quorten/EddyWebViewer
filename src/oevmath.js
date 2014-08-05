@@ -9,7 +9,6 @@ var RAD2DEG = 180 / Math.PI;
 /**
  * Polar coordinate point.
  * @constructor
- * @memberof OEV
  * @param {Number} lat - latitude
  * @param {Number} lon - longitude
  */
@@ -67,7 +66,6 @@ PolarPoint.prototype.toPoint3D = function() {
 /**
  * 2D rectangular coordinates point.
  * @constructor
- * @memberof OEV
  * @param x
  * @param y
  */
@@ -101,7 +99,6 @@ Point2D.prototype.normalize = function() {
 /**
  * 3D rectangular coordinates point.
  * @constructor
- * @memberof OEV
  * @param x
  * @param y
  * @param z
@@ -275,8 +272,7 @@ Point3D.prototype.toPolarPoint = function() {
 
 /**
  * Similar to {@linkcode Point3D.toPolarPoint}, but the polar axis is
- * the Y axis and longitude zero is aligned with the positive Z
- * axis.
+ * the Y axis and longitude zero is aligned with the positive Z axis.
  * @param srcPoint
  */
 Point3D.toYPolarPoint = function(srcPoint) {

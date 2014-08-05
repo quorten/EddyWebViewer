@@ -2781,7 +2781,9 @@ within loops.</p>
 
 <p><strong>Does moving variable declarations outside of a loop body
 reduce garbage accumulation?</strong>  No, this appears not to reduce
-garbage accumulation issues within long-running loops.</p>
+garbage accumulation issues within long-running loops.  <strong>In
+JavaScript, variables are scoped by the function body, not the
+enclosing braces.</strong></p>
 
 <p><strong>So where do the real slowdowns happen?</strong></p>
 

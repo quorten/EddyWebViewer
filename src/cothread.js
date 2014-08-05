@@ -12,8 +12,9 @@ import "oevns";
  *
  * The three main run control functions that a cothreading controller
  * should call are {@linkcode Cothread#start}, {@linkcode Cothread#continueCT},
- * and {@linkcode Cothread#loop}.  Note that none of these functions take any
- * arguments and all of them return a {@linkcode CothreadStatus} object.
+ * and {@linkcode Cothread#loop}.  Note that none of these functions
+ * take any arguments and all of them return a
+ * {@linkcode CothreadStatus} object.
  *
  * For function call-like semantics, use the `args` member to pass in
  * arguments and the `retVal` member to retrieve the return value.
@@ -24,15 +25,14 @@ import "oevns";
  * how to use the {@linkcode Cothread} class.
  *
  * @constructor
- * @memberof OEV
  *
  * @param {function} startExec - The internal function to execute at
  * initialization of a new Cothread run context.  See the
  * {@linkcode Cothread#startExec} member documentation for details.
  *
  * @param {function} contExec - The internal function to execute when
- * continuing a preempted cothread.  See the {@linkcode Cothread#contExec}
- * member documentation for details.
+ * continuing a preempted cothread.  See the
+ * {@linkcode Cothread#contExec} member documentation for details.
  */
 var Cothread = function(startExec, contExec) {
   "use strict";
@@ -73,7 +73,8 @@ var Cothread = function(startExec, contExec) {
   this.contExec = contExec;
 
   /**
-   * {@linkcode CothreadStatus} object associated with this cothread.
+   * {@linkcode CothreadStatus} object associated with this
+   * cothread.
    * @type CothreadStatus
    * @readonly
    */
@@ -95,8 +96,8 @@ OEV.Cothread = Cothread;
  * Set the exit status of a cothread based off of a condition.
  *
  * @param {boolean} condition - If `false`, then the exit status is
- * set to {@linkcode CothreadStatus#FINISHED}.  Otherwise, it is set to
- * {@linkcode CothreadStatus#PREEMPTED}.
+ * set to {@linkcode CothreadStatus#FINISHED}.  Otherwise, it is
+ * set to {@linkcode CothreadStatus#PREEMPTED}.
  *
  * @returns Nothing
  */
@@ -109,8 +110,9 @@ Cothread.prototype.setExitStatus = function(condition) {
 };
 
 /**
- * Begin execution of a new cothread within the given {@linkcode Cothread}
- * context and attempt to finish the task before the preemption timeout.
+ * Begin execution of a new cothread within the given
+ * {@linkcode Cothread} context and attempt to finish the task
+ * before the preemption timeout.
  *
  * If there was any existing context from a preempted cothread, it
  * will be reset to an initial state for the new cothread run.
@@ -161,7 +163,6 @@ Cothread.prototype.loop = function() {
  * fields of the same name.
  *
  * @constructor
- * @memberof OEV
  * @param {integer} returnType - See {@linkcode CothreadStatus#returnType}
  * @param {integer} preemptCode - See {@linkcode CothreadStatus#preemptCode}
  * @param {integer} percent - See {@linkcode CothreadStatus#percent}
@@ -174,9 +175,11 @@ var CothreadStatus = function(returnType, preemptCode, percent) {
    *
    * This should be one of the following values:
    *
-   * * {@linkcode CothreadStatus.FINISHED} -- Cothread completed its task.
+   * * {@linkcode CothreadStatus.FINISHED} -- Cothread completed its
+   *   task.
    *
-   * * {@linkcode CothreadStatus.PREEMPTED} -- Cothread was interrupted.
+   * * {@linkcode CothreadStatus.PREEMPTED} -- Cothread was
+   *   interrupted.
    *
    * @type enumerant
    */
@@ -243,7 +246,6 @@ CothreadStatus.MAX_PERCENT = 32767;
  * @param {Array} jobList - The list of jobs to execute.
  *
  * @constructor
- * @memberof OEV
  */
 var SeriesCTCtl = function(jobList) {
   this.jobList = jobList;
@@ -334,7 +336,6 @@ SeriesCTCtl.prototype.contExec = function() {
  * @param {Array} jobList - The list of jobs to execute.
  *
  * @constructor
- * @memberof OEV
  */
 var ParallelCTCtl = function(jobList) {
   this.jobList = jobList;

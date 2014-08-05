@@ -57,7 +57,6 @@ import "cothread";
  *   and only data processing remains.
  *
  * @constructor
- * @memberof OEV
  * @param {String} url - URL of data to download.
  * @param {Function} notifyFunc - Notification function to use, as
  * explained above.
@@ -334,7 +333,6 @@ XHRLoader.prototype.procData = function(httpRequest, responseText) {
  *   and only data processing remains.
  *
  * @constructor
- * @memberof OEV
  * @param {String} url - URL of data to download.
  * @param {Function} notifyFunc - Notification function to use, as
  * explained above.

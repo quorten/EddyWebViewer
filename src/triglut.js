@@ -24,6 +24,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
+import "oevns";
+
 /**
  *   Make the look up table
  *   @constructor
@@ -104,3 +106,5 @@ TrigLUT.prototype.valNormalized = function(radians) {
 TrigLUT.prototype.valNormalizedPositive = function(radians) {
   return this.table[~~(radians * this.pow)];
 };
+
+OEV.TrigLUT = TrigLUT;

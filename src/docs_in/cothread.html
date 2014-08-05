@@ -8,6 +8,8 @@
 </head>
 <body>
 
+<h2>Basic Usage</h2>
+
 <p>The following code demonstrates how to create a cothreaded
 sum-of-squares function using the <code>Cothread</code> class.</p>
 
@@ -15,7 +17,8 @@ sum-of-squares function using the <code>Cothread</code> class.</p>
 import "cothread";
 
 /**
- * Compute the sum of squares from zero up to N^2.
+ * Cothreaded function to compute the sum of squares from zero up to
+ * N^2.
  *
  * Parameters:
  *
@@ -114,10 +117,14 @@ function setup() {
   computeSumOfSquares.args.push(65536 * 20); // N
   computeSumOfSquares.start();
   return browserTime();
-}
+}</pre>
 
-/* Use the following HTML as the test container for this script:
+<p>The following HTML provides a useful in-browser test container for
+the provided example.  The above code and the cothread library are
+assumed to have been combined into a single file
+named <code>bundle.js</code>.</p>
 
+<pre>
 &lt;!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"&gt;
 &lt;html xmlns="http://www.w3.org/1999/xhtml"
@@ -133,9 +140,103 @@ function setup() {
 Luck!&lt;/p&gt;
 
 &lt;/body&gt;
-&lt;/html&gt;
+&lt;/html&gt;</pre>
 
-*/</pre>
+<h2>More ways of structuring the loop body</h2>
+
+<p>The previous example only used the simplest form of structuring the
+loop body, where the timeout condition is checked on every iteration.
+However, web browsers have a significant overhead associated with
+checking the time at the condition test of a tight inner loop.</p>
+
+<p>There are a variety of ways to structure
+the <code>contExec()</code> main loop in a way that reduces this
+overhead.</p>
+
+<h3>Mandatory iteration chunking</h3>
+
+<p>Within the normal timeout condition testing loop, there is another
+inner loop that iterates across a minimum number of chunks.</p>
+
+<p>Example:</p>
+
+<pre>
+    var startTime = lDate_now();
+    var timeout = this.timeout;
+    while (lDate_now() - startTime &lt; timeout &amp;&amp; i &lt;= n) {
+      for (var j = 0; i &lt;= n &amp;&amp; j &lt; 256; j++) {
+        sum += i * i;
+        i++;
+      }
+    }</pre>
+
+<h3>Adaptive iteration chunking</h3>
+
+<p>Rather than checking for the timeout condition at every iteration
+of a loop, the the elapsed time of executing a certain number of loop
+iterations from the <em>last</em> <code>contExec()</code> invocation
+is used to determine the target number of interations for the
+current <code>contExec()</code> invocation.  The timeout value must
+not have changed between the current <code>contExec()</code>
+invocation and the last invocation.</p>
+
+<p>Example:</p>
+
+<pre>
+    var startTime = lDate_now();
+    var timeout = this.timeout;
+    var lastElapTime = this.lastElapTime;
+    var lastNumIters = this.lastNumIters;
+    var numIters = 0|(lastNumIters * timeout / lastElapTime);
+    var timeoutIter = i + numIters;
+    while (i &lt; timeoutIter &amp;&amp; i &lt;= n) {
+      sum += i * i;
+      i++;
+    }
+    var endTime = lDate_now();
+    this.lastElapTime = endTime - startTime;
+    this.lastNumIters = numIters;</pre>
+
+<p>Of course, with this kind of inner loop structure,
+the <code>this.lastElapTime</code> and <code>this.lastNumIters</code>
+member variables will have to be bootstrapped to initial values that
+result in a safe (underestimating) number of iterations on the first
+call.</p>
+
+<h3>Hybrid mechanisms</h3>
+
+<p>One final possibility is combining all three mechanisms into a
+single super-mechanism.  Such a super-mechanism is likely to only be
+advantageous with very tight inner loop bodies.</p>
+
+<p>Example:</p>
+
+<pre>
+    var startTime = lDate_now();
+    var timeout = this.timeout;
+    var subStartTime = lDate_now();
+    var subTimeout = timeout / 64;
+    var lastElapTime = this.lastElapTime;
+    var lastNumIters = this.lastNumIters;
+    var numIters, timeoutIter, endTime, j;
+
+    while (subStartTime - startTime &lt; timeout &amp;&amp; i &lt;= n) {
+      numIters = 0|(lastNumIters * subTimeout / lastElapTime);
+      timeoutIter = i + numIters;
+      while (i &lt; timeoutIter &amp;&amp; i &lt;= n) {
+        for (j = 0; i &lt;= n &amp;&amp; j &lt; 256; j++) {
+          sum += i * i;
+          i++;
+        }
+      }
+      endTime = lDate_now();
+      lastElapTime = endTime - subStartTime;
+      lastNumIters = numIters;
+      subStartTime = endTime;
+    }
+
+    this.lastElapTime = lastElapTime;
+    this.lastNumIters = lastNumIters;</pre>
 
 </body>
 </html>

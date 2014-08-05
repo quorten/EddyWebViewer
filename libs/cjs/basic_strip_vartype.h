@@ -13,6 +13,7 @@
 #define var_string var
 #define var_bool var
 #define var_object var
+#define var_ctype(type) var
 
 #define function_void function
 #define function_int function

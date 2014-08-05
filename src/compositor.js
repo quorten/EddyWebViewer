@@ -148,7 +148,7 @@ Compositor.projEarthTex = new Cothread();
 // ... non-ideal
 Compositor.projEarthTex.frontBuf = document.createElement("canvas");
 
-Compositor.projEarthTex.startExec = function() {
+Compositor.projEarthTex.initCtx = function() {
   this.ctx = this.frontBuf.getContext("2d");
   // TODO: This should be carried around in a cache-like manner.
   this.destImg = this.ctx.createImageData(this.frontBuf.width,
@@ -205,8 +205,8 @@ Compositor.projEarthTex.contExec = function() {
 	x++;
 	continue;
       }
-      var latIdx = ~~((polCoord.lat + 90) / 180 * srcHeight);
-      var lonIdx = ~~((polCoord.lon + 180) / 360 * srcWidth);
+      var latIdx = 0|((polCoord.lat + 90) / 180 * srcHeight);
+      var lonIdx = 0|((polCoord.lon + 180) / 360 * srcWidth);
       var index = (latIdx * srcWidth + lonIdx) * 4;
 
       destImg.data[destIdx++] = earthTex.data[index++];
@@ -486,8 +486,8 @@ Compositor.show3dComposite = function() {
 	longitude = longitude % 360.0;
 
 	/* Plot the pixel.  */
-	var src_y = ~~(latitude * src_data.height * inv_180);
-	var src_x = ~~(longitude * src_data.width * inv_360);
+	var src_y = 0|(latitude * src_data.height * inv_180);
+	var src_x = 0|(longitude * src_data.width * inv_360);
 	if (src_y == src_data.height)
 	  src_y -= 1;
 	var src_index = (src_data.width * src_y + src_x) * 4;

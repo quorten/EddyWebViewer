@@ -5,16 +5,19 @@ import "oevns";
 import "compat";
 import "cothread";
 
-/* NOTE IOWAIT was introduced due to the slowness in browsers for
-   converting from a DOM string to a JavaScript string for
-   responseText to compute the length.  */
-
 /**
- * Cothreaded XMLHttpRequest data loading function, class prototype.
+ * Cothreaded base class for XMLHttpRequest data loaders.
  *
  * Parameters:
  *
  * "url" (this.url) -- The URL (as a String) of the data to load.
+ *
+ * "notifyFunc" (this.notifyFunc) -- (optional) The notification
+ * callback function to use when there is either more data available
+ * or the transfer is complete.  This is typically the cothread
+ * controller or a main loop.  This parameter is called from the
+ * class's internal handler that directly handles `XMLHttpRequest`
+ * notification events.
  *
  * "byteRange" (this.byteRange) -- (optional) An array specifying the
  * range of bytes to download [ min, max ].  Either of the two entries
@@ -25,20 +28,15 @@ import "cothread";
  * calculates `byteRange` from the given [ min, max ] values in
  * `charRange`.
  *
- * "notifyFunc" (this.notifyFunc) -- (optional) The notification
- * callback function to use when there is either more data available
- * or the transfer is complete.  This is typically the cothread
- * controller or a main loop.  This parameter is called from the
- * class's internal handler that directly handles `XMLHttpRequest`
- * notification events.
+ * Return value:
  *
- * Return value: `XHRLoader.CREATE_FAILED` on failure due to inability
- * to create an XMLHttpRequest (or compatible) object,
- * `XHRLoader.LOAD_FAILED` due to download error,
- * `XHRLoader.PROC_ERROR` for data processing error.  Any other return
- * value is an HTTP status code.  200 is the HTTP OK status, and 206
- * is the HTTP Partial Content status.  Internally, all other status
- * codes are treated as errors.
+ * * `XHRLoader.CREATE_FAILED` on failure due to inability
+ *   to create an XMLHttpRequest (or compatible) object,
+ * * `XHRLoader.LOAD_FAILED` due to download error,
+ * * `XHRLoader.PROC_ERROR` for data processing error.
+ * * Any other return value is an HTTP status code.  200 is the HTTP
+ *   OK status, and 206 is the HTTP Partial Content status.
+ *   Internally, all other status codes are treated as errors.
  *
  * `this.status.preemptCode` may be one of the following values:
  *
@@ -49,7 +47,10 @@ import "cothread";
  *   useful in telling the cothread controller that more work will
  *   only arrive by waiting, so if the cothread controller has no
  *   other work to do, it can quit.  The notification function can
- *   resume this cothread when there is more data to process.
+ *   resume this cothread when there is more data to process.  (Note
+ *   of origin: IOWAIT was introduced into the CothreadStatus due to
+ *   the slowness in browsers of determining download progress via
+ *   reading the `responseText.length` member of an `XMLHttpRequest`.)
  *
  * * `CothreadStatus.PROC_DATA` -- The cothread has been preempted when it
  *   was processing data rather than waiting for data.  This
@@ -113,7 +114,7 @@ XHRLoader.prototype.updateProgress = function(event) {
   this.progLen = event.loaded;
 };
 
-XHRLoader.prototype.startExec = function() {
+XHRLoader.prototype.initCtx = function() {
   if (this.httpRequest)
     this.httpRequest.abort();
 
@@ -233,11 +234,11 @@ XHRLoader.prototype.contExec = function() {
 };
 
 /**
- * Example data processing function that parses JSON synchronously.
- * You should replace this with a better function in a instantiated
- * object.  This function is called from `contExec()` after the data
- * have been entirely downloaded.  It should be preemptable and should
- * set and return the `CothreadStatus` object.
+ * Example data processing hook that parses JSON synchronously.  You
+ * should replace this with a better function in a instantiated
+ * object.  This function is called from `contExec()` to process data
+ * after it has arrived.  It should be preemptable and should set and
+ * return the `CothreadStatus` object.
  *
  * @param {XMLHttpRequest} httpRequest - Convenience parameter so that
  * the variable does not have to be fetched from `this`.
@@ -384,7 +385,7 @@ ImageLoader.prototype.alertAbort = function(event) {
     return this.notifyFunc();
 };
 
-ImageLoader.prototype.startExec = function() {
+ImageLoader.prototype.initCtx = function() {
   this.image = new Image();
   if (!this.image) {
     // Error: Could not create an HTMLImageElement.
@@ -445,7 +446,7 @@ ImageLoader.prototype.contExec = function() {
 };
 
 /**
- * Example image processing function.  Currently it does nothing.  You
+ * Example image processing hook.  Currently it does nothing.  You
  * should replace it with a useful function in an instantiated object.
  * This function is called from `contExec()`.  It should be
  * preemptable and should set and return the `CothreadStatus` object.

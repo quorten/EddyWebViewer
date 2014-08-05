@@ -13,5 +13,5 @@ fi
 . ${I}/getiofiles.sh
 
 sed -e 's/Math\./Math_/g' "$INPUT" | \
-  cpp -C -include ${I}/inline_math.h | \
+  $CPP -C -include ${I}/inline_math.h | \
   sed -e '/^#.*$/d' > "$OUTPUT"

@@ -102,7 +102,7 @@ ChunkLoader.prototype.addChunk = function(responseText) {
   this.cacheSize += responseText.length;
 };
 
-ChunkLoader.prototype.startExec = function() {
+ChunkLoader.prototype.initCtx = function() {
   if (this.httpRequest) {
     this.httpRequest.abort();
     var httpRequest = this.httpRequest.responseText;
@@ -110,7 +110,7 @@ ChunkLoader.prototype.startExec = function() {
       this.addChunk(httpRequest);
     this.httpRequest = null;
   }
-  return XHRLoader.prototype.startExec.call(this);
+  return XHRLoader.prototype.initCtx.call(this);
 };
 
 /* Example data processing function.  You should override this with a

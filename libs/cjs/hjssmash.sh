@@ -12,5 +12,5 @@ fi
 
 . ${I}/getiofiles.sh
 
-$CPP -DCJS_JS_TARGET "$INPUT" | \
+$CPP -C -DCJS_JS_TARGET "$INPUT" | \
   sed -e '/^#.*$/d' > "$OUTPUT"

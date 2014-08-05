@@ -146,8 +146,8 @@ RobinsonMapProjector.table = [
 RobinsonMapProjector.project = function(polToMap) {
   var table = RobinsonMapProjector.table;
   var alat = Math.abs(polToMap[1]);
-  var tbIdx1 = ~~Math.floor(alat / 5);
-  var tbIdx2 = ~~Math.ceil(alat / 5);
+  var tbIdx1 = 0|Math.floor(alat / 5);
+  var tbIdx2 = 0|Math.ceil(alat / 5);
   var interpol = (alat % 5) / 5;
   var plen = (((1 - interpol) * table[tbIdx1][0]) +
 	      (interpol * table[tbIdx2][0]));
@@ -165,7 +165,7 @@ RobinsonMapProjector.unproject = function(mapToPol) {
   var pdfe = Math.abs(mapToPol[1]) / 0.5072;
   if (pdfe > 1)
     { mapToPol[0] = NaN; mapToPol[1] = NaN; return; }
-  var approxIndex = ~~(pdfe * 18);
+  var approxIndex = 0|(pdfe * 18);
   while (table[approxIndex][1] < pdfe) approxIndex++;
   while (table[approxIndex][1] > pdfe) approxIndex--;
   var tbIdx1 = approxIndex;
@@ -186,7 +186,9 @@ RobinsonMapProjector.unproject = function(mapToPol) {
 };
 
 /**
- * 3D map projectors.
+ * 3D map projectors.  This class is designed simply so that common
+ * code between the orthographic and perspective projectors can be
+ * contained in the same functions.
  *
  * Base class: {@linkcode MapProjector}
  * @constructor
@@ -210,7 +212,7 @@ var persp_fov = 17.5;
 var persp_altitude = 35786;
 
 /**
- * @param mapToPol
+ * @param {Array} mapToPol - See base class for details.
  * @param {integer} type - Projector type.  Zero for orthographic, one
  * for perspective.
  */

@@ -18,9 +18,9 @@
  * @param {String} handler - a quoted string specifying the name of the
  * function to call.
  */
-function makeEventWrapper(callObj, handler) {
+var makeEventWrapper = function(callObj, handler) {
   return function() { return callObj[handler](); };
-}
+};
 
 /********************************************************************/
 /* Browser Detection
@@ -38,14 +38,14 @@ much as is possible.  */
    others.  This function works by finding the "MSIE " string and
    extracting the version number following the space, up to the
    semicolon.  */
-function getMsieVersion() {
+var getMsieVersion = function() {
   var ua = window.navigator.userAgent;
   var msie = ua.indexOf("MSIE ");
 
   if (msie > 0)
     return parseFloat(ua.substring(msie + 5, ua.indexOf(";", msie)));
   return 0; // is a different browser
-}
+};
 
 /********************************************************************/
 /* Mouse Pointer and Wheel Compatibility */
@@ -58,7 +58,7 @@ function getMsieVersion() {
  *
  * @param {MouseEvent} event - The mouse event to check
  */
-function MousePos_checkRead(event) {
+var MousePos_checkRead = function(event) {
   // var oldMsie = msieVersion <= 6 && msieVersion > 0;
   if (typeof(event.clientX) == "undefined" &&
       typeof(window.event) != "undefined") // Probably old MSIE
@@ -67,7 +67,7 @@ function MousePos_checkRead(event) {
       typeof(event.clientY) != "undefined")
     return true;
   return false;
-}
+};
 
 /**
  * Set the mouse position calibration point.
@@ -83,9 +83,9 @@ function MousePos_checkRead(event) {
  * @param {integer} x - The calibration point x coordinate
  * @param {integer} y - The calibration point y coordinate
  */
-function MousePos_setCalibPt(x, y) {
+var MousePos_setCalibPt = function(x, y) {
   calibPt = [ x, y ];
-}
+};
 
 /**
  * Read the position of the mouse pointer in a cross-browser
@@ -98,7 +98,7 @@ function MousePos_setCalibPt(x, y) {
  * @returns an array describing the mouse position.  The X and Y
  * coordinates are stored in indexes 0 and 1 of this array.
  */
-function MousePos_get(out, event) {
+var MousePos_get = function(out, event) {
   // var oldMsie = msieVersion <= 6 && msieVersion > 0;
   if (typeof(event.clientX) == "undefined" &&
       typeof(window.event) != "undefined") // Probably old MSIE
@@ -124,12 +124,11 @@ function MousePos_get(out, event) {
 			    document.body.scrollTop);
 
   return out;
-}
+};
 
 /**
  * Create a mouse wheel event listener in a cross-browser compatible
- * way.  This function is only used to initialize the addWheelListener
- * global variable.
+ * way.
  *
  * Example: addWheelListener(elem, function(e) {
  *   console.log(e.deltaY); e.preventDefault(); } );
@@ -137,7 +136,7 @@ function MousePos_get(out, event) {
  * @param {Window} window
  * @param {Document} document
  */
-function createAddWheelListener(window, document) {
+var addWheelListener = (function(window, document) {
   var prefix = "", _addEventListener, onwheel, support;
 
   // Detect the event model.
@@ -201,7 +200,7 @@ function createAddWheelListener(window, document) {
   };
 
   return addWheelListenerInternal;
-}
+})(window, document);
 
 /**
  * Capture the mouse pointer in a way that is cross-browser
@@ -212,7 +211,7 @@ function createAddWheelListener(window, document) {
  * @param {function} onMouseMove - The event handler for `onmousemove`
  * @param {function} onMouseUp - The event handler for `onmouseup'
  */
-function crossSetCapture(elmt, onMouseMove, onMouseUp) {
+var crossSetCapture = function(elmt, onMouseMove, onMouseUp) {
   if (elmt.setCapture) {
     elmt.onmousemove = onMouseMove;
     elmt.onmouseup = onMouseUp;
@@ -221,33 +220,33 @@ function crossSetCapture(elmt, onMouseMove, onMouseUp) {
     window.onmousemove = onMouseMove;
     window.onmouseup = onMouseUp;
   }
-}
+};
 
 /**
  * Release a captured mouse pointer in a way that is cross-browser
  * compatible.
  */
-function crossReleaseCapture() {
+var crossReleaseCapture = function() {
   if (document.releaseCapture)
     document.releaseCapture();
   else {
     window.onmousemove = null;
     window.onmouseup = null;
   }
-}
+};
 
 /********************************************************************/
 /* Screen Update Helpers */
 
 /* NOTE: Avoid assigning directly to the window object, this may not
    work well on all browsers.  */
-function createRequestAnimationFrame() {
+(function createRequestAnimationFrame() {
   var lastTime = 0;
-  var vendors = ['webkit', 'moz'];
+  var vendors = [ "webkit", "moz" ];
   for(var x = 0; x < vendors.length && !window.requestAnimationFrame; ++x) {
-    window.requestAnimationFrame = window[vendors[x]+'RequestAnimationFrame'];
-    window.cancelAnimationFrame = window[vendors[x]+'CancelAnimationFrame'] ||
-      window[vendors[x]+'CancelRequestAnimationFrame'];
+    window.requestAnimationFrame = window[vendors[x]+"RequestAnimationFrame"];
+    window.cancelAnimationFrame = window[vendors[x]+"CancelAnimationFrame"] ||
+      window[vendors[x]+"CancelRequestAnimationFrame"];
   }
 
   if (!window.requestAnimationFrame)
@@ -273,7 +272,7 @@ function createRequestAnimationFrame() {
       clearTimeout(id);
     };
   }
-}
+})();
 
 /* The following functions help maintain smooth animation in Firefox.  */
 
@@ -286,7 +285,7 @@ function createRequestAnimationFrame() {
  * (denied from immediate execution), this is the function that will
  * be called once the queue is empty.
  */
-function allocRenderJob(rendQFunc) {
+var allocRenderJob = function(rendQFunc) {
   if (renderInProg) {
     renderQueue = rendQFunc;
     return false;
@@ -301,7 +300,7 @@ function allocRenderJob(rendQFunc) {
  * called from `allocRenderJob()` and never by any code that uses
  * `allocRenderJob()`.
  */
-function freeRenderJob() {
+var freeRenderJob = function() {
   renderInProg = false;
   if (renderQueue) {
     var rendQFunc = renderQueue;
@@ -322,12 +321,7 @@ var calibPt = null;
 // Static storage for MousePos_Get()
 var MousePos_getStorage = [];
 
-var addWheelListener = createAddWheelListener(window, document);
-
 // For allocRenderJob() and freeRenderJob()
 var renderInProg = false;
 // A render queue that can store up to one pending job.
 var renderQueue = null;
-
-/* Closure Invocation */
-createRequestAnimationFrame();

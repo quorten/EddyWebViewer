@@ -13,5 +13,5 @@ fi
 . ${I}/getiofiles.sh
 
 sed -f ${I}/js_prefixes.sed "$INPUT" | \
-  cpp -C -include ${I}/basic_strip_vartype.h | \
+  $CPP -C -DCJS_JS_TARGET -include ${I}/basic_strip_vartype.h | \
   sed -e '/^#.*$/d' > "$OUTPUT"

@@ -9,7 +9,7 @@
  * @param {String} csvText - The text to parse.
  * @returns Nested arrays of the parsed data.
  */
-function csvParse(csvText) {
+var csvParse = function(csvText) {
   var tgtArray = [];
   var i = 0;
   var rowEnd;
@@ -32,4 +32,6 @@ function csvParse(csvText) {
   }
 
   return tgtArray;
-}
+};
+
+OEV.csvParse = csvParse;

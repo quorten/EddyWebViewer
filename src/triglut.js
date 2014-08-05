@@ -68,8 +68,8 @@ TrigLUT.TWO_PI = 2.0 * Math.PI;
  */
 TrigLUT.prototype.val = function(radians) {
   return radians >= 0 ?
-    this.table[~~((radians % this.range) * this.pow)] :
-    this.table[~~((this.range + radians % this.range) * this.pow)];
+    this.table[0|((radians % this.range) * this.pow)] :
+    this.table[0|((this.range + radians % this.range) * this.pow)];
 };
 
 /**
@@ -80,7 +80,7 @@ TrigLUT.prototype.val = function(radians) {
  *   @throws RangeError If radians is not positive
  */
 TrigLUT.prototype.valPositive = function(radians) {
-  return this.table[~~((radians % this.range) * this.pow)];
+  return this.table[0|((radians % this.range) * this.pow)];
 };
 
 /**
@@ -92,8 +92,8 @@ TrigLUT.prototype.valPositive = function(radians) {
  */
 TrigLUT.prototype.valNormalized = function(radians) {
   return radians >= 0 ?
-    this.table[~~(radians * this.pow)] :
-    this.table[~~((this.range + radians) * this.pow)];
+    this.table[0|(radians * this.pow)] :
+    this.table[0|((this.range + radians) * this.pow)];
 };
 
 /**
@@ -104,7 +104,7 @@ TrigLUT.prototype.valNormalized = function(radians) {
  *   @throws RangeError If radians is not on [0,2pi)
  */
 TrigLUT.prototype.valNormalizedPositive = function(radians) {
-  return this.table[~~(radians * this.pow)];
+  return this.table[0|(radians * this.pow)];
 };
 
 OEV.TrigLUT = TrigLUT;

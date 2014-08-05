@@ -1,9 +1,9 @@
 CPP = cpp # C preprocessor
 cjs_dir = ../libs/cjs
-SOURCES = triglut.js oevns.js oevnsend.js oevmath.js cothread.js \
+SOURCES = oevns.js oevnsend.js triglut.js oevmath.js cothread.js \
 	renderlayer.js projector.js trackslayer.js sshlayer.js csv.js \
-	compat.js ajaxloaders.js dates.js compositor.js bundle.js
-BUNDLES = bundle.js
+	compat.js ajaxloaders.js dates.js compositor.js
+#	chunkloader.js detect.js hpcarray.js
 
 # all: docs
 all: bundle.js
@@ -11,11 +11,14 @@ all: bundle.js
 include $(cjs_dir)/cjs.mak
 
 bundle.js: compositor.hjs
-	$(cjs_dir)/hjssmash.sh $< -o $@
+	CPP=$(CPP) $(cjs_dir)/hjssmash.sh $< -o $@
 
-docs: triglut.djs cothread.djs renderlayer.djs projector.djs \
-	trackslayer.djs sshlayer.djs csv.djs compat.djs \
-	ajaxloaders.djs dates.djs compositor.djs
+oevns.djs: oevns.js oevnsend.js
+	cat $^ >$@
+
+docs: oevns.djs triglut.djs cothread.djs renderlayer.djs \
+	projector.djs trackslayer.djs sshlayer.djs csv.djs \
+	compat.djs ajaxloaders.djs dates.djs compositor.djs
 	mkdir djs
 	for file in $^; do \
 	  mv $$file djs/`echo $$file | sed -e 's/\.djs/.js/g'`; \
@@ -42,7 +45,7 @@ install: bundle.js
 	-chmod go+r ../htdocs/*
 
 clean::
-	rm -f $(BUNDLES) tracksconv
+	rm -f bundle.js tracksconv
 
 distclean: clean
 	rm -rf ../docs/jsdocs

@@ -201,14 +201,14 @@ RayTracer.prototype.pixelPP = function(value, data, destIdx,
 				       osaFac, inv_osaFac) {
   if (value < -1) value = -1;
   if (value > 1) value = 1;
-  value = ~~((value + 1) / 2 * 255);
-  data[destIdx+0] = ~~(data[destIdx+0] * inv_osaFac + value * osaFac);
-  data[destIdx+1] = ~~(data[destIdx+1] * inv_osaFac + value * osaFac);
-  data[destIdx+2] = ~~(data[destIdx+2] * inv_osaFac + value * osaFac);
-  data[destIdx+3] = ~~(data[destIdx+3] * inv_osaFac + 255 * osaFac);
+  value = 0|((value + 1) / 2 * 255);
+  data[destIdx+0] = 0|(data[destIdx+0] * inv_osaFac + value * osaFac);
+  data[destIdx+1] = 0|(data[destIdx+1] * inv_osaFac + value * osaFac);
+  data[destIdx+2] = 0|(data[destIdx+2] * inv_osaFac + value * osaFac);
+  data[destIdx+3] = 0|(data[destIdx+3] * inv_osaFac + 255 * osaFac);
 };
 
-RayTracer.prototype.startExec = function() {
+RayTracer.prototype.initCtx = function() {
   this.ctx = this.frontBuf.getContext("2d");
   this.destIdx = 0;
   this.x = 0;
@@ -264,20 +264,20 @@ RayTracer.prototype.contExec = function() {
       if (isNaN(mapToPol[0]) ||
 	  mapToPol[1] < -90 || mapToPol[1] > 90 ||
 	  mapToPol[0] < -180 || mapToPol[0] >= 180) {
-	destImg_data[destIdx+0] = ~~(destImg_data[destIdx+0] * inv_osaFac +
+	destImg_data[destIdx+0] = 0|(destImg_data[destIdx+0] * inv_osaFac +
 				     0 * osaFac);
-	destImg_data[destIdx+1] = ~~(destImg_data[destIdx+1] * inv_osaFac +
+	destImg_data[destIdx+1] = 0|(destImg_data[destIdx+1] * inv_osaFac +
 				     0 * osaFac);
-	destImg_data[destIdx+2] = ~~(destImg_data[destIdx+2] * inv_osaFac +
+	destImg_data[destIdx+2] = 0|(destImg_data[destIdx+2] * inv_osaFac +
 				     0 * osaFac);
-	destImg_data[destIdx+3] = ~~(destImg_data[destIdx+3] * inv_osaFac +
+	destImg_data[destIdx+3] = 0|(destImg_data[destIdx+3] * inv_osaFac +
 				     0 * osaFac);
 	destIdx += 4;
 	x++;
 	continue;
       }
-      var latIdx = ~~((mapToPol[1] + 90) / 180 * (backBuf_height - 1));
-      var lonIdx = ~~((mapToPol[0] + 180) / 360 * backBuf_width);
+      var latIdx = 0|((mapToPol[1] + 90) / 180 * (backBuf_height - 1));
+      var lonIdx = 0|((mapToPol[0] + 180) / 360 * backBuf_width);
 
       if (backBufType == 1) {
 	var value = backBuf_data[latIdx*backBuf_width+lonIdx];
@@ -285,13 +285,13 @@ RayTracer.prototype.contExec = function() {
 	destIdx += 4;
       } else {
 	var backBufIdx = (latIdx * backBuf_width + lonIdx) * 4;
-	destImg_data[destIdx+0] = ~~(destImg_data[destIdx+0] * inv_osaFac +
+	destImg_data[destIdx+0] = 0|(destImg_data[destIdx+0] * inv_osaFac +
 				     backBuf_data[backBufIdx++] * osaFac);
-	destImg_data[destIdx+1] = ~~(destImg_data[destIdx+1] * inv_osaFac +
+	destImg_data[destIdx+1] = 0|(destImg_data[destIdx+1] * inv_osaFac +
 				     backBuf_data[backBufIdx++] * osaFac);
-	destImg_data[destIdx+2] = ~~(destImg_data[destIdx+2] * inv_osaFac +
+	destImg_data[destIdx+2] = 0|(destImg_data[destIdx+2] * inv_osaFac +
 				     backBuf_data[backBufIdx++] * osaFac);
-	destImg_data[destIdx+3] = ~~(destImg_data[destIdx+3] * inv_osaFac +
+	destImg_data[destIdx+3] = 0|(destImg_data[destIdx+3] * inv_osaFac +
 				     backBuf_data[backBufIdx++] * osaFac);
 	destIdx += 4;
       }

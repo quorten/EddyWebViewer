@@ -1652,13 +1652,14 @@ compatibility with older browsers.</p>
   <li>Check for "~~" and replace with "0|".</li>
   <li>Verify that all HTML Canvas operations are structured so as to
   be supported on all conforming browsers.</li>
-  <li>Always use parentheses with typeof operator?  `delete' operator
-  too?</li>
-  <li>Always use document.x() and window.x() rather than the global
-  namespace name.</li>
-  <li>Check all for() loops for where the `var' is initialized.</li>
+  <li>Always use parentheses with typeof operator.</li>
+  <li>Always use <code>window.x()</code> rather than
+  just <code>x()</code> for non-global host objects.</li>
+  <li>Check all <code>for()</code> loops for where
+  the <code>var</code> is initialized.</li>
   <li>Check for single line comments styled as
   <code>/* ... */</code></li>
+  <li>Document coding conventions.</li>
 </ul>
 
 <h3>Reference Documentation</h3>
@@ -1952,56 +1953,6 @@ okay, try to minimize user-code function calls in inner loops.  Don't
 worry about scalar variable definitions, it will be okay as long as
 you periodically return from the code to allow the garbage collector
 to operate.
-
-----------------------------------------
-
-Need a coding scratch space?  Got one right here.
-
-Iterations to timeout algorithm:
-
-/* Dynamically determine a goal number of iterations to run in order to
-   reach the target timeout, based off of the number of iterations that
-   could be performed in the previous cothread duration.  */
-
-/* The main benefit of this cothreading mechanism is that it avoids
-   expensive calls to Date.now() during the inner loop.  */
-
-var timeout = this.timeout;
-var lastElapTime = this.lastElapTime;
-var lastNumIters = this.lastNumIters
-var numIters = lastNumIters * timeout / lastElapTime;
-var timeoutIter = this.i + numIters;
-
-lastTime = Date.now();
-
-for (; i &lt; timeoutIter &amp;&amp; condition; i++) {
-}
-
-lastElapTime = Date.now() - lastTime;
-lastNumIters = numIters;
-
-/* The above algorithm can also be nested within a loop that calls
-   Date.now() on every iteration.  */
-
-Buffering data:
-loadData() handles this.
-
-Cothread dispatcher:
-
-Note that it is possible to use an array of cothreads that still have
-work to do and only call those cothreads.  For simplicity, however,
-cothreads are a always called to continueCT() until there is no work
-left to do.  Only event handlers call start().
-
-cumStatus = CothreadStatus.FINISHED;
-renderReady = setViewport();
-addStatus = loadData.continueCT(maybeAddToBuffer);
-if (addStatus) cumStatus = addStatus;
-if (renderReady)
-  render.continueCT();
-
-if (cumStatus != CothreadStatus.FINISHED)
-  return setTimeout(browserTime);
 
 ----------------------------------------
 
@@ -2888,6 +2839,11 @@ the condition check of a loop.</p>
   path.  <code>String.prototype.concat()</code> is known to be slow,
   but only runtime testing can tell the truth on a particular
   browser.</li>
+  <li>Bitwise operations are the fastest way to convert an
+  floating-point number to an integer.  "<code>0 | number</code>" is
+  the preferred conversion for signed integers, and
+  "<code>number >>> 0</code>" is the preferred conversion for unsigned
+  integers.</li>
   <li>For objects that are actually wrappers of native objects, try to
   only access the object once in order to save its value into a
   JavaScript variable to avoid slowdowns.  Two examples of such

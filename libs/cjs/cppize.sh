@@ -15,6 +15,6 @@ fi
 sed -e 's/^import\(.*\)";$/@include\1.h"/g' \
     -e 's/Math\.//g' \
     -f ${I}/js_prefixes.sed "$INPUT" | \
-  $CPP -C -include ${I}/basic_static_vartype.h | \
+  $CPP -C -DCJS_C_TARGET -include ${I}/basic_static_vartype.h | \
   sed -e 's/^@include/#include/g' -e 's_^//\(.*\)\.$_/*\1.  */_g' \
     -e 's_^//\(.*\)$_/*\1 */_g' > "$OUTPUT"

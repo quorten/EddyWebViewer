@@ -32,12 +32,12 @@ SSHLayer.setCacheLimits = function(dataCache, renderCache) {
  */
 SSHLayer.loadData = new ImageLoader("", execTime);
 
-SSHLayer.loadData.startExec = function() {
+SSHLayer.loadData.initCtx = function() {
   SSHLayer.loadData.url =
     SSHLayer.loadPrefix +
     SSHLayer.imgFormat + "ssh/ssh_" + SSHLayer.loadFrame +
     "." + SSHLayer.imgFormat;
-  return ImageLoader.prototype.startExec.call(this);
+  return ImageLoader.prototype.initCtx.call(this);
 };
 
 SSHLayer.loadData.procData = function(image) {
@@ -154,7 +154,7 @@ SSHLayer.setViewport = function(center, width, height,
 SSHLayer.render = (function() {
   "use strict";
 
-  function startExec() {
+  function initCtx() {
     var frontBuf = SSHLayer.frontBuf;
     var ctx = frontBuf.getContext("2d");
     this.ctx = ctx;
@@ -176,7 +176,7 @@ SSHLayer.render = (function() {
     var colorTbl = [];
     for (var i = 0; i < 256; i++) {
 	var value = i / 256 * 8;
-	var index =  ~~value;
+	var index =  0|value;
 	var ix2 = index + 1;
 	if (ix2 > 8) ix2 = 8;
 	var interpol = value % 1;
@@ -251,8 +251,8 @@ SSHLayer.render = (function() {
 	  x++;
 	  continue;
 	}
-	var latIdx = ~~((polCoord.lat + 90) / 180 * src_height);
-	var lonIdx = ~~((polCoord.lon + 180) / 360 * src_width);
+	var latIdx = 0|((polCoord.lat + 90) / 180 * src_height);
+	var lonIdx = 0|((polCoord.lon + 180) / 360 * src_width);
 	var value = sshData[latIdx*src_width+lonIdx];
 	// var value = sshData[y*src_width+x];
 
@@ -269,7 +269,7 @@ SSHLayer.render = (function() {
 	    value /= 32;
 	    if (value > 1) value = 1;
 	    if (value < -1) value = -1;
-	    value = ~~((value + 1) / 2 * 255);
+	    value = 0|((value + 1) / 2 * 255);
 	    value <<= 2;
 	    destImg.data[destIdx++] = colorTbl[value++];
 	    destImg.data[destIdx++] = colorTbl[value++];
@@ -288,7 +288,7 @@ SSHLayer.render = (function() {
 	    value /= 32;
 	    if (value > 1) value = 1;
 	    if (value < -1) value = -1;
-	    value = ~~((value + 1) / 2 * 255);
+	    value = 0|((value + 1) / 2 * 255);
 	    destImg.data[destIdx++] = value;
 	    destImg.data[destIdx++] = value;
 	    destImg.data[destIdx++] = value;
@@ -322,7 +322,7 @@ SSHLayer.render = (function() {
     return this.status;
   }
 
-  return new Cothread(startExec, contExec);
+  return new Cothread(initCtx, contExec);
 })();
 
 SSHLayer.render = new RayTracer(SSHLayer.frontBuf, null, 1, 8);
@@ -341,7 +341,7 @@ SSHLayer.render.colorTbl = (function() {
   var colorTbl = [];
   for (var i = 0; i < 256; i++) {
     var value = i / 256 * 8;
-    var index =  ~~value;
+    var index =  0|value;
     var ix2 = index + 1;
     if (ix2 > 8) ix2 = 8;
     var interpol = value % 1;
@@ -359,21 +359,21 @@ SSHLayer.render.colorTbl = (function() {
 SSHLayer.render.pixelPP = function(value, data, destIdx,
 				   osaFac, inv_osaFac) {
   if (value == -128) {
-    data[destIdx+0] = ~~(data[destIdx+0] * inv_osaFac + 0 * osaFac);
-    data[destIdx+1] = ~~(data[destIdx+1] * inv_osaFac + 0 * osaFac);
-    data[destIdx+2] = ~~(data[destIdx+2] * inv_osaFac + 0 * osaFac);
-    data[destIdx+3] = ~~(data[destIdx+3] * inv_osaFac + 0 * osaFac);
+    data[destIdx+0] = 0|(data[destIdx+0] * inv_osaFac + 0 * osaFac);
+    data[destIdx+1] = 0|(data[destIdx+1] * inv_osaFac + 0 * osaFac);
+    data[destIdx+2] = 0|(data[destIdx+2] * inv_osaFac + 0 * osaFac);
+    data[destIdx+3] = 0|(data[destIdx+3] * inv_osaFac + 0 * osaFac);
     return;
   }
   value /= 32;
   if (value < -1) value = -1;
   if (value > 1) value = 1;
-  value = ~~((value + 1) / 2 * 255);
-  data[destIdx+0] = ~~(data[destIdx+0] * inv_osaFac +
+  value = 0|((value + 1) / 2 * 255);
+  data[destIdx+0] = 0|(data[destIdx+0] * inv_osaFac +
 		       this.colorTbl[value*4+0] * osaFac);
-  data[destIdx+1] = ~~(data[destIdx+1] * inv_osaFac +
+  data[destIdx+1] = 0|(data[destIdx+1] * inv_osaFac +
 		       this.colorTbl[value*4+1] * osaFac);
-  data[destIdx+2] = ~~(data[destIdx+2] * inv_osaFac +
+  data[destIdx+2] = 0|(data[destIdx+2] * inv_osaFac +
 		       this.colorTbl[value*4+2] * osaFac);
-  data[destIdx+3] = ~~(data[destIdx+3] * inv_osaFac + 255 * osaFac);
+  data[destIdx+3] = 0|(data[destIdx+3] * inv_osaFac + 255 * osaFac);
 };

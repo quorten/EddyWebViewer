@@ -13,6 +13,7 @@
 #define var_string char*
 #define var_bool bool
 #define var_object void*
+#define var_ctype(type) type
 
 #define function void
 #define function_void void

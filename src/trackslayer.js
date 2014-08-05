@@ -151,7 +151,7 @@ var inv_180 = 1 / 180, inv_360 = 1 / 360;
 TracksLayer.render = (function() {
   "use strict";
 
-  function startExec() {
+  function initCtx() {
     var frontBuf = TracksLayer.frontBuf;
     var edc = frontBuf.getContext("2d");
     this.edc = edc;
@@ -304,5 +304,5 @@ TracksLayer.render = (function() {
     return this.status;
   }
 
-  return new Cothread(startExec, contExec);
+  return new Cothread(initCtx, contExec);
 })();

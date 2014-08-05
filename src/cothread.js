@@ -26,15 +26,15 @@ import "oevns";
  *
  * @constructor
  *
- * @param {function} startExec - The internal function to execute at
+ * @param {function} initCtx - The internal function to execute at
  * initialization of a new Cothread run context.  See the
- * {@linkcode Cothread#startExec} member documentation for details.
+ * {@linkcode Cothread#initCtx} member documentation for details.
  *
  * @param {function} contExec - The internal function to execute when
  * continuing a preempted cothread.  See the
  * {@linkcode Cothread#contExec} member documentation for details.
  */
-var Cothread = function(startExec, contExec) {
+var Cothread = function(initCtx, contExec) {
   "use strict";
 
   /**
@@ -58,10 +58,9 @@ var Cothread = function(startExec, contExec) {
    * {@linkcode CothreadStatus} to an initial value.
    *
    * @function
-   * @protected
    * @returns Nothing
    */
-  this.startExec = startExec;
+  this.initCtx = initCtx;
 
   /**
    * Execution code for preemptable body of a cothread.
@@ -121,7 +120,7 @@ Cothread.prototype.setExitStatus = function(condition) {
  */
 Cothread.prototype.start = function() {
   "use strict";
-  this.startExec();
+  this.initCtx();
   return this.contExec();
 };
 
@@ -152,7 +151,7 @@ Cothread.prototype.continueCT = function() {
 Cothread.prototype.loop = function() {
   "use strict";
   if (this.status.returnType == CothreadStatus.FINISHED)
-    this.startExec();
+    this.initCtx();
   return this.contExec();
 };
 
@@ -239,11 +238,11 @@ CothreadStatus.MAX_PERCENT = 32767;
  *
  * Parameters:
  *
- * "jobList" (this.jobList) -- The list of jobs to execute.
+ * "jobList" (this.jobList) -- The list of cothreaded jobs to execute.
  *
  * Return value: Zero on success, `SeriesCTCtl.QUIT` on early exit.
  *
- * @param {Array} jobList - The list of jobs to execute.
+ * @param {Array} jobList - The list of cothreaded jobs to execute.
  *
  * @constructor
  */
@@ -254,11 +253,13 @@ var SeriesCTCtl = function(jobList) {
 OEV.SeriesCTCtl = SeriesCTCtl;
 SeriesCTCtl.prototype = new Cothread();
 SeriesCTCtl.prototype.constructor = SeriesCTCtl;
+/** Enumerant indicating that a job in a {@linkcode SeriesCTCtl}
+ * encountered a terminal error condition.  */
 SeriesCTCtl.QUIT = 1;
 
-SeriesCTCtl.prototype.startExec = function() {
+SeriesCTCtl.prototype.initCtx = function() {
   this.curJob = 0;
-  this.jobList[0].startExec();
+  this.jobList[0].initCtx();
 };
 
 SeriesCTCtl.prototype.contExec = function() {
@@ -295,7 +296,7 @@ SeriesCTCtl.prototype.contExec = function() {
 	return this.status;
       }
 
-      jobList[curJob].startExec();
+      jobList[curJob].initCtx();
 
     } else if (status.preemptCode == CothreadStatus.IOWAIT) {
       this.status.returnType = CothreadStatus.PREEMPTED;
@@ -331,9 +332,9 @@ SeriesCTCtl.prototype.contExec = function() {
  *
  * Parameters:
  *
- * "jobList" (this.jobList) -- The list of jobs to execute.
+ * "jobList" (this.jobList) -- The list of cothreaded jobs to execute.
  *
- * @param {Array} jobList - The list of jobs to execute.
+ * @param {Array} jobList - The list of cothreaded jobs to execute.
  *
  * @constructor
  */
@@ -345,7 +346,7 @@ OEV.ParallelCTCtl = ParallelCTCtl;
 ParallelCTCtl.prototype = new Cothread();
 ParallelCTCtl.prototype.constructor = ParallelCTCtl;
 
-ParallelCTCtl.prototype.startExec = function() {
+ParallelCTCtl.prototype.initCtx = function() {
   /* Create a copy of the list for keeping track of remaining jobs to
      execute.  */
   var jobList = this.jobList;
@@ -360,7 +361,7 @@ ParallelCTCtl.prototype.startExec = function() {
   var timeSlice = this.timeout / numJobs;
   for (var i = 0; i < numJobs; i++) {
     jobList[i].timeout = timeSlice;
-    jobList[i].startExec();
+    jobList[i].initCtx();
   }
 };
 

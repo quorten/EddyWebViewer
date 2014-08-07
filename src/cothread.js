@@ -108,7 +108,7 @@ Cothread.now = function() {
    perform additional feature detects and assign Cothread.now to an
    even better alternative.  */
 if (performance && performance.now)
-  Cothread.now = performance.now;
+  Cothread.now = function() { return performance.now(); };
 else if (Date && Date.now)
   Cothread.now = Date.now;
 else if (Date)
@@ -231,6 +231,8 @@ var CothreadStatus = function(returnType, preemptCode, percent) {
    */
   this.percent = percent;
 };
+
+OEV.CothreadStatus = CothreadStatus;
 
 /** Enumerant indicating that a cothread has finished.  */
 CothreadStatus.FINISHED = 0;

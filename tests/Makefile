@@ -13,13 +13,13 @@ include $(cjs_dir)/cjs.mak
 # include mechanism.
 
 cothread_test.b.js: cothread_test.hjs
-	$(cjs_dir)/hjssmash.sh $< -o $@
+	CPP=$(CPP) $(cjs_dir)/hjssmash.sh $< -o $@
 
 trackslayer_test.b.js: trackslayer_test.hjs
-	$(cjs_dir)/hjssmash.sh $< -o $@
+	CPP=$(CPP) $(cjs_dir)/hjssmash.sh $< -o $@
 
 sshlayer_test.b.js: sshlayer_test.hjs
-	$(cjs_dir)/hjssmash.sh $< -o $@
+	CPP=$(CPP) $(cjs_dir)/hjssmash.sh $< -o $@
 
 clean::
 	rm -f $(BUNDLES)

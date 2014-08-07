@@ -7,11 +7,34 @@
   <title>Video Test</title>
 </head>
 <body>
-<video controls="controls" width="1440" height="720" preload="auto">
+<video id="vid" controls="controls"
+       width="1440" height="720" preload="auto">
   <!-- NOTE: For some reason, I can't seem to generate WebM videos to
   have the quality level that I've requested.  -->
   <!-- <source src="../data/ssh.webm" type="video/webm" /> -->
   <source src="../data/ssh.ogv" type="video/ogg" />
 </video>
+<script type="text/javascript">
+vid = document.getElementById('vid');
+// vid.error would be nice, but its not implemented in all browsers.
+
+/* NOTE: It can take recent versions of Firefox (around version 30) up
+   to 4 seconds to load support for OGG video playback.  */
+
+// Should be 'maybe' or 'probably'
+window.alert(vid.canPlayType('video/ogg'));
+
+setTimeout(function() {
+  if (vid.readyState == 0 && vid.seekable.length == 0)
+    window.alert('Error: Cannot play this video.');
+  }, 4000);
+
+/* The final test is to try to play the video and test for progress on
+   currentTime.  */
+
+/* Unfortunately, video cannot be played in reverse in too many
+browsers.  Use an update method to change video.currentTime or
+video.fastSeek() instead.  */
+</script>
 </body>
 </html>

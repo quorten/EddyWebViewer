@@ -5,10 +5,47 @@ import "renderlayer";
 import "csv";
 import "ajaxloaders";
 
-var SSHLayer = new RenderLayer();
-OEV.SSHLayer = SSHLayer;
+/*
 
-/* Important parameters for TracksLayer: */
+SSHLayer for new RenderLayer design:
+
+The RenderLayer is keyed primarily on the render() function.  Data
+downloading is handled internally by the render function.  No more
+separately managed download/render controller loop.  That was too
+difficult to manage.
+
+However, this shifts the difficulty to the inside of the RenderLayer.
+First of all, how to you derive the class?  It has to derive both from
+an AJAX loader and a RenderLayer.  Multiple inheritance, in other
+words.
+
+For this, manual merge will do, I guess.  The existing RenderLayer
+class is just a policy demonstration.
+
+Another option is using internal aggregation instead.  The generic
+cothread controllers are a great help for this.
+
+The easy way: Start with an AJAX loader and add RenderLayer methods on
+top of that.  Rendering is handled in procData.
+
+The hard way: Create a new RenderLayer(), create an internal loader
+object (also derived), setup rendering in procData(), and daisychain
+the initCtx() and contExec() calls in the topmost object.
+
+I like it the easy way.  So that's the way it will be.
+
+And what about multiple different rendering methods?  Simply create
+entirely new objects for each method, then work on the simplifications
+later.
+
+ */
+
+var SSHLayer = new ImageLoader();
+OEV.SSHLayer = SSHLayer;
+RayTracer.call(SSHLayer, null, 1, 8);
+SSHLayer.setViewport = RayTracer.prototype.setViewport;
+
+/* Important parameters for SSHLayer: */
 
 // imgFormat: desired image format to use
 SSHLayer.imgFormat = "png";
@@ -19,38 +56,40 @@ SSHLayer.loadPrefix = "../data/";
 // loadFrame: hyphenless date of frame to load
 SSHLayer.loadFrame = "19921014";
 
-// shadeStyle: See the render() function for details
+// shadeStyle: See the procData() function for details
 SSHLayer.shadeStyle = 1;
 
-SSHLayer.setCacheLimits = function(dataCache, renderCache) {
-};
-
-/**
- * Cothreaded data loading function.  This function only initiates
- * loading of one SSH frame at initialization and the cothread loop
- * only tells whether the image has been fully loaded or not.
- */
-SSHLayer.loadData = new ImageLoader("", execTime);
-
-SSHLayer.loadData.initCtx = function() {
-  SSHLayer.loadData.url =
+SSHLayer.initCtx = function() {
+  SSHLayer.url =
     SSHLayer.loadPrefix +
     SSHLayer.imgFormat + "ssh/ssh_" + SSHLayer.loadFrame +
     "." + SSHLayer.imgFormat;
+  this.backBuf = null;
+  RayTracer.prototype.initCtx.call(this);
   return ImageLoader.prototype.initCtx.call(this);
 };
 
-SSHLayer.loadData.procData = function(image) {
-  var doneProcData = true;
-  var procError = false;
+SSHLayer.procData = function(image) {
+  if (!this.backBuf) this.initBackBuf(image);
 
+  /* Note: Although we're normally not allowed to modify the
+     CothreadStatus before a tail data processing function in finished
+     in an AJAX loader, here it is okay for us to take a liberation
+     from this rule, since the Cothread controller is setup to handle
+     this.  */
+  return RayTracer.prototype.contExec.call(this);
+};
+
+SSHLayer.initBackBuf = function(image) {
   /* Pull the pixels off of the image and fill them into the sshData
      array as floating point numbers.  */
   var tmpCanvas = document.createElement("canvas");
-  tmpCanvas.width = 1440;
-  tmpCanvas.height = 721;
+  tmpCanvas.width = image.width;
+  tmpCanvas.height = image.height;
   var ctx = tmpCanvas.getContext("2d");
   ctx.drawImage(image, 0, 0);
+  /* We no longer need the original image, so free up the associated
+     memory.  */
   this.image = null;
   var tmpImgData = ctx.getImageData(0, 0, tmpCanvas.width, tmpCanvas.height);
   // document.documentElement.children[1].appendChild(tmpCanvas);
@@ -64,44 +103,44 @@ SSHLayer.loadData.procData = function(image) {
      sshData[j++] = ntohl.getFloat32(i, false);
      } */
 
-  SSHLayer.sshData = [];
+  this.backBuf = { data: [], width: image.width, height: image.height };
   var i = 0;
   var bad; // Bits After Decimal
   var bbd; // Bits Before Decimal
-  if (SSHLayer.imgFormat == "jpg") {
+  if (this.imgFormat == "jpg") {
     bad = 2;
     bbd = 6;
     while (i < tmpImgData.data.length) {
       if (tmpImgData.data[i+0] < 16 &&
 	  tmpImgData.data[i+1] < 16 &&
 	  tmpImgData.data[i+2] < 16) // Use fuzz margin due to JPEG artifacts
-	SSHLayer.sshData.push(-128); // Transparent
+	this.backBuf.data.push(-128); // Transparent
       else
-	SSHLayer.sshData.push((tmpImgData.data[i] - 12) / (1 << bad) -
-			      (1 << (bbd - 1)));
+	this.backBuf.data.push((tmpImgData.data[i] - 12) / (1 << bad) -
+			       (1 << (bbd - 1)));
       i += 4;
     }
 
-  } else if (SSHLayer.imgFormat == "png") {
+  } else if (this.imgFormat == "png") {
     bad = 8; // Actually only 7, but we decode it as 8.
     bbd = 8;
     while (i < tmpImgData.data.length) {
       if (tmpImgData.data[i+0] == 0 &&
 	  tmpImgData.data[i+1] == 0)
-	SSHLayer.sshData.push(-128); // Transparent
+	this.backBuf.data.push(-128); // Transparent
       else {
 	var intVal = (tmpImgData.data[i] << 8) + tmpImgData.data[i+1];
 	if (intVal & 0x100) intVal ^= 0xff;
-	SSHLayer.sshData.push(intVal / (1 << bad) -
+	this.backBuf.data.push(intVal / (1 << bad) -
 			      (1 << (bbd - 1)));
       }
       i += 4;
     }
   }
 
-  /* SSHLayer.sshData = new Float32Array(1440 * 721 * 4);
-  var sshData = SSHLayer.sshData;
-  var bytePacker = new Uint8Array(SSHLayer.sshData.buffer);
+  /* this.backBuf.data = new Float32Array(1440 * 721 * 4);
+  var sshData = this.backBuf.data;
+  var bytePacker = new Uint8Array(this.backBuf.data.buffer);
   var badCSize = 1440 * 4 * 721 * 4;
   var ntohlBuf = new Uint8Array(4);
   var ntohl = new DataView(ntohlBuf.buffer);
@@ -114,215 +153,12 @@ SSHLayer.loadData.procData = function(image) {
     sshData[j++] = ntohl.getFloat32(0, false);
   } */
 
-  // SSHLayer.sshData = csvParse(httpRequest.responseText);
+  // this.backBuf.data = csvParse(httpRequest.responseText);
   // httpRequest.onreadystatechange = null;
   // this.httpRequest = null;
-
-  if (procError) {
-    this.image = null;
-    this.retVal = ImageLoader.PROC_ERROR;
-    this.status.returnType = CothreadStatus.FINISHED;
-    this.status.preemptCode = 0;
-    return this.status;
-  }
-
-  if (doneProcData) {
-    /* Only manipulate the CothreadStatus object from within this
-       function when processing is entirely finished.  */
-    this.status.returnType = CothreadStatus.FINISHED;
-    this.status.preemptCode = 0;
-  }
-
-  return this.status;
 };
 
-SSHLayer.setViewport = function(center, width, height,
-				aspectXY, projector) {
-  // RenderLayer.call(center, width, height, projection);
-  this.frontBuf.width = width;
-  this.frontBuf.height = height;
-
-  this.render.aspectXY = aspectXY;
-  this.render.center = center;
-  this.render.resizeFrontBuf();
-  this.render.projector = projector;
-  this.render.backBuf = { width: 1440, height: 721, data: SSHLayer.sshData };
-
-  return RenderLayer.READY;
-};
-
-SSHLayer.render = (function() {
-  "use strict";
-
-  function initCtx() {
-    var frontBuf = SSHLayer.frontBuf;
-    var ctx = frontBuf.getContext("2d");
-    this.ctx = ctx;
-    var destImg = ctx.getImageData(0, 0, frontBuf.width, frontBuf.height);
-    this.destImg = destImg;
-    this.destIdx = 0;
-
-    // Generate the color table.
-    var grad = [ [ 0x00, 0x00, 0x7f ],
-		 [ 0x00, 0x00, 0xff ],
-		 [ 0x00, 0x7f, 0xff ],
-		 [ 0x00, 0xff, 0xff ],
-		 [ 0x7f, 0xff, 0x7f ],
-		 [ 0xff, 0xff, 0x00 ],
-		 [ 0xff, 0x7f, 0x00 ],
-		 [ 0xff, 0x00, 0x00 ],
-		 [ 0x7f, 0x00, 0x00 ] ];
-
-    var colorTbl = [];
-    for (var i = 0; i < 256; i++) {
-	var value = i / 256 * 8;
-	var index =  0|value;
-	var ix2 = index + 1;
-	if (ix2 > 8) ix2 = 8;
-	var interpol = value % 1;
-	colorTbl.push((1 - interpol) * grad[index][0] +
-		      interpol *  grad[ix2][0]);
-	colorTbl.push((1 - interpol) * grad[index][1] +
-		      interpol *  grad[ix2][1]);
-	colorTbl.push((1 - interpol) * grad[index][2] +
-		      interpol *  grad[ix2][2]);
-	colorTbl.push(255);
-    }
-    this.colorTbl = colorTbl;
-
-    // ctx.clearRect(0, 0, frontBuf.width, frontBuf.height);
-
-    this.x = 0;
-    this.y = 0;
-
-    this.status.returnType = CothreadStatus.PREEMPTED;
-    this.status.preemptCode = 0;
-    this.status.percent = 0;
-  }
-
-  function contExec() {
-    if (SSHLayer.loadData.status.returnType != CothreadStatus.FINISHED) {
-      SSHLayer.loadData.continueCT();
-      this.status.returnType = CothreadStatus.PREEMPTED;
-      this.status.preemptCode = RenderLayer.NO_DISP_FRAME;
-      this.status.percent = 0;
-      return this.status;
-    }
-
-    var ctx = this.ctx;
-    var destImg = this.destImg;
-    var destIdx = this.destIdx;
-    var x = this.x;
-    var y = this.y;
-    var oldY = y;
-    var colorTbl = this.colorTbl;
-
-    var sshData = SSHLayer.sshData;
-    var frontBuf_width = SSHLayer.frontBuf.width;
-    var frontBuf_height = SSHLayer.frontBuf.height;
-    var src_width = 1440;//sshData[0].length;
-    var src_height = 721;//sshData.length;
-    var aspectXY = SSHLayer.aspectXY;
-    var inv_aspectXY = 1 / aspectXY;
-    // var projector = SSHLayer.projector;
-    var projector_unproject = SSHLayer.projector.unproject;
-
-    var ctnow = Cothread.now;
-
-    var startTime = ctnow();
-    var timeout = this.timeout;
-
-    while (y < frontBuf_height) {
-      while (x < frontBuf_width) {
-	var mapCoord = [ (x / frontBuf_width) * 2 - 1,
-			 ((y / frontBuf_height) * 2 - 1) * inv_aspectXY ];
-	// NOTE: Object creation is slow.  Newer versions must avoid this.
-	var polCoord = {}; projector_unproject(mapCoord);
-	polCoord.lat = mapCoord[1]; polCoord.lon = mapCoord[0];
-	if (!isNaN(polCoord.lat) && !isNaN(polCoord.lon) &&
-	    polCoord.lat > -90 && polCoord.lat < 90 &&
-	    polCoord.lon > -180 && polCoord.lon < 180)
-	  ;
-	else {
-	  destImg.data[destIdx++] = 0;
-	  destImg.data[destIdx++] = 0;
-	  destImg.data[destIdx++] = 0;
-	  destImg.data[destIdx++] = 0;
-	  x++; continue;
-	}
-	var latIdx = 0|((polCoord.lat + 90) / 180 * src_height);
-	var lonIdx = 0|((polCoord.lon + 180) / 360 * src_width);
-	var value = sshData[latIdx*src_width+lonIdx];
-	// var value = sshData[y*src_width+x];
-
-	  if (isNaN(value) || value == -128) {
-	    destImg.data[destIdx++] = 0;
-	    destImg.data[destIdx++] = 0;
-	    destImg.data[destIdx++] = 0;
-	    destImg.data[destIdx++] = 0;
-	    x++; continue;
-	  }
-
-	  if (SSHLayer.shadeStyle == 1) { // MATLAB
-	    value /= 32;
-	    if (value > 1) value = 1;
-	    if (value < -1) value = -1;
-	    value = 0|((value + 1) / 2 * 255);
-	    value <<= 2;
-	    destImg.data[destIdx++] = colorTbl[value++];
-	    destImg.data[destIdx++] = colorTbl[value++];
-	    destImg.data[destIdx++] = colorTbl[value++];
-	    destImg.data[destIdx++] = colorTbl[value++];
-	  } else if (SSHLayer.shadeStyle == 2) { // Contour bands
-	    value += 32;
-	    value *= (1 << 5);
-	    if (value & 0x100) value = ~value;
-	    value &= 0xff;
-	    destImg.data[destIdx++] = value;
-	    destImg.data[destIdx++] = value;
-	    destImg.data[destIdx++] = value;
-	    destImg.data[destIdx++] = 255;
-	  } else { // Grayscale
-	    value /= 32;
-	    if (value > 1) value = 1;
-	    if (value < -1) value = -1;
-	    value = 0|((value + 1) / 2 * 255);
-	    destImg.data[destIdx++] = value;
-	    destImg.data[destIdx++] = value;
-	    destImg.data[destIdx++] = value;
-	    destImg.data[destIdx++] = 255;
-	  }
-
-	  /* destImg.data[destIdx++] = value;
-	  destImg.data[destIdx++] = value;
-	  destImg.data[destIdx++] = value;
-	  destImg.data[destIdx++] = value; */
-	x++;
-	/* if (ctnow() - startTime >= timeout)
-	  break; */
-      }
-      if (x >= frontBuf_width)
-	{ x = 0; y++; }
-      if (y % 32 == 0 && ctnow() - startTime >= timeout)
-	break;
-    }
-
-    this.setExitStatus(y < frontBuf_height);
-    ctx.putImageData(destImg, 0, 0, 0, oldY, frontBuf_width, y - oldY);
-    this.status.preemptCode = RenderLayer.FRAME_AVAIL;
-    this.status.percent = y * CothreadStatus.MAX_PERCENT / frontBuf_height;
-
-    this.destIdx = destIdx;
-    this.x = x; this.y = y;
-    return this.status;
-  }
-
-  return new Cothread(initCtx, contExec);
-})();
-
-SSHLayer.render = new RayTracer(SSHLayer.frontBuf, null, 1, 8);
-
-SSHLayer.render.colorTbl = (function() {
+SSHLayer.colorTbl = (function() {
   var grad = [ [ 0x00, 0x00, 0x7f ],
 	       [ 0x00, 0x00, 0xff ],
 	       [ 0x00, 0x7f, 0xff ],
@@ -351,24 +187,46 @@ SSHLayer.render.colorTbl = (function() {
   return colorTbl;
 })();
 
-SSHLayer.render.pixelPP = function(value, data, destIdx,
-				   osaFac, inv_osaFac) {
-  if (value == -128) {
+SSHLayer.pixelPP = function(value, data, destIdx,
+			    osaFac, inv_osaFac) {
+  if (value == -128) { // Undefined SSH
     data[destIdx+0] = 0|(data[destIdx+0] * inv_osaFac + 0 * osaFac);
     data[destIdx+1] = 0|(data[destIdx+1] * inv_osaFac + 0 * osaFac);
     data[destIdx+2] = 0|(data[destIdx+2] * inv_osaFac + 0 * osaFac);
     data[destIdx+3] = 0|(data[destIdx+3] * inv_osaFac + 0 * osaFac);
     return;
   }
-  value /= 32;
-  if (value < -1) value = -1;
-  if (value > 1) value = 1;
-  value = 0|((value + 1) / 2 * 255);
-  data[destIdx+0] = 0|(data[destIdx+0] * inv_osaFac +
-		       this.colorTbl[value*4+0] * osaFac);
-  data[destIdx+1] = 0|(data[destIdx+1] * inv_osaFac +
-		       this.colorTbl[value*4+1] * osaFac);
-  data[destIdx+2] = 0|(data[destIdx+2] * inv_osaFac +
-		       this.colorTbl[value*4+2] * osaFac);
+
+  var red, green, blue;
+  switch (this.shadeStyle) {
+  case 1: // MATLAB
+    value /= 32;
+    if (value < -1) value = -1;
+    if (value > 1) value = 1;
+    value = 0|((value + 1) / 2 * 255);
+    value <<= 2;
+    red = this.colorTbl[value++];
+    green = this.colorTbl[value++];
+    blue = this.colorTbl[value++];
+    break;
+  case 2: // Contour bands
+    value += 32;
+    value *= (1 << 5);
+    if (value & 0x100) value = ~value;
+    value &= 0xff;
+    red = green = blue = value;
+    break;
+  default: // Grayscale
+    value /= 32;
+    if (value > 1) value = 1;
+    if (value < -1) value = -1;
+    value = 0|((value + 1) / 2 * 255);
+    red = green = blue = value;
+    break;
+  }
+
+  data[destIdx+0] = 0|(data[destIdx+0] * inv_osaFac + red * osaFac);
+  data[destIdx+1] = 0|(data[destIdx+1] * inv_osaFac + green * osaFac);
+  data[destIdx+2] = 0|(data[destIdx+2] * inv_osaFac + blue * osaFac);
   data[destIdx+3] = 0|(data[destIdx+3] * inv_osaFac + 255 * osaFac);
 };

@@ -881,8 +881,8 @@ function zoomGlobe(event) {
   return false;
 }
 
-/* Since `compositor.js' is the main JavaScript file, all other
-   dependent JavaScripts will be included before this file.  Close the
-   OEV namespace now that there are no more JavaScripts to be
+/* Since this is the main JavaScript file, all other dependent
+   JavaScripts will be included before this file.  Close the OEV
+   namespace now that there are no more JavaScripts to be
    included.  */
 import "oevnsend";

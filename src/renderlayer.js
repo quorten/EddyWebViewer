@@ -3,122 +3,56 @@
 import "oevns";
 import "cothread";
 import "projector";
+import "viewparams";
 
 /**
- * Abstract class for a render layer.  A derived class must be created
- * that has methods that do something useful.
+ * Cothreaded abstract class for a render layer.  A derived class must
+ * be created that has methods that do something useful.
+ *
+ * Basically, this class is a single cothread, and when called as a
+ * cothreaded function by a cothread controller, it will produce an
+ * updated render in `this.frontBuf`.  Normally, `this.retVal` will be
+ * zero, but if there is an error while loading new data, it may be
+ * `RenderLayer.LOAD_ERROR`.  The CothreadStatus will be set to
+ * `CothreadStatus.IOWAIT` and `CothreadStatus.PROC_DATA` as
+ * appropriate, so a cothread controller can use this information to
+ * give diagnostics to the user if data loading or rendering is taking
+ * a long time.
  * @constructor
  */
 var RenderLayer = function() {
   /**
-   * RenderLayer front buffer (HTML Canvas), used for storing
-   * completed renders.  This can either be manually composited into
-   * another Canvas or inserted into the document for automatic
-   * compositing of render layers.
+   * RenderLayer front buffer (HTML Canvas by default), used for
+   * storing completed renders.  This doesn't have to be an HTML
+   * Canvas, it could actually be any element, as long as it works
+   * well with the rest of the application.  The element can either be
+   * manually composited into another Canvas or inserted into the
+   * document for automatic compositing of render layers.
    * @readonly
    */
   this.frontBuf = document.createElement("canvas");
 };
 
 OEV.RenderLayer = RenderLayer;
-RenderLayer.READY = 0;
-RenderLayer.NEED_DATA = 1;
+RenderLayer.prototype = new Cothread();
+RenderLayer.prototype.constructor = RenderLayer;
+
+RenderLayer.LOAD_ERROR = 2;
 
 /**
- * Set the limits of this rendering engine's internal caches.
- * Internal caches are very implementation-specific, but they can be
- * generalized to the two parameters that this function accepts.
+ * Setup the viewport of a render layer.  Using this function rather
+ * than setting the width and height directly on `this.frontBuf` gives
+ * the code a chance to perform application-specific processing
+ * related to resizing the viewport.
  *
- * For trivial rendering units, the data cache and render cache will
- * be identical.
- * @abstract
- *
- * @param {integer} dataCache - Data loaded from an external source,
- * measured in implementation-specific entities.
- *
- * @param {integer} renderCache - Maximum size of prerendered images,
- * measured in pixels.
- */
-RenderLayer.prototype.setCacheLimits = function(dataCache, renderCache) {
-  throw_new_Error("Must be implemented by a subclass!");
-};
-
-/**
- * Load any pending data resources that must be loaded.  This function
- * is cothreaded so that a controlling function can provide
- * responsiveness.  If this function is called when all pending data
- * has been loaded, then it prefetches additional data that is likely
- * to be needed in the near future.
- *
- * Return value: One of the following constants:
- *
- *  * RenderLayer.READY -- All critical data for rendering has been
- *    loaded.
- *
- *  * RenderLayer.NEED_DATA -- Critical data for rendering still needs
- *    to be loaded.  It may still be possible to do a render with only
- *    partial data available, but the render will only display some of
- *    all the necessary data.
- *
- * @abstract
- *
- * @returns the cothread status of the data load operation.
- */
-RenderLayer.prototype.loadData = function() {
-  throw_new_Error("Must be implemented by a subclass!");
-};
-
-/**
- * Setup the viewport and projection of a render layer.
- * @abstract
- *
- * @param {AbstractPoint} center - The point in the content
- * coordinate space that should appear at the center of the viewport.
  * @param {integer} width - The width of the rendering viewport in
  * pixels.
  * @param {integer} height - The height of the rendering viewport in
  * pixels.
- * @param {Number} aspectXY - X/Y aspect ratio.  This parameter is
- * used to scale the Y axis to preserve the indicated aspect ratio for
- * the normalized coordinates [-1..1].  The normalized Y coordinate is
- * then scaled to be in terms of the actual height of the viewport.
- * @param {Projector} projector - The projector to use for rendering
- * the content into the viewport.
- *
- * @returns One of the following constants:
- *
- *  * RenderLayer.READY -- Changing the viewport was successful and a
- *    render may immediately proceed.
- *
- *  * RenderLayer.NEED_DATA -- The new viewport requires additional
- *    data that needs to be loaded.  It may still be possible to do a
- *    render with only partial data available, but the render will
- *    only display some of all the necessary data.
  */
-RenderLayer.prototype.setViewport =
-  function(center, width, height, aspectXY, projector) {
-  throw_new_Error("Must be implemented by a subclass!");
-};
-
-RenderLayer.FRAME_AVAIL = 0;
-RenderLayer.NO_DISP_FRAME = 1;
-
-/**
- * Cothreaded rendering routine.
- * @abstract
- *
- * @returns The cothread status of the render operation.  When the
- * cothread gets preempted before the rendering task is finished, the
- * CothreadStatus preemptCode is one of the following values:
- *
- *  * RenderLayer.FRAME_AVAIL -- A partial frame has been rendered
- *    that is suitable for display.
- *
- *  * RenderLayer.NO_DISP_FRAME -- The partial frame is not suitable
- *    for display.
- */
-RenderLayer.prototype.render = function() {
-  throw_new_Error("Must be implemented by a subclass!");
+RenderLayer.prototype.setViewport = function(width, height) {
+  this.frontBuf.width = width;
+  this.frontBuf.height = height;
 };
 
 /**
@@ -127,9 +61,6 @@ RenderLayer.prototype.render = function() {
  * using a {@linkcode Projector}.
  *
  * Parameters:
- *
- * "frontBuf" (this.frontBuf) -- The HTML Canvas to use as the front
- * buffer.
  *
  * "backBuf" (this.backBuf) -- The data to use as the back buffer.
  *
@@ -150,38 +81,36 @@ RenderLayer.prototype.render = function() {
  *
  * @constructor
  *
- * @param {Canvas} frontBuf
  * @param {ImageData} backBuf
  * @param {integer} backBufType
  * @param {integer} maxOsaPasses
  */
-var RayTracer = function(frontBuf, backBuf, backBufType, maxOsaPasses) {
-  this.frontBuf = frontBuf;
+var RayTracer = function(backBuf, backBufType, maxOsaPasses) {
+  this.frontBuf = document.createElement("canvas");
   this.backBuf = backBuf;
   this.backBufType = backBufType;
   this.maxOsaPasses = maxOsaPasses;
 
-  if (this.frontBuf)
-    this.resizeFrontBuf();
   this.mapToPol = [ NaN, NaN ];
 };
 
 OEV.RayTracer = RayTracer;
-RayTracer.prototype = new Cothread();
+RayTracer.prototype = new RenderLayer();
 RayTracer.prototype.constructor = RayTracer;
 
 /**
- * If the width or height of the front buffer has changed, call this
- * function to resize the ImageData structure used to store the
- * intermediate raytrace render.
+ * Update the viewport of a RayTracer.
+ * @param {integer} width
+ * @param {integer} height
  */
-RayTracer.prototype.resizeFrontBuf = function() {
-  var frontBuf = this.frontBuf;
+RayTracer.prototype.setViewport = function(width, height) {
+  this.frontBuf.width = width;
+  this.frontBuf.height = height;
   if (!this.destImg ||
-      frontBuf.width != this.destImg.width ||
-      frontBuf.height != this.destImg.height) {
-    this.destImg = frontBuf.getContext("2d").
-      getImageData(0, 0, frontBuf.width, frontBuf.height);
+      width != this.destImg.width ||
+      height != this.destImg.height) {
+    this.destImg = this.frontBuf.getContext("2d").
+      getImageData(0, 0, width, height);
   }
 };
 
@@ -239,9 +168,9 @@ RayTracer.prototype.contExec = function() {
   var destImg_width = destImg.width;
   var destImg_height = destImg.height;
   var destImg_data = destImg.data;
-  var aspectXY = this.aspectXY;
+  var aspectXY = ViewParams.aspectXY;
   var inv_aspectXY = 1 / aspectXY;
-  var projector_unproject = this.projector.unproject;
+  var projector_unproject = ViewParams.projector.unproject;
   var mapToPol = this.mapToPol;
   var maxOsaPasses = this.maxOsaPasses;
 
@@ -324,7 +253,7 @@ RayTracer.prototype.contExec = function() {
     ctx.putImageData(destImg, 0, 0, 0, oldY, destImg_width, y - oldY);
   else
     ctx.putImageData(destImg, 0, 0, 0, 0, destImg_width, destImg_height);
-  this.status.preemptCode = RenderLayer.FRAME_AVAIL;
+  this.status.preemptCode = CothreadStatus.PROC_DATA;
   this.status.percent = ((y + destImg_height * (osaPass - 1)) *
 			 CothreadStatus.MAX_PERCENT /
 			 (destImg_height * maxOsaPasses));
@@ -334,45 +263,4 @@ RayTracer.prototype.contExec = function() {
   this.y = y;
   this.osaPass = osaPass;
   return this.status;
-};
-
-/*
-
-New RenderLayer protocol:
-
-Only one function: render
-
-Thus, no dual cothreading issues
-
-Data download and render are assumed to be performable in parallel.
-preemptCode tells whether the bottleneck is due to rendering or
-waiting for data.  This can be forwarded to the user to determine the
-stall.
-
-Synchronous interfaces?  Must be handled specially.  Use a special
-controller class that pipelines one in sequence after another and
-returns status upward by a different means.  Don't want to break the
-formally specified protocol with the underlying class by hijacking the
-status attribute.  Or maybe we could... decisions?
-
-It's okay.  Derived classes can expand on the behavior as they see
-fit.  We're hijacking the interface for sequential loaders.  Make it
-similar to ajaxloaders.
-
-fetchviewportchanges -- only viewport, projection and position are
-handled during normal rendering.
-
- */
-
-var RenderLayer = function() {
-  this.frontBuf = document.createElement("canvas");
-};
-
-OEV.RenderLayer = RenderLayer;
-RenderLayer.READY = 0;
-RenderLayer.NEED_DATA = 1;
-
-RenderLayer.prototype = new Cothread(null, null);
-
-RenderLayer.prototype.setViewport = function(width, height) {
 };

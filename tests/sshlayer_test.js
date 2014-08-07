@@ -2,12 +2,22 @@
 
 import "../src/sshlayer";
 import "../src/projector";
+import "../src/viewparams";
 
-function execTime2() {
-  var status = SSHLayer.render.continueCT();
-  document.getElementById("rendProgElmt").innerHTML = [ "Render: ",
-    (status.percent * 100 / CothreadStatus.MAX_PERCENT).toFixed(2), "%" ].
-    join("");
+var rendStartTime;
+
+function execTime() {
+  var status = SSHLayer.continueCT();
+  if (status.preemptCode != CothreadStatus.PROC_DATA) {
+    document.getElementById("progElmt").innerHTML = [ "Download: ",
+      (status.percent * 100 / CothreadStatus.MAX_PERCENT).toFixed(2), "%"].
+      join("");
+  } else {
+    document.getElementById("progElmt").innerHTML = [ "Render: ",
+      (status.percent * 100 / CothreadStatus.MAX_PERCENT).toFixed(2), "%" ].
+      join("");
+  }
+
   if (status.returnType == CothreadStatus.FINISHED) {
     var rendTimeElmt = document.getElementById("rendTimeElmt");
     var totalTime = (Date.now() - rendStartTime) / 1000;
@@ -15,59 +25,12 @@ function execTime2() {
       totalTime.toFixed(3) + " seconds";
     return;
   }
-  return browserTime2();
-}
-
-function browserTime2() {
-  return setTimeout(execTime2, 0);
-}
-
-var rendStartTime;
-
-function setup2() {
-  var rendProgElmt = document.createElement("p");
-  rendProgElmt.id = "rendProgElmt";
-  rendProgElmt.innerHTML = "Starting render...";
-  var rendTimeElmt = document.createElement("p");
-  rendTimeElmt.id = "rendTimeElmt";
-  rendTimeElmt.innerHTML = "Calculating total render time...";
-  rendStartTime = Date.now();
-
-  document.documentElement.children[1].appendChild(rendProgElmt);
-  document.documentElement.children[1].appendChild(rendTimeElmt);
-  document.documentElement.children[1].appendChild(SSHLayer.frontBuf);
-
-  var width = 1440, height = 721;
-  SSHLayer.setViewport(null, width, height, width / height,
-			  EquirectMapProjector);
-  SSHLayer.render.timeout = 20;
-  SSHLayer.render.start();
-  return browserTime2();
-}
-
-function execTime() {
-  var status = SSHLayer.loadData.continueCT();
-  if (status.preemptCode != CothreadStatus.PROC_DATA) {
-    document.getElementById("progElmt").innerHTML = [ "Download: ",
-      (status.percent * 100 / CothreadStatus.MAX_PERCENT).toFixed(2), "%"].
-      join("");
-  } else
-    document.getElementById("progElmt").innerHTML = "Parsing CSV, please wait...";
-
-  if (status.returnType == CothreadStatus.FINISHED) {
-    var resultElmt = document.createElement("p");
-    resultElmt.id = "resultElmt";
-    resultElmt.innerHTML = "Result: " + SSHLayer.sshData.length +
-      " rows";
-    document.documentElement.children[1].appendChild(resultElmt);
-
-    // Next move on to testing the progressive renderer.
-    return setTimeout(setup2, 80);
-  }
   if (status.preemptCode == CothreadStatus.IOWAIT)
     return;
   return browserTime();
 }
+
+OEV.execTime = execTime;
 
 function browserTime() {
   /* Note: If a cothread should use all available processing time yet
@@ -90,13 +53,35 @@ function setup() {
   var progElmt = document.createElement("p");
   progElmt.id = "progElmt";
   progElmt.innerHTML = "Please wait...";
-  document.documentElement.children[1].appendChild(progElmt);
+  var rendTimeElmt = document.createElement("p");
+  rendTimeElmt.id = "rendTimeElmt";
+  rendTimeElmt.innerHTML = "Calculating total render time...";
+  rendStartTime = Date.now();
 
-  SSHLayer.loadData.timeout = 20;
-  var status = SSHLayer.loadData.start();
+  document.documentElement.children[1].appendChild(progElmt);
+  document.documentElement.children[1].appendChild(rendTimeElmt);
+  document.documentElement.children[1].appendChild(SSHLayer.frontBuf);
+
+  var width = 1440, height = 721;
+  ViewParams.viewport[0] = width; ViewParams.viewport[1] = height;
+  ViewParams.aspectXY = width / height;
+  ViewParams.projector = EquirectMapProjector;
+  ViewParams.center[0] = 0; ViewParams.center[1] = 0;
+  SSHLayer.setViewport(width, height);
+  SSHLayer.timeout = 20;
+  SSHLayer.notifyFunc = execTime;
+  var status = SSHLayer.start();
   if (status.returnType != CothreadStatus.FINISHED) {
-    if (status.preemptCode == CothreadStatus.IOWAIT)
-      return;
+    /* if (status.preemptCode == CothreadStatus.IOWAIT)
+      return; */
     return browserTime();
   }
 }
+
+OEV.setup = setup;
+
+/* Since this is the main JavaScript file, all other dependent
+   JavaScripts will be included before this file.  Close the OEV
+   namespace now that there are no more JavaScripts to be
+   included.  */
+import "../src/oevnsend";

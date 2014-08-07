@@ -356,3 +356,51 @@ base class of classes and the types of objects are, so I'll have to
 retrofit that information into the documentation comments manually.
 
 I could just call it "View" instead of "Projection".
+
+----------------------------------------
+
+Things to go over at this current time:
+
+* How's the video conversion status?
+
+* About the daily data.  Is is about 7 times as large as the weekly
+  data?  I don't have a copy of the daily data at the moment.
+
+* The problem with only downloading the data at a specific point in
+  time is caching.  XMLHttpRequests were not designed to efficiently
+  work with large amounts of data, so there are a variety of problems
+  when trying to use it for caching.  It might be the case that the
+  browser doesn't do as good of a job at caching as it should do.
+  Anyways, complicated caching logic needs to be implemented in
+  JavaScript such that it will take quite a while to get a setup where
+  only the needed data is downloaded.
+
+* Also another problem with downloading the data at a specific point
+  in time.  If only data at one point in time is downloaded, then
+  there will be problems with tracks that are out of scope: tracks
+  that are so long that they escape the cache size.  (This problem is
+  particularly due to the storage of data keyed on tracks and using
+  linked lists to assemble the tracks.)  For such a case, should only
+  a red dot be drawn?
+
+* I'm at the point where moving up to the daily data is doable, but
+  doing so would introduce the same memory and download problems that
+  was the case for the weekly data for the alpha viewer.  If this is
+  okay, we can go with it.
+
+* About the format of license notices... finishing steps.
+
+* Public Github?
+
+* About tracks rendering... the changes I will incorporate will
+  provide some speedups, but not too many speedups.  I would have to
+  move on to benchmarking multiple different mechanisms in browser,
+  then choosing the fastest.  I won't have enough time for that,
+  though.  Vector graphics is always more complicated and slower than
+  raster graphics.  Raster graphics can convey a large amount of
+  detail with very little computational overhead.  Vector graphics
+  algorithms must be many times more complicated.  Land mass
+  background is the way it is, in case you may not have been aware of
+  it.
+
+* (On the other hand, raster data is much larger in size.)

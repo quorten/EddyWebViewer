@@ -1,10 +1,17 @@
-/* Mathematical definitions of the Ocean Eddies Web Viewer.  */
+/* Mathematical definitions of the Ocean Eddies Web Viewer.  Many of
+   these mathematical definitions turned out to be extra and don't
+   have much use in the implementation of the Ocean Eddies Web
+   Viewer.  */
+
+import "oevns";
 
 /** Degrees to radians conversion constant.  */
 var DEG2RAD = Math.PI / 180;
+OEV.DEG2RAD = DEG2RAD;
 
 /** Radians to degrees conversion constant.  */
 var RAD2DEG = 180 / Math.PI;
+OEV.RAD2DEG = RAD2DEG;
 
 /**
  * Polar coordinate point.
@@ -18,6 +25,8 @@ var PolarPoint = function(lat, lon) {
     this.lon = lon;
   }
 };
+
+OEV.PolarPoint = PolarPoint;
 
 /**
  * Normalize the polar coordinate measured in degrees so that the
@@ -76,6 +85,8 @@ var Point2D = function(x, y) {
   }
 };
 
+OEV.Point2D = Point2D;
+
 /**
  * Return a new point vector of unit length.
  * @param srcPoint
@@ -110,6 +121,8 @@ var Point3D = function(x, y, z) {
     this.z = z;
   }
 };
+
+OEV.Point3D = Point3D;
 
 /**
  * Return a new copy of an existing point.

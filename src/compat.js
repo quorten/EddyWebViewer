@@ -19,7 +19,7 @@
  * function to call.
  */
 var makeEventWrapper = function(callObj, handler) {
-  return function() { return callObj[handler](); };
+  return function(event) { return callObj[handler](this, event); };
 };
 
 /********************************************************************/
@@ -130,11 +130,17 @@ var MousePos_get = function(out, event) {
  * Create a mouse wheel event listener in a cross-browser compatible
  * way.
  *
- * Example: addWheelListener(elem, function(e) {
- *   console.log(e.deltaY); e.preventDefault(); } );
+ * Example: `addWheelListener(elem, function(e) {
+ *   console.log(e.deltaY); e.preventDefault(); } );`
  *
- * @param {Window} window
- * @param {Document} document
+ * This function originated from sample code on Mozilla Developer
+ * Network.
+ *
+ * @function
+ * @param {Element} elem - The element to add the event listener to.
+ * @param {function} callback - The event handler function to use.
+ * @param {Boolean} useCapture - Whether or not to use event
+ * capturing.
  */
 var addWheelListener = (function(window, document) {
   var prefix = "", _addEventListener, onwheel, support;
@@ -189,9 +195,8 @@ var addWheelListener = (function(window, document) {
 	  // Webkit also supports wheelDeltaX.
 	  originalEvent.wheelDeltaX && (event.deltaX = - 1/40 *
 					originalEvent.wheelDeltaX);
-	} else {
+	} else
 	  event.deltaY = originalEvent.detail;
-	}
 
 	// It's time to fire the callback.
 	return callback(event);
@@ -204,8 +209,8 @@ var addWheelListener = (function(window, document) {
 
 /**
  * Capture the mouse pointer in a way that is cross-browser
- * compatible.  You must call crossReleaseCapture() when you no longer
- * need a mouse capture.
+ * compatible.  The function crossReleaseCapture() must be called when
+ * mouse capture is no longer needed.
  *
  * @param {Element} elmt - The element to set capture on
  * @param {function} onMouseMove - The event handler for `onmousemove`

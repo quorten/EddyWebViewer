@@ -92,6 +92,29 @@ var Cothread = function(initCtx, contExec) {
 OEV.Cothread = Cothread;
 
 /**
+ * Abstract function for timing cothread preemption intervals.
+ * Feature detection should assign a reasonable implementation to this
+ * variable, such as `Date.now` or `performance.now`.
+ * @type Number
+ * @returns Time in milliseconds from an arbitrary reference point.
+ * The values are only used for elapsed time calculations.
+ */
+Cothread.now = function() {
+  throw_new_Error("No cothread timing function defined.");
+};
+
+/* Default feature detects that are reasonable for browsers.  If these
+   feature detects aren't good enough, the user of this class can
+   perform additional feature detects and assign Cothread.now to an
+   even better alternative.  */
+if (performance && performance.now)
+  Cothread.now = performance.now;
+else if (Date && Date.now)
+  Cothread.now = Date.now;
+else if (Date)
+  Cothread.now = function() { return new Date().getTime(); };
+
+/**
  * Set the exit status of a cothread based off of a condition.
  *
  * @param {boolean} condition - If `false`, then the exit status is
@@ -104,8 +127,7 @@ Cothread.prototype.setExitStatus = function(condition) {
   "use strict";
   if (condition)
     this.status.returnType = CothreadStatus.PREEMPTED;
-  else
-    this.status.returnType = CothreadStatus.FINISHED;
+  else this.status.returnType = CothreadStatus.FINISHED;
 };
 
 /**
@@ -195,6 +217,9 @@ var CothreadStatus = function(returnType, preemptCode, percent) {
    * * {@linkcode CothreadStatus.IOWAIT} (1) -- Cothread is waiting
    *   for I/O.
    *
+   * * {@linkcode CothreadStatus.PROC_DATA} (2) -- Cothread was
+   *   preempted while processing data.
+   *
    * @type integer
    */
   this.preemptCode = preemptCode;
@@ -216,6 +241,10 @@ CothreadStatus.PREEMPTED = 1;
 /** Enumerant indicating that a cothread is waiting for I/O.  */
 CothreadStatus.IOWAIT = 1;
 
+/** Enumerant indicating that a cothread was preempted while
+ * processing data.  */
+CothreadStatus.PROC_DATA = 2;
+
 /**
  * Maximum value that {@linkcode CothreadStatus#percent} may be.
  * Corresponds to 100%.
@@ -225,8 +254,8 @@ CothreadStatus.MAX_PERCENT = 32767;
 /********************************************************************/
 
 /**
- * Series cothread controller.  Schedules cothreaded jobs to be
- * executed in series.  If any of the jobs set their `retVal` to
+ * Cothreaded series cothread controller.  Schedules cothreaded jobs
+ * to be executed in series.  If any of the jobs set their `retVal` to
  * `SeriesCTCtl.QUIT` (to signify a terminal error condition), then
  * the cothread controller will finish without executing the rest of
  * the sequence.
@@ -268,13 +297,13 @@ SeriesCTCtl.prototype.contExec = function() {
   var curJob = this.curJob;
   var status;
 
-  var lDate_now = Date.now;
-  var startTime = lDate_now();
+  var ctnow = Cothread.now;
+  var startTime = ctnow();
   var timeout = this.timeout;
 
   while (true) {
     status = jobList[curJob].continueCT();
-    if (lDate_now() - startTime >= timeout)
+    if (ctnow() - startTime >= timeout)
       break;
 
     if (status.returnType == CothreadStatus.FINISHED) {
@@ -315,12 +344,13 @@ SeriesCTCtl.prototype.contExec = function() {
 };
 
 /**
- * Parallel cothread controller.  Each job is given an equal division
- * of the controller's timeout interval.  When all jobs finish, the
- * controller quits.  If some jobs finish before others, then the
- * controller will consistently quit before it's allocated timeout, in
- * order to (1) always give each job an equal sized timeslice and (2)
- * only run each job once during each allocated time period.
+ * Cothreaded parallel cothread controller.  Each job is given an
+ * equal division of the controller's timeout interval.  When all jobs
+ * finish, the controller quits.  If some jobs finish before others,
+ * then the controller will consistently quit before it's allocated
+ * timeout, in order to (1) always give each job an equal sized
+ * timeslice and (2) only run each job once during each allocated time
+ * period.
  *
  * If the preemptCode of a job's return status is
  * `CothreadStatus.IOWAIT`, then the cothread controller marks that

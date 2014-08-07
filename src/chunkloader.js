@@ -115,12 +115,37 @@ ChunkLoader.prototype.initCtx = function() {
 
 /* Example data processing function.  You should override this with a
    more useful function in a derived class.  */
-ChunkLoader.prototype.procData = function(httpRequest, responseText) {
+XHRLoader.prototype.procData = function(httpRequest, responseText) {
   var doneProcData = false;
   var procError = false;
 
-  // Program timed processing cothread loop here.
-  doneProcData = true;
+  if (httpRequest.readyState == 3) { // LOADING
+    /* Process partial data here (possibly with timed cothread
+       loop).  */
+  }
+  else if (httpRequest.readyState == 4) { // DONE
+    /* Determine if the HTTP status code is an acceptable success
+       condition.  */
+    if ((httpRequest.status == 200 || httpRequest.status == 206) &&
+	responseText == null)
+      this.retVal = XHRLoader.LOAD_FAILED;
+    if (httpRequest.status != 200 && httpRequest.status != 206 ||
+	responseText == null) {
+      // Error
+      httpRequest.onreadystatechange = null;
+      this.httpRequest = null;
+      this.status.returnType = CothreadStatus.FINISHED;
+      this.status.preemptCode = 0;
+      return this.status;
+    }
+
+    /* Perform final cothreaded (or possibly synchronous) data
+       processing here.  */
+    this.jsonObject = safeJSONParse(responseText);
+    doneProcData = true;
+    if (!this.jsonObject)
+      procError = true;
+  }
 
   if (procError) {
     httpRequest.abort();

@@ -36,15 +36,28 @@ TracksLayer.acLoad.procData = function(httpRequest, responseText) {
   var doneProcData = false;
   var procError = false;
 
-  // Program timed cothread loop here.
-  if (httpRequest.readyState == 4) {
-    try {
-      TracksLayer.acTracksData = JSON.parse(responseText);
-      doneProcData = true;
+  if (httpRequest.readyState == 4) { // DONE
+    /* Determine if the HTTP status code is an acceptable success
+       condition.  */
+    if ((httpRequest.status == 200 || httpRequest.status == 206) &&
+	responseText == null)
+      this.retVal = XHRLoader.LOAD_FAILED;
+    if (httpRequest.status != 200 && httpRequest.status != 206 ||
+	responseText == null) {
+      // Error
+      httpRequest.onreadystatechange = null;
+      this.httpRequest = null;
+      this.status.returnType = CothreadStatus.FINISHED;
+      this.status.preemptCode = 0;
+      return this.status;
     }
-    catch (e) {
+
+    /* Perform final cothreaded (or possibly synchronous) data
+       processing here.  */
+    this.jsonObject = safeJSONParse(responseText);
+    doneProcData = true;
+    if (!this.jsonObject)
       procError = true;
-    }
   }
 
   if (procError) {
@@ -76,15 +89,28 @@ TracksLayer.cLoad.procData = function(httpRequest, responseText) {
   var doneProcData = false;
   var procError = false;
 
-  // Program timed cothread loop here.
-  if (httpRequest.readyState == 4) {
-    try {
-      TracksLayer.cTracksData = JSON.parse(responseText);
-      doneProcData = true;
+  if (httpRequest.readyState == 4) { // DONE
+    /* Determine if the HTTP status code is an acceptable success
+       condition.  */
+    if ((httpRequest.status == 200 || httpRequest.status == 206) &&
+	responseText == null)
+      this.retVal = XHRLoader.LOAD_FAILED;
+    if (httpRequest.status != 200 && httpRequest.status != 206 ||
+	responseText == null) {
+      // Error
+      httpRequest.onreadystatechange = null;
+      this.httpRequest = null;
+      this.status.returnType = CothreadStatus.FINISHED;
+      this.status.preemptCode = 0;
+      return this.status;
     }
-    catch (e) {
+
+    /* Perform final cothreaded (or possibly synchronous) data
+       processing here.  */
+    this.jsonObject = safeJSONParse(responseText);
+    doneProcData = true;
+    if (!this.jsonObject)
       procError = true;
-    }
   }
 
   if (procError) {
@@ -198,12 +224,24 @@ TracksLayer.render = (function() {
     // var projector = TracksLayer.projector;
     var projector_project = TracksLayer.projector.project;
 
-    var lDate_now = Date.now;
+    var ctnow = Cothread.now;
 
-    var startTime = lDate_now();
+    var startTime = ctnow();
     var timeout = this.timeout;
 
-    for (; i < numTracks; ) {
+    while (i < numTracks) {
+      /* This line is actually supposed to be a goto at the end of the
+	     loop body...  Rather than make it a goto at the end of
+	     the loop body, move it to the start of the loop body,
+	     even though it doesn't conceptually belong there.  */
+      /* This still doesn't quite work... gets skipped on
+	 preemption.  */
+      if (renderPart == 2) { renderPart = 0; i++; }
+
+      /* Rather than rendering all the anticyclonic tracks in one loop
+	 and then render all the cyclonic tracks in a second loop,
+	 alternate between rendering an anticyclonic track and a
+	 cyclonic track on even and odd loop iterations.  */
       var tracksData;
       if (renderPart == 0 && dispAcyc) {
 	if (i >= acTracksData_length) {
@@ -214,14 +252,12 @@ TracksLayer.render = (function() {
       } else if (renderPart == 1 && dispCyc) {
 	if (i >= cTracksData_length) {
 	  renderPart++;
-	  if (renderPart == 2) { renderPart = 0; i++; }
 	  continue;
 	}
         tracksData = cTracksData;
       } else {
 	// Nothing to render.
 	renderPart++;
-	if (renderPart == 2) { renderPart = 0; i++; }
 	continue;
       }
 
@@ -229,7 +265,6 @@ TracksLayer.render = (function() {
       if (tracksData[i][0][2] - 1 > curDate ||
 	  tracksData[i][tracksData[i].length-1][2] - 1 < curDate) {
 	renderPart++;
-	if (renderPart == 2) { renderPart = 0; i++; }
 	continue;
       }
 
@@ -242,12 +277,10 @@ TracksLayer.render = (function() {
 	  Dates.realTimes[firstDateIdx];
 	if (trackLen < TracksLayer.minLength) {
 	  renderPart++;
-	  if (renderPart == 2) { renderPart = 0; i++; }
 	  continue;
 	}
 	if (TracksLayer.maxLength != -1 && trackLen > TracksLayer.maxLength) {
 	  renderPart++;
-	  if (renderPart == 2) { renderPart = 0; i++; }
 	  continue;
 	}
       }
@@ -290,9 +323,11 @@ TracksLayer.render = (function() {
       edc.stroke();
 
       renderPart++;
-      if (renderPart == 2) { renderPart = 0; i++; }
 
-      if (i % 1024 == 0 && lDate_now() - startTime >= timeout)
+      // Bad... we skip this check when we `continue'.
+      // We can rephrase this as short-circuit logic in the loop head.
+      if (renderPart == 2 && i % 1024 == 0 &&
+	  ctnow() - startTime >= timeout)
 	break;
     }
 

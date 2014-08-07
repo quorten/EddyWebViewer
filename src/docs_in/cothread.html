@@ -48,15 +48,15 @@ var computeSumOfSquares = (function() {
     var lpMult = this.lpMult;
     var sum = this.sum;
     var i = this.i;
-    var lDate_now = Date.now;
+    var ctnow = Cothread.now;
 
-    var startTime = lDate_now();
+    var startTime = ctnow();
     var timeout = this.timeout;
-    /* NOTE: In real code, you should avoid calling Date.now() in tight
-       and fast loop iterations.  Otherwise, the function call overhead
-       will subtract a significant amount of computational time from
-       the loop body.  */
-    while (lDate_now() - startTime &lt; timeout &amp;&amp; i &lt;= n) {
+    /* NOTE: In real code, you should avoid calling Cothread.now() in
+       tight and fast loop iterations.  Otherwise, the function call
+       overhead will subtract a significant amount of computational
+       time from the loop body.  */
+    while (ctnow() - startTime &lt; timeout &amp;&amp; i &lt;= n) {
       sum += i * i;
       i++;
     }
@@ -161,9 +161,9 @@ inner loop that iterates across a minimum number of chunks.</p>
 <p>Example:</p>
 
 <pre>
-    var startTime = lDate_now();
+    var startTime = ctnow();
     var timeout = this.timeout;
-    while (lDate_now() - startTime &lt; timeout &amp;&amp; i &lt;= n) {
+    while (ctnow() - startTime &lt; timeout &amp;&amp; i &lt;= n) {
       for (var j = 0; i &lt;= n &amp;&amp; j &lt; 256; j++) {
         sum += i * i;
         i++;
@@ -183,7 +183,7 @@ invocation and the last invocation.</p>
 <p>Example:</p>
 
 <pre>
-    var startTime = lDate_now();
+    var startTime = ctnow();
     var timeout = this.timeout;
     var lastElapTime = this.lastElapTime;
     var lastNumIters = this.lastNumIters;
@@ -193,7 +193,7 @@ invocation and the last invocation.</p>
       sum += i * i;
       i++;
     }
-    var endTime = lDate_now();
+    var endTime = ctnow();
     this.lastElapTime = endTime - startTime;
     this.lastNumIters = numIters;</pre>
 
@@ -212,9 +212,9 @@ advantageous with very tight inner loop bodies.</p>
 <p>Example:</p>
 
 <pre>
-    var startTime = lDate_now();
+    var startTime = ctnow();
     var timeout = this.timeout;
-    var subStartTime = lDate_now();
+    var subStartTime = ctnow();
     var subTimeout = timeout / 64;
     var lastElapTime = this.lastElapTime;
     var lastNumIters = this.lastNumIters;
@@ -229,7 +229,7 @@ advantageous with very tight inner loop bodies.</p>
           i++;
         }
       }
-      endTime = lDate_now();
+      endTime = ctnow();
       lastElapTime = endTime - subStartTime;
       lastNumIters = numIters;
       subStartTime = endTime;

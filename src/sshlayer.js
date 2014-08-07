@@ -227,9 +227,9 @@ SSHLayer.render = (function() {
     // var projector = SSHLayer.projector;
     var projector_unproject = SSHLayer.projector.unproject;
 
-    var lDate_now = Date.now;
+    var ctnow = Cothread.now;
 
-    var startTime = lDate_now();
+    var startTime = ctnow();
     var timeout = this.timeout;
 
     while (y < frontBuf_height) {
@@ -248,8 +248,7 @@ SSHLayer.render = (function() {
 	  destImg.data[destIdx++] = 0;
 	  destImg.data[destIdx++] = 0;
 	  destImg.data[destIdx++] = 0;
-	  x++;
-	  continue;
+	  x++; continue;
 	}
 	var latIdx = 0|((polCoord.lat + 90) / 180 * src_height);
 	var lonIdx = 0|((polCoord.lon + 180) / 360 * src_width);
@@ -261,8 +260,7 @@ SSHLayer.render = (function() {
 	    destImg.data[destIdx++] = 0;
 	    destImg.data[destIdx++] = 0;
 	    destImg.data[destIdx++] = 0;
-	    x++;
-	    continue;
+	    x++; continue;
 	  }
 
 	  if (SSHLayer.shadeStyle == 1) { // MATLAB
@@ -300,14 +298,12 @@ SSHLayer.render = (function() {
 	  destImg.data[destIdx++] = value;
 	  destImg.data[destIdx++] = value; */
 	x++;
-	/* if (lDate_now() - startTime >= timeout)
+	/* if (ctnow() - startTime >= timeout)
 	  break; */
       }
-      if (x >= frontBuf_width) {
-	x = 0;
-	y++;
-      }
-      if (y % 32 == 0 && lDate_now() - startTime >= timeout)
+      if (x >= frontBuf_width)
+	{ x = 0; y++; }
+      if (y % 32 == 0 && ctnow() - startTime >= timeout)
 	break;
     }
 
@@ -317,8 +313,7 @@ SSHLayer.render = (function() {
     this.status.percent = y * CothreadStatus.MAX_PERCENT / frontBuf_height;
 
     this.destIdx = destIdx;
-    this.x = x;
-    this.y = y;
+    this.x = x; this.y = y;
     return this.status;
   }
 

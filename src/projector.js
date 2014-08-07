@@ -17,7 +17,7 @@ OEV.Projector = Projector;
  * @abstract
  */
 Projector.prototype.project = function() {
-  throw new Error("Must be implemented by a subclass!");
+  throw_new_Error("Must be implemented by a subclass!");
 };
 
 /**
@@ -26,7 +26,7 @@ Projector.prototype.project = function() {
  * @abstract
  */
 Projector.prototype.unproject = function() {
-  throw new Error("Must be implemented by a subclass!");
+  throw_new_Error("Must be implemented by a subclass!");
 };
 
 /**
@@ -59,7 +59,7 @@ MapProjector.prototype.constructor = MapProjector;
  * +/- 1.
  */
 MapProjector.prototype.project = function(polToMap) {
-  throw new Error("Must be implemented by a subclass!");
+  throw_new_Error("Must be implemented by a subclass!");
 };
 
 /**
@@ -72,7 +72,7 @@ MapProjector.prototype.project = function(polToMap) {
  * transformed into the output [ lon, lat ].
  */
 MapProjector.prototype.unproject = function(mapToPol) {
-  throw new Error("Must be implemented by a subclass!");
+  throw_new_Error("Must be implemented by a subclass!");
 };
 
 /**
@@ -156,8 +156,7 @@ RobinsonMapProjector.project = function(polToMap) {
   polToMap[0] = polToMap[0] * plen / 180;
   if (polToMap[1] < 0)
     polToMap[1] = -pdfe * 0.5072;
-  else
-    polToMap[1] = pdfe * 0.5072;
+  else polToMap[1] = pdfe * 0.5072;
 };
 
 RobinsonMapProjector.unproject = function(mapToPol) {
@@ -177,12 +176,10 @@ RobinsonMapProjector.unproject = function(mapToPol) {
   var plen = table[tbIdx1][0] * (1 - interpol) + table[tbIdx2][0] * interpol;
   if (mapToPol[1] < 0)
     mapToPol[1] = -5 * (tbIdx1 + interpol);
-  else
-    mapToPol[1] = 5 * (tbIdx1 + interpol);
+  else mapToPol[1] = 5 * (tbIdx1 + interpol);
   mapToPol[0] = mapToPol[0] / plen * 180;
-  if (mapToPol[0] < -180 || mapToPol[0] > 180) {
-    mapToPol[0] = NaN; mapToPol[1] = NaN;
-  }
+  if (mapToPol[0] < -180 || mapToPol[0] > 180)
+    { mapToPol[0] = NaN; mapToPol[1] = NaN; }
 };
 
 /**
@@ -201,7 +198,7 @@ TDMapProjector.prototype = new MapProjector();
 TDMapProjector.prototype.constructor = TDMapProjector;
 
 TDMapProjector.prototype.project = function(polToMap) {
-  throw new Error("Not implemented!");
+  throw_new_Error("Not implemented!");
 };
 
 // PARAMETERS: var tilt, lon_rot;

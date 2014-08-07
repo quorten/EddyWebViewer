@@ -65,6 +65,12 @@
 
     /* Configuration option to change GUI scale factor?  */
 
+    #errorBar { position: absolute; left: 0px; top: 0px;
+                width: 100%; height: auto; overflow: auto;
+                text-align: center; line-height: 200%;
+                font-size: 24pt; font-weight: bold;
+                background-color: #c00000; display: none; }
+
     #popupInfo { position: absolute; left: 8px; top: 8px;
                  max-width: 10cm;
                  background-color: #202020;
@@ -76,13 +82,22 @@
 filter:progid:DXImageTransform.Microsoft.gradient(startColorstr=#20000000, endColorstr=#20000000); }
     .ie8 #popupInfo { background: transparent;
 -ms-filter: "progid:DXImageTransform.Microsoft.gradient(startColorstr=#20000000, endColorstr=#20000000)"; }
-    #popupClose { position: absolute; right: 8px; top: 8px;
+    /* Although it would be nice to use the multiplication sign in
+       place of an SVG X image, the problem withe the multiplication
+       sign is that the bounding box of the character is significantly
+       larger than the glyph itself.
+    .popupClose { position: absolute; right: 0px; top: 0px;
+                  width: 32px; height: 32px;
+                  font-size: 24pt; text-align: center;
+                  color: #c0c0c0; }
+    .popupClose:active { color: white; } */
+    .popupClose { position: absolute; right: 8px; top: 8px;
                   width: 16px; height: 16px;
                   background-image: url("close.png");
                   /* background-color: red; */ /* Messes up intended effect */ }
-    #popupClose:active { background-image: url("close_light.png"); }
+    .popupClose:active { background-image: url("close_light.png"); }
     /* #popupTitle {} */
-    #popupInfo div { text-align: right; line-height: 138%; }
+    #popupInfo #popupDetail { text-align: right; line-height: 138%; }
 
     #configWrapper { position: absolute; right: 0px; bottom: 0px;
                      width: 7.5cm; height: auto; max-height: 100%;
@@ -217,6 +232,12 @@ ignore it, since it will be unusable to you.</p>
 // -------------------------------------------------------------------
 // 0. Verify that the JavaScript runtime has reasonable syntax parsing.
 
+/* NOTE: If you are faithful that no JavaScript runtime will not fail
+   the basic syntax checks, then you can delete all "0.0" checks, to
+   reduce the download size.  */
+
+// 0.0. Basic syntax checks.
+
 function FTfnStmt(p1, p2, p3) {
   var v1 = 5;
   v1++; v1 - 5; typeof(v1)
@@ -289,7 +310,10 @@ FTtestString = ""; FTtestString += "hello";
 // Check for object creation syntax.
 FTnewObj = new FTvarFunc(4);
 
-// 0.1. Check for more advanced syntax, if mandatory.
+// 0.1. Check for strict equality operators, if mandatory.
+// 'str1' === "str1"; 5 !== '5';
+
+// 0.2. Check for exception handling, if mandatory.
 /*
 'str1' === "str1"; 5 !== '5';
 try {
@@ -298,7 +322,7 @@ catch (e) {
 }
 */
 
-// 0.2. Check for advanced `delete' usage, if mandatory.
+// 0.3. Check for advanced `delete' usage, if mandatory.
 /*
 // Old IE compatible `delete' (but fails in strict mode).
 // delete FTfnStmt; // Cannot delete functions declarations
@@ -318,9 +342,32 @@ delete this.FTneverExisted;
 // Good, we've gotten past the absolute minimum syntax checks.
 FTsaneJSRuntime = false;
 
+/* 0.4 Check if window.onerror() works, and define a syntax-safe
+   exception throwing wrapper at the same time.  */
+/* Note: Simply having no wrapper will also throw an error, and it
+   will come with the advantage of reporting the correct line number.  */
+/* throw_new_Error = function(errmsg) {
+  window.onerror(errmsg, "(unknown)", "(unknown)");
+  /\* Intentionally throw an error to halt script execution, but do not
+     report an error message for this error.  *\/
+  window.noErrRep = true; throw_exit_condition;
+}; */
+FTonerror = false;
+window.onerror = function(errmsg, url, line) {
+  if (errmsg == "Testing exception throwing logic.")
+    throw_new_Error = function(errmsg) { throw new Error(errmsg); }
+  FTonerror = true; return true;
+};
+throw new Error("Testing exception throwing logic.");
+//--><!]]>
+</script>
+
+<script type="text/javascript">
+<!--//--><![CDATA[//><!--
+window.onerror = null;
+
 // -------------------------------------------------------------------
 // 1. Perform mandatory native object feature tests, if any.
-
 FTnativeObjects = function() {
   // Attempt to add array `push()' and `pop()' functions if they are missing.
   if (typeof(Array.prototype.push) != 'function')
@@ -375,6 +422,9 @@ FTnativeObjects = function() {
 // -------------------------------------------------------------------
 // 2. Perform mandatory host object feature tests, if any.
 
+/* Note: These feature detection functions came from
+   <http://michaux.ca/articles/feature-detection-state-of-the-art-browser-scripting> */
+
 var isHostMethod = function(object, property) {
   var t = typeof(object[property]);
   return t=='function' ||
@@ -419,7 +469,8 @@ FThostObjects = function() {
 
 // -------------------------------------------------------------------
 
-if (FTnativeObjects() && FThostObjects()) {
+if (typeof(FTsaneJSRuntime) != 'undefined' &&
+    FTonerror && FTnativeObjects() && FThostObjects()) {
   /* Go ahead and give the rest of the startup routines the okay to go
      signal.  Normal feature tests will be performed in the main
      script body.  */
@@ -459,7 +510,7 @@ if (FTnativeObjects() && FThostObjects()) {
 </div>
 
 <div id="popupInfo">
-<div id="popupClose" class="noSelect"></div>
+<div id="popupClose" class="popupClose noSelect"><!-- &#xd7; --></div>
   <strong id="popupTitle">Eddy #43859</strong><br />
   <br />
   <div id="popupDetail">
@@ -530,7 +581,7 @@ if (FTnativeObjects() && FThostObjects()) {
 </form></div>
 
 <!-- NOTE: It is important to have the bottom bar placed as the last
-element in the document.  -->
+element in the document (but not after errorBar).  -->
 <div id="bbwrap"><form id="bottomBar" action="">
 
    <ul class="iconBtns noSelect">
@@ -601,6 +652,29 @@ element in the document.  -->
 
 </form></div>
 
+<div id="errorBar"></div>
+
+<script type="text/javascript">
+<!--//--><![CDATA[//><!--
+  // Provide a catch-all error handler in the UI.
+  window.onerror = function(errmsg, url, line) {
+    if (window.noErrRep)
+      { window.noErrRep = false; return true; }
+    var errorBar = document.getElementById('errorBar');
+    errorBar.appendChild(
+      document.createTextNode('Internal error: ' + errmsg));
+    errorBar.appendChild(document.createElement('br'));
+    errorBar.appendChild(
+      document.createTextNode('Line ' + line + ', URL: ' + url));
+    errorBar.appendChild(document.createElement('br'));
+    errorBar.style.cssText = 'display: block';
+    return true;
+  };
+
+  // Testing_error_handler_and_diagnostic_display;
+//--><!]]>
+</script>
+
 </div> <!-- END scriptWrapper -->
 
 <script type="text/javascript">
@@ -632,13 +706,13 @@ function onhide(event) {
 function onplay(event) {
   this.id = 'btn-pause';
   this.title = 'Pause';
-  this.onclick = onpause;
+  this.ondblclick = this.onclick = onpause;
 }
 
 function onpause(event) {
   this.id = 'btn-play';
   this.title = 'Play';
-  this.onclick = onplay;
+  this.ondblclick = this.onclick = onplay;
 }
 
 function applyCurDate(updateRenderLayers) {
@@ -663,7 +737,8 @@ function initCurDate() {
 }
 
 function initGUIHooks() {
-  document.getElementById('btn-minimize').onclick = function(event) {
+  var btn_minimize = document.getElementById('btn-minimize');
+  btn_minimize.ondblclick = btn_minimize.onclick = function(event) {
     var bbwrap = document.getElementById('bbwrap');
     if (this.style.cssText == '') {
       this.style.cssText = 'background-image: url("minimize_light.png")';
@@ -676,38 +751,45 @@ function initGUIHooks() {
     }
   };
 
-  document.getElementById('btn-begin').onclick = function(event) {
+  var btn_begin = document.getElementById('btn-begin');
+  btn_begin.ondblclick = btn_begin.onclick = function(event) {
     if (Dates.curDate == 0)
       return;
     Dates.curDate = 0;
     return applyCurDate(event != null);
   };
 
-  document.getElementById('btn-rewind').onclick = function(event) {
+  var btn_rewind = document.getElementById('btn-rewind');
+  btn_rewind.ondblclick = btn_rewind.onclick = function(event) {
     alert('Rewind');
   };
 
-  document.getElementById('btn-bstep').onclick = function(event) {
+  var btn_bstep = document.getElementById('btn-bstep');
+  btn_bstep.ondblclick = btn_bstep.onclick = function(event) {
     if (Dates.curDate <= 0)
       return;
     Dates.curDate--;
     return applyCurDate(event != null);
   };
 
-  document.getElementById('btn-play').onclick = onplay;
+  var btn_play = document.getElementById('btn-play');
+  btn_play.ondblclick = btn_play.onclick = onplay;
 
-  document.getElementById('btn-fstep').onclick = function(event) {
+  var btn_fstep = document.getElementById('btn-fstep');
+  btn_fstep.ondblclick = btn_fstep.onclick = function(event) {
     if (Dates.curDate >= Dates.dateList.length - 1)
       return;
     Dates.curDate++;
     return applyCurDate(event != null);
   };
 
-  document.getElementById('btn-ffwd').onclick = function(event) {
+  var btn_ffwd = document.getElementById('btn-ffwd');
+  btn_ffwd.ondblclick = btn_ffwd.onclick = function(event) {
     alert('Fast forward');
   };
 
-  document.getElementById('btn-end').onclick = function(event) {
+  var btn_end = document.getElementById('btn-end');
+  btn_end.ondblclick = btn_end.onclick = function(event) {
     var endIdx = Dates.dateList.length - 1;
     if (Dates.curDate == endIdx)
       return;
@@ -715,7 +797,8 @@ function initGUIHooks() {
     return applyCurDate(event != null);
   };
 
-  document.getElementById('btn-config').onclick = function(event) {
+  var btn_config = document.getElementById('btn-config');
+  btn_config.ondblclick = btn_config.onclick = function(event) {
     var configPanel = document.getElementById('configWrapper');
     if (configPanel.style.cssText == '') {
       configPanel.style.cssText = 'visibility: hidden';
@@ -726,7 +809,8 @@ function initGUIHooks() {
     }
   };
 
-  document.getElementById('popupClose').onclick = function(event) {
+  var popupClose = document.getElementById('popupClose');
+  popupClose.ondblclick = popupClose.onclick = function(event) {
     var popupInfo = document.getElementById('popupInfo');
     popupInfo.style.cssText = 'visibility: hidden';
   };

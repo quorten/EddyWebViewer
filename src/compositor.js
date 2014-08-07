@@ -185,9 +185,9 @@ Compositor.projEarthTex.contExec = function() {
   else
     projector_unproject = Compositor.projector.unproject;
 
-  var lDate_now = Date.now;
+  var ctnow = Cothread.now;
 
-  var startTime = lDate_now();
+  var startTime = ctnow();
   var timeout = this.timeout;
 
   while (y < frontBuf_height) {
@@ -220,7 +220,7 @@ Compositor.projEarthTex.contExec = function() {
       x = 0;
       y++;
     }
-    if (y % 32 == 0 && lDate_now() - startTime >= timeout)
+    if (y % 32 == 0 && ctnow() - startTime >= timeout)
       break;
   }
 
@@ -275,9 +275,9 @@ Compositor.finishStartup = function() {
     loadingScreen.style.cssText = "display: none";
   this.canvas.style.cssText = "";
   this.canvas.onmousedown = setMouseDown;
-  if (!this.canvas.setCapture) {
+  if (!this.canvas.setCapture)
     window.onmousemove = panGlobe;
-  } else {
+  else {
     this.canvas.onmousemove = panGlobe;
     this.canvas.onmouseup = setMouseUp;
   }
@@ -339,8 +339,7 @@ Compositor.finishRenderJobs = function(fast, noContinue) {
   if (this.projector == Compositor.rayOrtho ||
       this.projector == Compositor.rayPersp)
     this.show3dComposite();
-  else
-    this.show2dComposite();
+  else this.show2dComposite();
 
   if (fast || noContinue)
     return;
@@ -356,7 +355,7 @@ Compositor.finishRenderJobs = function(fast, noContinue) {
     return setTimeout(makeEventWrapper(Compositor, "finishRenderJobs"), 15);
   else {
     this.renderInProg = false;
-    console.log("Done rendering.");
+    // console.log("Done rendering.");
   }
 };
 
@@ -690,9 +689,8 @@ function render_ortho_graticule() {
     ctx.beginPath();
     if (par_height != 0)
       ctx.arc(0, 0, par_width, 0, 2 * Math.PI, false);
-    else {
+    else
       ctx.moveTo(-par_width, 0); ctx.lineTo(par_width, 0);
-    }
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.stroke();
   }
@@ -752,9 +750,8 @@ function setMouseDown(event) {
   /* if (ptMSIE <= 6 && ptMSIE > 0)
     event = window.event; */
 
-  if (this.setCapture) {
+  if (this.setCapture)
     this.setCapture();
-  }
   else
     window.onmouseup = setMouseUp;
 

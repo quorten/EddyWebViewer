@@ -1,8 +1,8 @@
 CPP = cpp # C preprocessor
 cjs_dir = ../libs/cjs
 SOURCES = oevns.js oevnsend.js triglut.js oevmath.js cothread.js \
-	renderlayer.js projector.js trackslayer.js sshlayer.js csv.js \
-	compat.js ajaxloaders.js dates.js compositor.js
+	ajaxloaders.js projector.js renderlayer.js trackslayer.js \
+	sshlayer.js csv.js compat.js dates.js compositor.js
 #	chunkloader.js detect.js hpcarray.js
 
 # all: docs

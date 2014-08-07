@@ -40,7 +40,7 @@ RenderLayer.NEED_DATA = 1;
  * measured in pixels.
  */
 RenderLayer.prototype.setCacheLimits = function(dataCache, renderCache) {
-  throw new Error("Must be implemented by a subclass!");
+  throw_new_Error("Must be implemented by a subclass!");
 };
 
 /**
@@ -65,7 +65,7 @@ RenderLayer.prototype.setCacheLimits = function(dataCache, renderCache) {
  * @returns the cothread status of the data load operation.
  */
 RenderLayer.prototype.loadData = function() {
-  throw new Error("Must be implemented by a subclass!");
+  throw_new_Error("Must be implemented by a subclass!");
 };
 
 /**
@@ -97,7 +97,7 @@ RenderLayer.prototype.loadData = function() {
  */
 RenderLayer.prototype.setViewport =
   function(center, width, height, aspectXY, projector) {
-  throw new Error("Must be implemented by a subclass!");
+  throw_new_Error("Must be implemented by a subclass!");
 };
 
 RenderLayer.FRAME_AVAIL = 0;
@@ -118,7 +118,7 @@ RenderLayer.NO_DISP_FRAME = 1;
  *    for display.
  */
 RenderLayer.prototype.render = function() {
-  throw new Error("Must be implemented by a subclass!");
+  throw_new_Error("Must be implemented by a subclass!");
 };
 
 /**
@@ -192,10 +192,13 @@ RayTracer.prototype.resizeFrontBuf = function() {
  * @param {Number} value - If the source data is a `Number` array,
  * then this is the numeric value of the input.
  * @param {ImageData} data - The destination data.
- * @param {ImageData} destIdx - Index into `data` of the RGBA pixel to
+ * @param {integer} destIdx - Index into `data` of the RGBA pixel to
  * process.
- * @param osaFac - See example code
- * @param inv_osaFac - See example code
+ * @param {Number} osaFac - The factor to multiply the new color value
+ * by when summing the new and existing color values for oversampling.
+ * @param {Number} inv_osaFac - The factor to multiply the existing
+ * color value by when summing the new and existing color values for
+ * oversampling.
  */
 RayTracer.prototype.pixelPP = function(value, data, destIdx,
 				       osaFac, inv_osaFac) {
@@ -246,9 +249,9 @@ RayTracer.prototype.contExec = function() {
   var inv_osaFac = 1 - osaFac;
   var wrapOver = false;
 
-  var lDate_now = Date.now;
+  var ctnow = Cothread.now;
 
-  var startTime = lDate_now();
+  var startTime = ctnow();
   var timeout = this.timeout;
 
   while (osaPass <= maxOsaPasses) {
@@ -297,7 +300,7 @@ RayTracer.prototype.contExec = function() {
       }
 
       x++;
-      /* if (lDate_now() - startTime >= timeout)
+      /* if (ctnow() - startTime >= timeout)
 	 break; */
     }
     if (x >= destImg_width) {
@@ -312,7 +315,7 @@ RayTracer.prototype.contExec = function() {
       inv_osaFac = 1 - osaFac;
       wrapOver = true;
     }
-    if (y % 32 == 0 && lDate_now() - startTime >= timeout)
+    if (y % 32 == 0 && ctnow() - startTime >= timeout)
       break;
   }
 
@@ -331,4 +334,45 @@ RayTracer.prototype.contExec = function() {
   this.y = y;
   this.osaPass = osaPass;
   return this.status;
+};
+
+/*
+
+New RenderLayer protocol:
+
+Only one function: render
+
+Thus, no dual cothreading issues
+
+Data download and render are assumed to be performable in parallel.
+preemptCode tells whether the bottleneck is due to rendering or
+waiting for data.  This can be forwarded to the user to determine the
+stall.
+
+Synchronous interfaces?  Must be handled specially.  Use a special
+controller class that pipelines one in sequence after another and
+returns status upward by a different means.  Don't want to break the
+formally specified protocol with the underlying class by hijacking the
+status attribute.  Or maybe we could... decisions?
+
+It's okay.  Derived classes can expand on the behavior as they see
+fit.  We're hijacking the interface for sequential loaders.  Make it
+similar to ajaxloaders.
+
+fetchviewportchanges -- only viewport, projection and position are
+handled during normal rendering.
+
+ */
+
+var RenderLayer = function() {
+  this.frontBuf = document.createElement("canvas");
+};
+
+OEV.RenderLayer = RenderLayer;
+RenderLayer.READY = 0;
+RenderLayer.NEED_DATA = 1;
+
+RenderLayer.prototype = new Cothread(null, null);
+
+RenderLayer.prototype.setViewport = function(width, height) {
 };

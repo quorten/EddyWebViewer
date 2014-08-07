@@ -114,7 +114,7 @@ issues:</p>
 <ol>
   <li>SVG</li>
   <li>HTML Canvas</li>
-  <li>VML (Internet Explorer Only)</li>
+  <li>VML (Internet Explorer 5+ only)</li>
   <li>WebGL</li>
 </ol>
 
@@ -444,7 +444,10 @@ images:</p>
 <ul>
   <li><strong>Equirectangular projection:</strong> Simply maps
   latitude angles linearly along the Y-axis of the image and longitude
-  angles linearly along the X-axis of the image.</li>
+  angles linearly along the X-axis of the image, resulting in a 2:1
+  rectangular map.<br />
+  <a href="http://en.wikipedia.org/wiki/Equirectangular_projection">
+    http://en.wikipedia.org/wiki/Equirectangular_projection</a></li>
   <li><strong>Mercator projection:</strong> A cylindrical projection
   that stretches the map vertically at high and low latitudes in order
   to preserve projected angles (a conformal map).<br />
@@ -455,7 +458,30 @@ images:</p>
   (R = radius = 1)<br />
   <a href="http://en.wikipedia.org/wiki/Mercator_projection">
     http://en.wikipedia.org/wiki/Mercator_projection</a></li>
+  <li><strong>Robinson projection:</strong> A table-based projection
+  of the Earth that attempts to provide a generally pleasing map of
+  the entire surface.  Robinson projection can be differentiated from
+  Winkel Tripel projection by the shape of the edges of the map: the
+  left and right edges of the map in Robinson projection are circular,
+  whereas the edges in Winkel Tripel projection are parabolic.<br />
+  <a href="http://en.wikipedia.org/wiki/Robinson_projection">
+    http://en.wikipedia.org/wiki/Robinson_projection</a></li>
+  <li><strong>Mollweide projection:</strong> Basically, this is a
+  modified equirectangular projection that shortens each parallel to
+  be proportional to its true length of the globe, thus yielding an
+  equal area projection with the outline of a 2:1 ellipse.<br />
+  <a href="http://en.wikipedia.org/wiki/Mollweide_projection">
+    http://en.wikipedia.org/wiki/Mollweide_projection</a></li>
 </ul>
+
+<p>Although there are many more map projections of the Earth then the
+ones listed above, the listed map projections seem to provide best
+compromises with minimum complexity.  For example, although Winkel
+Tripel projection has less overall distortion than Robinson
+projection, the inverse projection cannot be computed from an
+algebraically closed form solution.  Simple projection calculations
+are important to be able to take advantage of GPGPU acceleration on
+less powerful GPGPUs.</p>
 
 <h3>3D Rendering Projections</h3>
 
@@ -1555,7 +1581,15 @@ within the visible map area.</p>
   <li>For raytrace renders, start rendering 1/4 down from top of
   screen, continue to bottom, finish top 1/4.</li>
   <li>Highlight selected eddy.</li>
+  <li>The user needs to control zoom speed in the UI.</li>
+  <li>Handle resize events</li>
+  <li>Use times symbol instead of SVG X in close box.</li>
 </ul>
+
+<p>Note: For those who are not already familiar with computer
+graphics, land mass rendering.  Vector graphics is generally always
+slower and more complicated than raster graphics, textures, level of
+detail vs. amount of work computer must do.</p>
 
 <h3>Data I/O</h3>
 
@@ -1660,6 +1694,10 @@ compatibility with older browsers.</p>
   <li>Check for single line comments styled as
   <code>/* ... */</code></li>
   <li>Document coding conventions.</li>
+  <li>Check that import statements make sense: they should mirror the
+  logically equivalent usage of C/C++ include headers, except for
+  cases that would cause circular includes.</li>
+  <li>Avoid using <code>window.object</code> as much as possible.</li>
 </ul>
 
 <h3>Reference Documentation</h3>
@@ -2044,13 +2082,10 @@ Document notational conventions, coding style.
 
 ~~num or 0|num is used to designate integer conversion.
 &gt;&gt;&gt; 0 is used to designate unsigned integer conversion.
-
-----------------------------------------
-
-Here's how to use XMLHttpRequest efficiently with the typed array
-extensions:
-
-http://www.html5rocks.com/en/tutorials/file/xhr2/
++ is preferred to convert a string to an integer, since it
+assumes the entire string must be an integer and not just part
+of it like parseInt.
+toFixed used for displaying a float.
 
 ----------------------------------------
 
@@ -2061,6 +2096,8 @@ TODO: Document derived classes and bases better.
 ----------------------------------------
 
 * window.onerror return true
+
+* Get rid of try-catch blocks
 
 ----------------------------------------
 
@@ -2353,6 +2390,10 @@ list of the changes and links to additional resources:</p>
 
 <h3>CSS Compatibility</h3>
 
+<p>This is a general design rule: With CSS, never set a foreground
+color without also setting a background color.  You can't assume that
+the default background color in the user's web browser is white.</p>
+
 <p>Dealing with vertical space is very difficult in CSS.  The
 solutions also tend to cause a lot of problems with cross-browser
 compatibility.  The most reliable way to perform vertical space
@@ -2366,14 +2407,14 @@ in the next section.</p>
 
 <h3>Internet Explorer Compatibility</h3>
 
-<p>Microsoft Internet Explorer versions 5-8 are long known to cause
+<p>Microsoft Internet Explorer versions 4-8 are long known to cause
 many more problems for web developers than equivalent older versions
 of other browsers.  This is made worse by the fact that Internet
 Explorer is also a very popular browser.  Most people are likely using
 the latest version of Internet Explorer; however, a key older version,
 version 6, is still in use by many people for a variety of reasons,
 which will not be detailed here.  Here is a list of the most important
-limitations in Internet Explorer 6:</p>
+limitations in the various versions of Internet Explorer:</p>
 
 <ul>
   <li>IE6 does not understand XHTML served with the
@@ -2381,15 +2422,24 @@ limitations in Internet Explorer 6:</p>
   a <code>".xhtml"</code> extension:<br />
   <a href="http://bytes.com/topic/html-css/answers/161030-application-xhtml-xml-ie">
     http://bytes.com/topic/html-css/answers/161030-application-xhtml-xml-ie</a></li>
-  <li>Detect IE versions for both CSS and JavaScript most flexibly:<br />
+  <li>The best way to detect IE versions for both CSS and JavaScript
+  is to use conditional comments on the <code>&lt;html&gt;</code>
+  element to set the "<code>class</code>" attribute to "ie6", "ie7",
+  etc. depending on the version of Internet Explorer in use:<br />
   <a href="http://stackoverflow.com/questions/10964966/detect-ie-version-in-javascript">
     http://stackoverflow.com/questions/10964966/detect-ie-version-in-javascript</a></li>
   <li>IE5 interprets "width" and "height" to mean the content
   width/height, plus the padding, plus the border widths.  IE6 doesn't
-  do this when standards-conformant mode is triggered via a DOCTYPE
-  declaration.</li>
+  do this when standards-conformant mode is triggered via
+  a <code>&lt;DOCTYPE&gt;</code> declaration.</li>
   <li>You probably cannot go further back in time to support DHTML and
-  JavaScript on a browser earlier than Internet Explorer 5.5.</li>
+  JavaScript on a browser earlier than Internet Explorer 5.  IE5 was
+  the first version to include support for the Microsoft.XMLHTTP
+  ActiveX object and VML.  IE4 was first to include support for
+  ActiveX objects, IE3 was first to support CSS, IE2 had basic support
+  for JavaScript, and IE1 is too old to consider for web applications.
+  (This information was obtained from the Wikipedia articles on
+  Internet Explorer.)</li>
   <li>The display style "<code>inline-block</code>" is incomplete and
   buggy in IE6 and IE7.  Often times, you can get the intended effect
   if you use "<code>inline</code>" instead, but only if you use it in
@@ -2399,8 +2449,7 @@ limitations in Internet Explorer 6:</p>
   the following link:<br />
   <a href="http://stackoverflow.com/questions/396145/whats-the-best-way-of-centering-a-div-vertically-with-css">
     http://stackoverflow.com/questions/396145/whats-the-best-way-of-centering-a-div-vertically-with-css</a><br />
-  Note that this will not work in IE5.5.
-  </li>
+  Note that this will not work in IE5.5.</li>
   <li>You cannot use both the "<code>top</code>" and
   "<code>bottom</code>" positioning properties at the same time.  Same
   goes with "<code>left</code>" and "<code>right</code>".  If you want
@@ -2409,15 +2458,19 @@ limitations in Internet Explorer 6:</p>
   and margins or 2) write a JavaScript to expand the box.  Keep in
   mind the differences of box layout between IE5 and IE6 when doing
   this.</li>
-  <li>All versions of IE that support scripting generally support it
-  well.  Expect JavaScript 1.5 to be well supported.  However, you
-  must take care not to use certain web API scripting idioms that
-  won't be supported by IE, such as<br />
+  <li>IE5+ generally supports scripting well.  Expect JavaScript 1.5
+  to be well supported.  However, you must take care not to use
+  certain web API scripting idioms that won't be supported by IE, such
+  as<br />
     <code>element.setAttribute('style', 'styleText');</code><br />
   as opposed to<br />
     <code>element.style.cssText = 'styleText';</code><br />
   Note, however, that old versions of Firefox may not support
   object-oriented CSS style manipulation.</li>
+  <li>Internet Explorer uses a reference counting garbage collector
+  that can leak memory when there are circular references.<br />
+  <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Memory_Management">
+    https://developer.mozilla.org/en-US/docs/Web/JavaScript/Memory_Management</a></li>
   <li>Avoid inline styling: Using inline style information can sometimes
   trigger bugs in Internet Explorer that are not present when using
   stylesheets.</li>
@@ -2426,10 +2479,17 @@ limitations in Internet Explorer 6:</p>
   can also enable a transparency filter, but it is buggy and can cause
   crashes.</li>
   <li>IE6 does not
-  support <code>document.getElementByClassName()</code>.  Use
+  support <code>document.getElementsByClassName()</code>.  Use
     <a href="http://robertnyman.com/2008/05/27/the-ultimate-getelementsbyclassname-anno-2008/">
-      Robert Nyman's <code>getElementByClassName()</code></a>
+      Robert Nyman's <code>getElementsByClassName()</code></a>
     cross-browser implementation instead.</li>
+  <li>IE5 does not
+  support <code>document.getElementsByTagName()</code>.  Nevertheless,
+  you can get the same functionality by using the deprecated
+  nonstandard <code>document.all.tags</code>.</li>
+  <li>IE4 does not support <code>document.getElementById()</code>.
+  Nevertheless, you can get the same functionality by using the
+  deprecated nonstandard <code>document.all</code> object.</li>
 </ul>
 
 <p>Additional resources:</p>
@@ -2458,6 +2518,12 @@ JavaScript language since the very first version:</p>
 <ul>
   <li>The <code>push()</code> and <code>pop()</code> Array methods did
   not exist in the first version of JavaScript.</li>
+  <li>Exception handling
+  (<code>try</code>, <code>catch</code>, <code>throw</code>) did not
+  exist in early versions of JavaScript.  Graceful error handling was
+  performed via <code>window.onerror</code> instead.</li>
+  <li>Very early versions of JavaScript (prestandard versions) did not
+  have support for Unicode strings.</li>
   <li><code>Date.now()</code> was added to JavaScript
   later.  <code>new Date.getTime()</code> must be used for earlier
   implementations instead.<br />
@@ -2548,6 +2614,10 @@ above are mostly there for web developers who are not using JavaScript
 minifiers that can automatically remove dead code.</p>
 
 <h4>Miscellaneous</h4>
+
+<p>Hardly any browsers do not support JavaScript 1.5:<br />
+<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference">
+    https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference</a></p>
 
 <p>Note: The innerHTML and outerHTML properties, though intuitive and
 easy, are nonstandard, notably introduced by IE5.5.</p>
@@ -2688,6 +2758,21 @@ graphics refresh rate in Google Chrome.</p>
 
 <p><a href="https://developer.mozilla.org/en-US/docs/Web/Events/resize">
   https://developer.mozilla.org/en-US/docs/Web/Events/resize</a></p>
+
+<h4>HTML Canvas Compatibility</h4>
+
+<p>Some canvas operations are not supported in earlier
+implementations.  Unfortunately, Mozilla Developer Network does not do
+a good job documenting HTML canvas compatibility.  Beyond the existing
+compatibility notes that I've found on Mozilla Developer Network,
+here's the compatibility issues that I've found so far in
+CanvasRenderingContext2D:</p>
+
+<ul>
+  <li><code>rect()</code> and <code>strokeRect()</code> are not
+  supported on older implementations.  Use path stroking commands
+  instead.</li>
+</ul>
 
 <hr />
 <!-- ________________________________________ -->
@@ -2992,6 +3077,17 @@ the list, and resources which only provide smaller gains are listed
 near the bottom.</p>
 
 <ol>
+  <li>The only true way to achieve the highest possible performance
+  across browsers is to test multiple ways of doing the same thing,
+  then choose the fastest, all on the client browser.
+  <a href="http://benchmarkjs.com/">Benchmark.js</a> provides a viable
+  framework for this.</li>
+  <li><a href="http://jsperf.com/">jsPerf</a> is a useful site that
+  contains a lot of performance benchmarks:<br />
+  <a href="http://jsperf.com/concat-vs-plus-vs-join">
+    http://jsperf.com/concat-vs-plus-vs-join</a><br />
+  <a href="http://jsperf.com/doc-window-document-vs-document/3">
+    http://jsperf.com/doc-window-document-vs-document/3</a></li>
   <li>Great performance article written by an experienced JavaScript
   programmer and early web developer:<br />
   <a href="http://www.webreference.com/programming/javascript/jkm3/index.html">
@@ -3036,28 +3132,15 @@ practices.</p>
 
 <p>These are notes that are far less organized than the rest.</p>
 
-<p>Note document all APIs and provide examples on basic usage
-throughout.</p>
-
 <p>Other mathematical constructs: clipping, bézier smoothing of a
 polyline, pixel interpolation (bilinear, bicubic), great circle
-subdivision.</p>
+subdivision.  Even more advanced equal area point plotting.</p>
 
 <p>Fixed function pipeline when graphics card is not capable of
 performing general purpose non-linear computations.</p>
 
-<p>With CSS styling, never set a foreground color without also setting
-a background color.  You need to take into consideration that white
-page backrounds are an <em>assumption</em>, not a <em>requirement</em>
-of web browsers.</p>
-
-<p>The most important thing to take note of GUI design in XHTML/CSS is
-that all widgets must be within a FORM element, just like has been
-demonstrated in the HTML 4 reference on the W3C's website.</p>
-
-<p>Use namespaces in the JavaScript code.</p>
-
-<p>The Ocean Eddies Web Viewer needs to have a favicon.</p>
+<p>The Ocean Eddies Web Viewer needs to have a favicon and an iOS
+icon.</p>
 
 <p>Stay away from CSS transitions.  Opt instead to provide the user
 with a fast and snappy user interface.</p>
@@ -3065,38 +3148,17 @@ with a fast and snappy user interface.</p>
 <p>Provide a section where you explain why everything in the UI is the
 way it is.</p>
 
-<p>Hardly any browsers do not support JavaScript 1.5: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference">
-    https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference</a></p>
-
 <p>My globe rendering test can sometimes crash Firefox 3.6.</p>
-
-<p>Useful source for HTML 5 information: <br />
-  <a href="http://html5center.sourceforge.net/">
-    http://html5center.sourceforge.net/</a></p>
 
 <p>Great circle distance computations:
   <a href="http://en.wikipedia.org/wiki/Great-circle_distance">
     http://en.wikipedia.org/wiki/Great-circle_distance</a></p>
-
-<p><a href="http://www.html5canvastutorials.com/">
-    http://www.html5canvastutorials.com/</a></p>
 
 <h3>JavaScript</h3>
 
 <p>You have to manually resize an HTML canvas to fit the window:<br />
   <a href="http://stackoverflow.com/questions/1664785/resize-html5-canvas-to-fit-window">
     http://stackoverflow.com/questions/1664785/resize-html5-canvas-to-fit-window</a></p>
-
-<p>More info on HTML Canvas:<br />
-  <a href="http://joshondesign.com/p/books/canvasdeepdive/title.html">
-    http://joshondesign.com/p/books/canvasdeepdive/title.html</a></p>
-
-<p>Very important to note when maintaining compatibility with IE6:<br />
-<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Memory_Management">
-https://developer.mozilla.org/en-US/docs/Web/JavaScript/Memory_Management</a></p>
-
-<p><a href="http://stackoverflow.com/questions/10652513/html5-dynamically-create-canvas">
-http://stackoverflow.com/questions/10652513/html5-dynamically-create-canvas</a></p>
 
 <p>Possible solution to my MathML embedding problems:
   <a href="http://webdesignerwall.com/tutorials/css-elastic-videos">
@@ -3106,17 +3168,11 @@ http://stackoverflow.com/questions/10652513/html5-dynamically-create-canvas</a><
   <a href="http://stackoverflow.com/questions/6934747/passing-javascript-global-variable-between-embeded-pages-or-from-main-to-embed">
     http://stackoverflow.com/questions/6934747/passing-javascript-global-variable-between-embeded-pages-or-from-main-to-embed</a></p>
 
-<p><a href="https://developers.google.com/maps/documentation/javascript/v2/overlays?csw=1#Google_Maps_Coordinates">
-    https://developers.google.com/maps/documentation/javascript/v2/overlays?csw=1#Google_Maps_Coordinates</a></p>
-
 <p>D3.js map tutorial: <a href="http://bost.ocks.org/mike/map/">
     http://bost.ocks.org/mike/map/</a></p>
 
-<p>Basic demonstration of using JavaScript to manipulate a form:<br />
-  <a href="https://www.inkling.com/read/dummies-html-xhtml-css-all-one-andy-harris-2nd/chapter-4-5/managing-text-input-and-output">
-    https://www.inkling.com/read/dummies-html-xhtml-css-all-one-andy-harris-2nd/chapter-4-5/managing-text-input-and-output</a></p>
-
-<p><a href="http://stackoverflow.com/questions/14614702/html-combo-box-with-option-to-type-an-entry">
+<p>You cannot create a combo box in HTML, only list boxes:<br />
+<a href="http://stackoverflow.com/questions/14614702/html-combo-box-with-option-to-type-an-entry">
     http://stackoverflow.com/questions/14614702/html-combo-box-with-option-to-type-an-entry</a></p>
 
 <p><a href="http://stackoverflow.com/questions/13987300/how-to-trigger-enter-key-press-of-textbox">
@@ -3132,37 +3188,28 @@ case in the history of HTML.</p>
 <p><a href="http://stackoverflow.com/questions/4002234/do-we-need-semicolon-at-the-end">
     http://stackoverflow.com/questions/4002234/do-we-need-semicolon-at-the-end</a></p>
 
-<p><a href="http://stackoverflow.com/questions/12058381/changing-checked-attribute-of-a-checkbox-using-javascript">
-    http://stackoverflow.com/questions/12058381/changing-checked-attribute-of-a-checkbox-using-javascript</a></p>
-
-<p><a href="http://stackoverflow.com/questions/1085801/how-to-get-the-selected-value-of-dropdownlist-using-javascript">
-    http://stackoverflow.com/questions/1085801/how-to-get-the-selected-value-of-dropdownlist-using-javascript</a></p>
-
 <p><a href="http://en.wikipedia.org/wiki/List_of_unit_testing_frameworks#JavaScript">
     http://en.wikipedia.org/wiki/List_of_unit_testing_frameworks#JavaScript</a></p>
 
 <h3>CSS</h3>
 
-<p>Flexible layouts for responsive design:<br />
+<ul>
+<li>Flexible layouts for responsive design:<br />
   <a href="http://www.lukew.com/ff/entry.asp?1514">
-    http://www.lukew.com/ff/entry.asp?1514</a></p>
+    http://www.lukew.com/ff/entry.asp?1514</a></li>
+<li><a href="http://stackoverflow.com/questions/8865458/how-to-align-text-vertically-center-in-div-with-css">
+    http://stackoverflow.com/questions/8865458/how-to-align-text-vertically-center-in-div-with-css</a></li>
+<li><a href="http://stackoverflow.com/questions/826782/css-rule-to-disable-text-selection-highlighting">
+http://stackoverflow.com/questions/826782/css-rule-to-disable-text-selection-highlighting</a></li>
+<li><a href="http://stackoverflow.com/questions/12449156/stick-footer-to-bottom-of-page-without-unnecessary-scroll-bars">
+    http://stackoverflow.com/questions/12449156/stick-footer-to-bottom-of-page-without-unnecessary-scroll-bars</a></li>
+<li><a href="http://css-tricks.com/snippets/css/clear-fix/">
+    http://css-tricks.com/snippets/css/clear-fix/</a></li>
+<li><a href="http://stackoverflow.com/questions/5776367/css-making-a-div-consume-all-available-space">
+    http://stackoverflow.com/questions/5776367/css-making-a-div-consume-all-available-space</a></li>
+<li><a href="http://www.creativebloq.com/css3/seven-things-still-missing-css-1126553">
+    http://www.creativebloq.com/css3/seven-things-still-missing-css-1126553</a></li>
+</ul>
 
-<p><a href="http://stackoverflow.com/questions/8865458/how-to-align-text-vertically-center-in-div-with-css">
-    http://stackoverflow.com/questions/8865458/how-to-align-text-vertically-center-in-div-with-css</a></p>
-
-<p><a href="http://stackoverflow.com/questions/826782/css-rule-to-disable-text-selection-highlighting">
-http://stackoverflow.com/questions/826782/css-rule-to-disable-text-selection-highlighting</a></p>
-
-<p><a href="http://stackoverflow.com/questions/12449156/stick-footer-to-bottom-of-page-without-unnecessary-scroll-bars">
-    http://stackoverflow.com/questions/12449156/stick-footer-to-bottom-of-page-without-unnecessary-scroll-bars</a></p>
-
-<p><a href="http://css-tricks.com/snippets/css/clear-fix/">
-    http://css-tricks.com/snippets/css/clear-fix/</a></p>
-
-<p><a href="http://stackoverflow.com/questions/5776367/css-making-a-div-consume-all-available-space">
-    http://stackoverflow.com/questions/5776367/css-making-a-div-consume-all-available-space</a></p>
-
-<p><a href="http://www.creativebloq.com/css3/seven-things-still-missing-css-1126553">
-    http://www.creativebloq.com/css3/seven-things-still-missing-css-1126553</a></p>
 </body>
 </html>

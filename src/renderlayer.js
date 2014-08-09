@@ -13,11 +13,18 @@ import "viewparams";
  * cothreaded function by a cothread controller, it will produce an
  * updated render in `this.frontBuf`.  Normally, `this.retVal` will be
  * zero, but if there is an error while loading new data, it may be
- * `RenderLayer.LOAD_ERROR`.  The CothreadStatus will be set to
- * `CothreadStatus.IOWAIT` and `CothreadStatus.PROC_DATA` as
- * appropriate, so a cothread controller can use this information to
- * give diagnostics to the user if data loading or rendering is taking
- * a long time.
+ * `RenderLayer.LOAD_ERROR`.  The `CothreadStatus.preemptCode` will be
+ * set to one of the following values:
+ *
+ * * `CothreadStatus.IOWAIT` -- The `RenderLayer` is waiting for more
+ *   data.
+ * * `CothreadStatus.PROC_DATA` -- The `RenderLayer` has downloaded
+ *   all necessary data, but was preempted while performing
+ *   preprocessing steps that must be completed before rendering the
+ *   data.
+ * * `RenderLayer.RENDERING` -- The `RenderLayer` was preempted during
+ *   rendering.
+ *
  * @constructor
  */
 var RenderLayer = function() {
@@ -37,7 +44,8 @@ OEV.RenderLayer = RenderLayer;
 RenderLayer.prototype = new Cothread();
 RenderLayer.prototype.constructor = RenderLayer;
 
-RenderLayer.LOAD_ERROR = 2;
+RenderLayer.LOAD_ERROR = 1;
+RenderLayer.RENDERING = 3;
 
 /**
  * Setup the viewport of a render layer.  Using this function rather
@@ -190,9 +198,13 @@ RayTracer.prototype.contExec = function() {
 	xj = 0.5 - Math.random();
 	yj = 0.5 - Math.random();
       }
-      mapToPol[0] = ((x + xj) / destImg_width) * 2 - 1;
-      mapToPol[1] = (((y + yj) / destImg_height) * 2 - 1) * inv_aspectXY;
+      mapToPol[0] = (((x + xj) / destImg_width) * 2 - 1 +
+		     ViewParams.mapCenter[0]) * ViewParams.inv_scale;
+      mapToPol[1] = (-(((y + yj) / destImg_height) * 2 - 1) *
+		     inv_aspectXY + ViewParams.mapCenter[1]) *
+	ViewParams.inv_scale;
       projector_unproject(mapToPol);
+      polShiftOrigin(mapToPol);
       if (isNaN(mapToPol[0]) ||
 	  mapToPol[1] < -90 || mapToPol[1] > 90 ||
 	  mapToPol[0] < -180 || mapToPol[0] >= 180) {
@@ -208,7 +220,7 @@ RayTracer.prototype.contExec = function() {
 	x++;
 	continue;
       }
-      var latIdx = 0|((mapToPol[1] + 90) / 180 * (backBuf_height - 1));
+      var latIdx = 0|((-mapToPol[1] + 90) / 180 * (backBuf_height - 1));
       var lonIdx = 0|((mapToPol[0] + 180) / 360 * backBuf_width);
 
       if (backBufType == 1) {
@@ -244,7 +256,11 @@ RayTracer.prototype.contExec = function() {
       inv_osaFac = 1 - osaFac;
       wrapOver = true;
     }
-    if (y % 32 == 0 && ctnow() - startTime >= timeout)
+    /* Note: Previously, in the interest of throughput, we mandated
+       completion of a certain number of rows per cothread interval.
+       However, we now disable that requirement in the interest of
+       maintaining browser responsiveness.  */
+    if (/* y % 32 == 0 && */ ctnow() - startTime >= timeout)
       break;
   }
 
@@ -253,7 +269,7 @@ RayTracer.prototype.contExec = function() {
     ctx.putImageData(destImg, 0, 0, 0, oldY, destImg_width, y - oldY);
   else
     ctx.putImageData(destImg, 0, 0, 0, 0, destImg_width, destImg_height);
-  this.status.preemptCode = CothreadStatus.PROC_DATA;
+  this.status.preemptCode = RenderLayer.RENDERING;
   this.status.percent = ((y + destImg_height * (osaPass - 1)) *
 			 CothreadStatus.MAX_PERCENT /
 			 (destImg_height * maxOsaPasses));

@@ -107,11 +107,11 @@ Cothread.now = function() {
    feature detects aren't good enough, the user of this class can
    perform additional feature detects and assign Cothread.now to an
    even better alternative.  */
-if (performance && performance.now)
+if (Global.performance && performance.now)
   Cothread.now = function() { return performance.now(); };
-else if (Date && Date.now)
+else if (Global.Date && Date.now)
   Cothread.now = Date.now;
-else if (Date)
+else if (Global.Date)
   Cothread.now = function() { return new Date().getTime(); };
 
 /**

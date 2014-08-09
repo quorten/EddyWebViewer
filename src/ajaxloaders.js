@@ -246,8 +246,7 @@ XHRLoader.prototype.contExec = function() {
 
   // (httpRequest.readyState == 4)
   var responseText = httpRequest.responseText;
-  var htStatus = httpRequest.status;
-  this.retVal = htStatus;
+  this.retVal = httpRequest.status;
 
   /* Process any remaining data that has not yet been processed.  */
   this.status.returnType = CothreadStatus.PREEMPTED;

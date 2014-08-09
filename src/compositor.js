@@ -1,9 +1,6 @@
 /* Composite rendering of 2D RenderLayers, either as a 2D map or
    through a 3D raytrace renderer.  */
 
-// Prevent errors, please...
-var execTime = null;
-
 import "oevns";
 import "compat";
 import "oevmath";
@@ -38,7 +35,7 @@ Compositor.rayPersp = 2;
 
 /* Projection method.  Must either one of the Projector objects or a
    raytracer from the compositor module.  */
-Compositor.projector = EquirectMapProjector;
+Compositor.projector = EquirectProjector;
 
 // Backbuffer scaling factor
 Compositor.backbufScale = 2;
@@ -119,7 +116,7 @@ Compositor.init = function() {
 Compositor.setProjector = function(projector) {
   if (projector == Compositor.rayOrtho || projector == Compositor.rayPersp) {
     this.projector = projector;
-    projector = EquirectMapProjector;
+    projector = EquirectProjector;
   } else
     this.projector = projector;
 
@@ -181,7 +178,7 @@ Compositor.projEarthTex.contExec = function() {
   var projector_unproject;
   if (Compositor.projector == Compositor.rayOrtho ||
       Compositor.projector == Compositor.rayPersp)
-    projector_unproject = EquirectMapProjector.unproject;
+    projector_unproject = EquirectProjector.unproject;
   else
     projector_unproject = Compositor.projector.unproject;
 
@@ -258,7 +255,7 @@ Compositor.finishStartup = function() {
   var projector;
   if (this.projector == Compositor.rayOrtho ||
       this.projector == Compositor.rayPersp)
-    projector = EquirectMapProjector;
+    projector = EquirectProjector;
   else
     projector = this.projector;
   SSHLayer.setViewport(null, width, height, width / height,
@@ -330,7 +327,7 @@ Compositor.finishRenderJobs = function(fast, noContinue) {
 		    0, 0, backbuf.width, backbuf.height);
       /* if (this.projector == Compositor.rayOrtho ||
 	  this.projector == Compositor.rayPersp ||
-	  this.projector == EquirectMapProjector)
+	  this.projector == EquirectProjector)
 	this.renderEquiGraticule(); */
     }
   }

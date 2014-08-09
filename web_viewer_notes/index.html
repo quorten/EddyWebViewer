@@ -467,12 +467,12 @@ images:</p>
   whereas the edges in Winkel Tripel projection are parabolic.<br />
   <a href="http://en.wikipedia.org/wiki/Robinson_projection">
     http://en.wikipedia.org/wiki/Robinson_projection</a></li>
-  <li><strong>Mollweide projection:</strong> Basically, this is a
+  <li><strong>Sinusoidal projection:</strong> Basically, this is a
   modified equirectangular projection that shortens each parallel to
   be proportional to its true length on the globe, thus yielding an
-  equal area projection with the outline of a 2:1 ellipse.<br />
-  <a href="http://en.wikipedia.org/wiki/Mollweide_projection">
-    http://en.wikipedia.org/wiki/Mollweide_projection</a></li>
+  equal area projection.<br />
+  <a href="http://en.wikipedia.org/wiki/Sinusoidal_projection">
+    http://en.wikipedia.org/wiki/Sinusoidal_projection</a></li>
 </ul>
 
 <p>Although there are many more map projections of the Earth then the
@@ -2088,6 +2088,8 @@ assumes the entire string must be an integer and not just part
 of it like parseInt.
 toFixed used for displaying a float.
 
+inv_ is prefixed to pre-cached 1 / x variables.
+
 ----------------------------------------
 
 TODO: When tracks cross 360 degrees, split them up.
@@ -2484,6 +2486,9 @@ limitations in the various versions of Internet Explorer:</p>
     <a href="http://robertnyman.com/2008/05/27/the-ultimate-getelementsbyclassname-anno-2008/">
       Robert Nyman's <code>getElementsByClassName()</code></a>
     cross-browser implementation instead.</li>
+  <li>Due to timer coalescing on Microsoft Windows XP and later, you
+  generally cannot accurately time intervals that are less than 15 ms
+  in length.</li>
   <li>IE5 does not
   support <code>document.getElementsByTagName()</code>.  Nevertheless,
   you can get the same functionality by using the deprecated

@@ -1,12 +1,11 @@
 CPP = cpp # C preprocessor
 cjs_dir = ../libs/cjs
-SOURCES = oevns.js oevnsend.js triglut.js oevmath.js cothread.js \
-	ajaxloaders.js projector.js renderlayer.js trackslayer.js \
-	sshlayer.js csv.js compat.js dates.js compositor.js \
-	viewparams.js
+DOCSRC = triglut.js oevmath.js cothread.js ajaxloaders.js projector.js \
+	renderlayer.js trackslayer.js sshlayer.js csv.js compat.js \
+	dates.js compositor.js viewparams.js
 #	chunkloader.js detect.js hpcarray.js
+SOURCES = oevns.js oevnsend.js  $(DOCSRC)
 
-# all: docs
 all: bundle.js
 
 include $(cjs_dir)/cjs.mak
@@ -17,9 +16,8 @@ bundle.js: compositor.hjs
 oevns.djs: oevns.js oevnsend.js
 	cat $^ >$@
 
-docs: oevns.djs triglut.djs cothread.djs renderlayer.djs \
-	projector.djs trackslayer.djs sshlayer.djs csv.djs \
-	compat.djs ajaxloaders.djs dates.djs compositor.djs
+docs: oevns.djs $(DOCSRC:.js=.djs)
+	rm -rf djs
 	mkdir djs
 	for file in $^; do \
 	  mv $$file djs/`echo $$file | sed -e 's/\.djs/.js/g'`; \

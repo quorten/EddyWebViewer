@@ -1,6 +1,6 @@
 CPP = cpp
 cjs_dir = ../libs/cjs
-SOURCES = cothread_test.js trackslayer_test.js sshlayer_test.js
+SOURCES = cothread_test.js renderlayer_test.js
 BUNDLES = $(SOURCES:.js=.b.js)
 CPATH = ../src
 
@@ -15,10 +15,7 @@ include $(cjs_dir)/cjs.mak
 cothread_test.b.js: cothread_test.hjs
 	CPP=$(CPP) $(cjs_dir)/hjssmash.sh $< -o $@
 
-trackslayer_test.b.js: trackslayer_test.hjs
-	CPP=$(CPP) $(cjs_dir)/hjssmash.sh $< -o $@
-
-sshlayer_test.b.js: sshlayer_test.hjs
+renderlayer_test.b.js: renderlayer_test.hjs
 	CPP=$(CPP) $(cjs_dir)/hjssmash.sh $< -o $@
 
 clean::

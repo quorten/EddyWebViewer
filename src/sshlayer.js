@@ -42,7 +42,7 @@ later.
 
 var SSHLayer = new ImageLoader();
 OEV.SSHLayer = SSHLayer;
-RayTracer.call(SSHLayer, null, 1, 8);
+RayTracer.call(SSHLayer, null, 1, 1);
 SSHLayer.setViewport = RayTracer.prototype.setViewport;
 
 /* Important parameters for SSHLayer: */
@@ -90,7 +90,9 @@ SSHLayer.initBackBuf = function(image) {
   ctx.drawImage(image, 0, 0);
   /* We no longer need the original image, so free up the associated
      memory.  */
-  this.image = null;
+  /* But don't actually do this, because it will mess up the
+     ImageLoader cothreading mechanism.  */
+  // this.image = null;
   var tmpImgData = ctx.getImageData(0, 0, tmpCanvas.width, tmpCanvas.height);
   // document.documentElement.children[1].appendChild(tmpCanvas);
   tmpCanvas = null; ctx = null;

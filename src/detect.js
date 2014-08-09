@@ -30,6 +30,8 @@ new Image()
 
 performance.now
 
+window.setTimeout
+
 window.atob, window.btoa, window.onerror
 
 window.ActiveXObject, window.ActiveXObject("Microsoft.XMLHTTP"),

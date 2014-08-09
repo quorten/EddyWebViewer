@@ -671,6 +671,15 @@ element in the document (but not after errorBar).  -->
     return true;
   };
 
+  /* Also provide a function for developers to clear the errors in the
+     error bar.  */
+  var clearErrors = function() {
+    errorBar = document.getElementById('errorBar');
+    while (errorBar.hasChildNodes())
+      errorBar.removeChild(errorBar.lastChild);
+    errorBar.style.cssText = '';
+  };
+
   // Testing_error_handler_and_diagnostic_display;
 //--><!]]>
 </script>

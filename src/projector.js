@@ -2,47 +2,43 @@
 
 import "oevns";
 import "oevmath";
+import "viewparams";
+
+/*
+
+Absolute formalism is what's required.  A /projection/ is a pure
+mathematical construct for transforming a 2D point to a latitude and a
+longitude on a generic globe.  However, practical application of a
+projection typically requires more than just this pure definition.
+
+1. Convert a screen coordinate to normalized 2D coordinates.  The
+projections only work with normalized 2D coordinates.
+
+2. Run the projection on the normalized 2D coordinate.  You'll get a
+latitude and a longitude on a generic globe.
+
+3. Convert this generic point to the specific point by applying the
+current globe tilt and pole shift (and yaw if specified).
+
+This allows for all possible variations and everything in between.  It
+has no holes, no gaps, no loopholes, no margins for error.  However,
+it is also not guaranteed to be the most optimal process.  Certain
+algorithms are available "precomposed": hand-optimized combinations
+designed for maximum performance, in case the compiler is lacking in
+this regard, which it almost certainly is.
+
+ */
 
 /**
- * Abstract projector class.
+ * Base class for map projections.  This is an abstract class that
+ * specifies the calling convention.  Use one of the concrete classes
+ * for the actual projection.
  * @constructor
  */
 var Projector = function() {
 };
 
 OEV.Projector = Projector;
-
-/**
- * Abstract projection function.  See a derived class for details.
- * @abstract
- */
-Projector.prototype.project = function() {
-  throw_new_Error("Must be implemented by a subclass!");
-};
-
-/**
- * Abstract inverse projection function.  See a derived class for
- * details.
- * @abstract
- */
-Projector.prototype.unproject = function() {
-  throw_new_Error("Must be implemented by a subclass!");
-};
-
-/**
- * Base class for 2D map projections.  This is an abstract class that
- * specifies the calling convention.  Use one of the concrete classes
- * for the actual projection.
- *
- * Base class: {@linkcode Projector}
- * @constructor
- */
-var MapProjector = function() {
-};
-
-OEV.MapProjector = MapProjector;
-MapProjector.prototype = new Projector();
-MapProjector.prototype.constructor = MapProjector;
 
 /**
  * Project a latitude-longitude polar coordinate in degrees to a map
@@ -58,7 +54,7 @@ MapProjector.prototype.constructor = MapProjector;
  * the maximum relative coordinates of the shorter axis will not reach
  * +/- 1.
  */
-MapProjector.prototype.project = function(polToMap) {
+Projector.prototype.project = function(polToMap) {
   throw_new_Error("Must be implemented by a subclass!");
 };
 
@@ -71,42 +67,59 @@ MapProjector.prototype.project = function(polToMap) {
  * @param {Array} mapToPol - Input array [ x, y ] that will be
  * transformed into the output [ lon, lat ].
  */
-MapProjector.prototype.unproject = function(mapToPol) {
+Projector.prototype.unproject = function(mapToPol) {
   throw_new_Error("Must be implemented by a subclass!");
 };
 
 /**
  * Equirectangular map projector.
- * @type MapProjector
+ * @type Projector
  */
-var EquirectMapProjector = new MapProjector();
-OEV.EquirectMapProjector = EquirectMapProjector;
+var EquirectProjector = new Projector();
+OEV.EquirectProjector = EquirectProjector;
 
-EquirectMapProjector.project = function(polToMap) {
+EquirectProjector.project = function(polToMap) {
   polToMap[1] = polToMap[1] / 180;
   polToMap[0] = polToMap[0] / 180;
 };
 
-EquirectMapProjector.unproject = function(mapToPol) {
+EquirectProjector.unproject = function(mapToPol) {
   mapToPol[1] = mapToPol[1] * 180;
   mapToPol[0] = mapToPol[0] * 180;
 };
 
 /**
- * Mercator map projector.
- * @type MapProjector
+ * Sinusoidal map projector.
+ * @type Projector
  */
-var MercatorMapProjector = new MapProjector();
-OEV.MercatorMapProjector = MercatorMapProjector;
+var SinProjector = new Projector();
+OEV.SinProjector = SinProjector;
 
-MercatorMapProjector.project = function(polToMap) {
+SinProjector.project = function(polToMap) {
+  polToMap[0] = polToMap[0] * Math.cos(DEG2RAD * polToMap[1]) / 180;
+  polToMap[1] = polToMap[1] / 180;
+};
+
+SinProjector.unproject = function(mapToPol) {
+  mapToPol[1] = mapToPol[1] * 180;
+  mapToPol[0] = mapToPol[0] / Math.cos(DEG2RAD * mapToPol[1]) * 180;
+};
+
+/**
+ * Mercator map projector.
+ * @type Projector
+ */
+var MercatorProjector = new Projector();
+OEV.MercatorProjector = MercatorProjector;
+
+MercatorProjector.project = function(polToMap) {
   var r = 1; // Radius
   polToMap[1] = (r * Math.log(Math.tan(Math.PI / 4 +
 				       DEG2RAD * polToMap[1] / 2))) / Math.PI;
   polToMap[0] = polToMap[0] / 180;
 };
 
-MercatorMapProjector.unproject = function(mapToPol) {
+MercatorProjector.unproject = function(mapToPol) {
   var r = 1; // Radius
   mapToPol[1] = (2 * Math.atan(Math.exp(mapToPol[1] * Math.PI / r)) -
 		 Math.PI / 2) * RAD2DEG;
@@ -115,12 +128,12 @@ MercatorMapProjector.unproject = function(mapToPol) {
 
 /**
  * Robinson map projector.
- * @type MapProjector
+ * @type Projector
  */
-var RobinsonMapProjector = new MapProjector();
-OEV.RobinsonMapProjector = RobinsonMapProjector;
+var RobinsonProjector = new Projector();
+OEV.RobinsonProjector = RobinsonProjector;
 
-RobinsonMapProjector.table = [
+RobinsonProjector.table = [
 //  PLEN    PDFE         LAT
   [ 1.0000, 0.0000 ], // 00
   [ 0.9986, 0.0620 ], // 05
@@ -143,8 +156,8 @@ RobinsonMapProjector.table = [
   [ 0.5322, 1.0000 ]  // 90
 ];
 
-RobinsonMapProjector.project = function(polToMap) {
-  var table = RobinsonMapProjector.table;
+RobinsonProjector.project = function(polToMap) {
+  var table = RobinsonProjector.table;
   var alat = Math.abs(polToMap[1]);
   var tbIdx1 = 0|Math.floor(alat / 5);
   var tbIdx2 = 0|Math.ceil(alat / 5);
@@ -159,8 +172,8 @@ RobinsonMapProjector.project = function(polToMap) {
   else polToMap[1] = pdfe * 0.5072;
 };
 
-RobinsonMapProjector.unproject = function(mapToPol) {
-  var table = RobinsonMapProjector.table;
+RobinsonProjector.unproject = function(mapToPol) {
+  var table = RobinsonProjector.table;
   var pdfe = Math.abs(mapToPol[1]) / 0.5072;
   if (pdfe > 1)
     { mapToPol[0] = NaN; mapToPol[1] = NaN; return; }
@@ -187,33 +200,26 @@ RobinsonMapProjector.unproject = function(mapToPol) {
  * code between the orthographic and perspective projectors can be
  * contained in the same functions.
  *
- * Base class: {@linkcode MapProjector}
+ * Base class: {@linkcode Projector}
  * @constructor
  */
-var TDMapProjector = function() {
+var TDProjector = function() {
 };
 
-OEV.TDMapProjector = TDMapProjector;
-TDMapProjector.prototype = new MapProjector();
-TDMapProjector.prototype.constructor = TDMapProjector;
+OEV.TDProjector = TDProjector;
+TDProjector.prototype = new Projector();
+TDProjector.prototype.constructor = TDProjector;
 
-TDMapProjector.prototype.project = function(polToMap) {
+TDProjector.prototype.project = function(polToMap) {
   throw_new_Error("Not implemented!");
 };
-
-// PARAMETERS: var tilt, lon_rot;
-
-var lon_rot = 0;
-var tilt = 45;
-var persp_fov = 17.5;
-var persp_altitude = 35786;
 
 /**
  * @param {Array} mapToPol - See base class for details.
  * @param {integer} type - Projector type.  Zero for orthographic, one
  * for perspective.
  */
-TDMapProjector.prototype.unproject = function(mapToPol, projType) {
+TDProjector.prototype.unproject = function(mapToPol, projType) {
   /* 1. Get the 3D rectangular coordinate of the ray intersection
      with the sphere.  The camera is looking down the negative
      z axis.  */
@@ -229,9 +235,9 @@ TDMapProjector.prototype.unproject = function(mapToPol, projType) {
   } else { // Perspective projection
     // r must be one: this simplifies the calculations
     var r = 1; // 6371; // radius of the earth in kilometers
-    var d = persp_altitude / 6371; // altitude in kilometers
+    var d = ViewParams.perspAltitude / 6371; // altitude in kilometers
     // focal length in units of the screen dimensions
-    var f = 1 / Math.tan(DEG2RAD * persp_fov / 2);
+    var f = 1 / Math.tan(DEG2RAD * ViewParams.perspFOV / 2);
     var x_pix = mapToPol[0];
     var y_pix = mapToPol[1];
 
@@ -250,7 +256,7 @@ TDMapProjector.prototype.unproject = function(mapToPol, projType) {
 
   /* 2. Inverse rotate this coordinate around the x axis by the
      current globe tilt.  */
-  var i_tilt = -DEG2RAD * tilt;
+  var i_tilt = -DEG2RAD * ViewParams.center[1];
   var cos_tilt = Math.cos(i_tilt); var sin_tilt = Math.sin(i_tilt);
   var r3dest_x, r3dest_y, r3dest_z;
   r3dest_x = r3src_x;
@@ -262,7 +268,7 @@ TDMapProjector.prototype.unproject = function(mapToPol, projType) {
   var longitude = RAD2DEG * Math.atan2(r3dest_x, r3dest_z);
 
   /* 4. Shift by the longitudinal rotation around the pole.  */
-  longitude += 180 + lon_rot;
+  longitude += 180 + ViewParams.center[0];
 
   /* 5. Verify that the coordinates are in bounds.  */
   if (latitude < -90) latitude = -90;
@@ -273,24 +279,65 @@ TDMapProjector.prototype.unproject = function(mapToPol, projType) {
   mapToPol[1] = latitude;
 };
 
-// TODO: Fix this projector member variable problem.
-
 /**
  * Orthographic map projector.
- * @type TDMapProjector
+ * @type TDProjector
  */
-var OrthoMapProjector =  new TDMapProjector();
-OEV.OrthoMapProjector = OrthoMapProjector;
-OrthoMapProjector.unproject = function(mapToPol) {
-  return TDMapProjector.prototype.unproject(mapToPol, 0);
+var OrthoProjector =  new TDProjector();
+OEV.OrthoProjector = OrthoProjector;
+OrthoProjector.unproject = function(mapToPol) {
+  return TDProjector.prototype.unproject(mapToPol, 0);
 };
 
 /**
  * Perspective map projector.
- * @type TDMapProjector
+ * @type TDProjector
  */
-var PerspMapProjector = new TDMapProjector();
-OEV.PerspMapProjector = PerspMapProjector;
-PerspMapProjector.unproject = function(mapToPol) {
-  return TDMapProjector.prototype.unproject(mapToPol, 1);
+var PerspProjector = new TDProjector();
+OEV.PerspProjector = PerspProjector;
+PerspProjector.unproject = function(mapToPol) {
+  return TDProjector.prototype.unproject(mapToPol, 1);
 };
+
+/**
+ * Shift a point to so that it is on a globe with the given center.
+ */
+var polShiftOrigin = function(polarPt) {
+  if (isNaN(polarPt[0]))
+    return;
+  /* 1. Get the 3D rectangular coordinate of the given polar
+     coordinate.  The camera is looking down the negative z axis.  */
+  var r3src_x, r3src_y, r3src_z;
+
+  var latitude = DEG2RAD * polarPt[1];
+  var longitude = DEG2RAD * polarPt[0];
+  r3src_y = Math.sin(latitude);
+  r3src_x = Math.sin(longitude) * Math.cos(latitude);
+  r3src_z = Math.cos(longitude) * Math.cos(latitude);
+
+  /* 2. Inverse rotate this coordinate around the x axis by the
+     current globe tilt.  */
+  var i_tilt = DEG2RAD * ViewParams.polCenter[1];
+  var cos_tilt = Math.cos(i_tilt); var sin_tilt = Math.sin(i_tilt);
+  var r3dest_x, r3dest_y, r3dest_z;
+  r3dest_x = r3src_x;
+  r3dest_z = r3src_z * cos_tilt - r3src_y * sin_tilt;
+  r3dest_y = r3src_z * sin_tilt + r3src_y * cos_tilt;
+
+  /* 3. Measure the latitude and longitude of this coordinate.  */
+  latitude = RAD2DEG * Math.asin(r3dest_y);
+  longitude = RAD2DEG * Math.atan2(r3dest_x, r3dest_z);
+
+  /* 4. Shift by the longitudinal rotation around the pole.  */
+  longitude += 180 + ViewParams.polCenter[0];
+
+  /* 5. Verify that the coordinates are in bounds.  */
+  if (latitude < -90) latitude = -90;
+  if (latitude > 90) latitude = 90;
+  longitude += (longitude < 0) * 360;
+  longitude = longitude % 360.0 - 180;
+  polarPt[0] = longitude;
+  polarPt[1] = latitude;
+};
+
+OEV.polShiftOrigin = polShiftOrigin;

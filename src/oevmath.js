@@ -14,7 +14,7 @@ var RAD2DEG = 180 / Math.PI;
 OEV.RAD2DEG = RAD2DEG;
 
 /**
- * Polar coordinate point.
+ * Polar coordinate point.  "r" is always 1.
  * @constructor
  * @param {Number} lat - latitude
  * @param {Number} lon - longitude

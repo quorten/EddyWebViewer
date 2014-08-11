@@ -52,7 +52,8 @@ var browserTime = function() {
     { stopSignal = false; return; }
   /* Note: On older browsers, the timeout interval might need to be
      larger than zero in order for the control to actually return to
-     the browser.  */
+     the browser.  Setting a timeout larger than zero also helps
+     prevent mobile devices from being overloaded.  */
   return window.setTimeout(execTime, 0);
 };
 
@@ -97,6 +98,7 @@ var setup = function() {
   rendTimeElmt = document.createElement("p");
   rendTimeElmt.id = "rendTimeElmt";
   rendTimeElmt.appendChild(document.createTextNode(""));
+  TestLayer.frontBuf.style.cssText = "border-style: solid";
 
   var body = document.getElementById("topBody");
   body.appendChild(progElmt);

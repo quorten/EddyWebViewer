@@ -32,7 +32,12 @@ tracksconv: tracksconv.c qsorts.c xmalloc.c
 	cc -O3 $^ -o $@
 
 sshdata: ../data
-	CLASSES='jpgssh pngssh' ./sshconv.sh
+	CLASSES='jpgssh pngssh' sh -- ./sshconv.sh -v
+
+optracks: tracksconv
+	./tracksconv -v -o ../data/tracks.wtxt \
+	0 ../data/tracks/acyc_bu_tracks.json \
+	1 ../data/tracks/cyc_bu_tracks.json
 
 install: bundle.js
 	mkdir -p ../htdocs

@@ -2,6 +2,7 @@
 
 import "oevns";
 import "cothread";
+import "oevmath";
 import "projector";
 import "viewparams";
 
@@ -198,13 +199,26 @@ RayTracer.prototype.contExec = function() {
 	xj = 0.5 - Math.random();
 	yj = 0.5 - Math.random();
       }
-      mapToPol[0] = (((x + xj) / destImg_width) * 2 - 1 +
+
+      /* Compute normalized coordinates, applying 2D shift and scale
+         factors as necessary.  */
+      mapToPol[0] = (((x + xj) / destImg_width) * 2 - 1 -
 		     ViewParams.mapCenter[0]) * ViewParams.inv_scale;
       mapToPol[1] = (-(((y + yj) / destImg_height) * 2 - 1) *
-		     inv_aspectXY + ViewParams.mapCenter[1]) *
+		     inv_aspectXY - ViewParams.mapCenter[1]) *
 	ViewParams.inv_scale;
+
+      // Unproject.
       projector_unproject(mapToPol);
-      polShiftOrigin(mapToPol);
+
+      // Clip to the projection boundaries, if specified.
+      if (ViewParams.clip && (mapToPol[1] < -90 || mapToPol[1] > 90 ||
+			      mapToPol[0] < -180 || mapToPol[0] > 180))
+	{ mapToPol[0] = NaN; mapToPol[1] = NaN; }
+
+      // Shift to the given latitude and longitude.
+      polShiftOrigin(mapToPol, -1);
+
       if (isNaN(mapToPol[0]) ||
 	  mapToPol[1] < -90 || mapToPol[1] > 90 ||
 	  mapToPol[0] < -180 || mapToPol[0] >= 180) {

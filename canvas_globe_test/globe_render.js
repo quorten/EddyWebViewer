@@ -1007,6 +1007,7 @@ function render_ortho_graticule() {
       ctx.scale(1, lon_height);
       ctx.moveTo(0, -disp_rad); ctx.lineTo(0, disp_rad);
     }
+    // Clear the transform to draw constant width lines.
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.stroke();
   }

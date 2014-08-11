@@ -757,6 +757,7 @@ function initGUIHooks() {
       this.style.cssText = '';
       bbwrap.onmouseover = null;
       bbwrap.onmouseout = null;
+      document.getElementById('bottomBar').style.cssText = '';
     }
   };
 
@@ -1039,6 +1040,31 @@ function initGUIHooks() {
   cfg_landMass.onchange(null);
   cfg_sshPal.onchange(null);
   cfg_wireRender.onclick(null);
+}
+
+/* This function can be useful to prevent the user from triggering
+   more internal errors if an internal error has been caught.  */
+funtion dehookGUI() {
+  var elmts = [ 'btn-minimize', 'btn-begin', 'btn-rewind',
+    'btn-bstep', 'btn-play', 'btn-fstep', 'btn-ffwd', 'btn-end',
+    'btn-config', 'popupClose', 'cfg-curDate', 'cfg-latLon',
+    'cfg-scaleFac', 'cfg-graticule', 'cfg-showCyc', 'cfg-showAntiCyc',
+    'cfg-lenRange', 'cfg-projMethod', 'cfg-perspAltitude',
+    'cfg-perspFOV', 'cfg-landMass', 'cfg-sshPal', 'cfg-wireRender' ];
+
+  for (var i = 0, elmts_len = elmts.length; i < elmts_len; i++) {
+    var elmt = document.getElementById(elmts[i]);
+    elmt.onchange = elmt.ondblclick = elmt.onclick = null;
+  }
+
+  /* Force the bottom bar to be visible once the CSS GUI has been
+     immobilized.  */
+  var btn_minimize = document.getElementById('btn-minimize');
+  btn_minimize.style.cssText = '';
+  var bbwrap = document.getElementById('bbwrap');
+  bbwrap.onmouseover = null;
+  bbwrap.onmouseout = null;
+  document.getElementById('bottomBar').style.cssText = '';
 }
 
 function bodyInit() {

@@ -18,6 +18,7 @@ setclass()
       FMT=png
       BITS_BEF_DEC=8
       BITS_AFT_DEC=7
+      NOISE_MARGIN=0
     ;;
     jpgssh)
       FMT=jpg
@@ -34,14 +35,15 @@ setclass()
     ;;
     *) echo "$0: Unknown SSH conversion class." >/dev/stderr; exit 1 ;;
   esac
-
-  if [ -z "$NOISE_MARGIN" ]; then
-    NOISE_MARGIN=0
-  fi
 }
 
 cc -O3 csvtotga.c -o csvtotga
 trap "rm csvtotga" EXIT
+
+if [ "$1" = "-v" ]; then
+  VERBOSE=yes
+  shift
+fi
 
 if [ -z "$CLASSES" ]; then
   CLASSES=pngssh
@@ -74,7 +76,9 @@ for date in $DATES; do
       <../data/SSH/ssh_${date}.dat | \
       convert tga:- ../data/${CLASS}/ssh_${date}.${FMT}
   done
-  echo Finished date ${date}.
+  if [ -n "$VERBOSE" ]; then
+    echo Finished date ${date}.
+  fi
 
   # Note: Web browsers cannot reliably work with PNGs that has an
   # unassociated alpha channel, but this would be the option to

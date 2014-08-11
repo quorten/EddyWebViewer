@@ -5,82 +5,156 @@ import "renderlayer";
 import "csv";
 import "ajaxloaders";
 
-/*
-
-SSHLayer for new RenderLayer design:
-
-The RenderLayer is keyed primarily on the render() function.  Data
-downloading is handled internally by the render function.  No more
-separately managed download/render controller loop.  That was too
-difficult to manage.
-
-However, this shifts the difficulty to the inside of the RenderLayer.
-First of all, how to you derive the class?  It has to derive both from
-an AJAX loader and a RenderLayer.  Multiple inheritance, in other
-words.
-
-For this, manual merge will do, I guess.  The existing RenderLayer
-class is just a policy demonstration.
-
-Another option is using internal aggregation instead.  The generic
-cothread controllers are a great help for this.
-
-The easy way: Start with an AJAX loader and add RenderLayer methods on
-top of that.  Rendering is handled in procData.
-
-The hard way: Create a new RenderLayer(), create an internal loader
-object (also derived), setup rendering in procData(), and daisychain
-the initCtx() and contExec() calls in the topmost object.
-
-I like it the easy way.  So that's the way it will be.
-
-And what about multiple different rendering methods?  Simply create
-entirely new objects for each method, then work on the simplifications
-later.
-
+/**
+ * Sea Surface Height Layer.
+ *
+ * This object has many important parameters.  However, they do not
+ * show up in the JSDocs.  See the source code for these details.
+ *
+ * `this.notifyFunc` is used to wake up the main loop to load more
+ * data, if provided.
  */
-
-var SSHLayer = new ImageLoader();
+var SSHLayer = new RenderLayer();
 OEV.SSHLayer = SSHLayer;
-RayTracer.call(SSHLayer, null, 1, 1);
-SSHLayer.setViewport = RayTracer.prototype.setViewport;
+SSHLayer.loadXHRData = new XHRLoader();
+SSHLayer.loadImageData = new ImageLoader();
+SSHLayer.loadData = SSHLayer.loadImageData;
+SSHLayer.render = new RayTracer(null, 1, 1);
+SSHLayer.frontBuf = SSHLayer.render.frontBuf;
+SSHLayer.setViewport = function(width, height) {
+  return this.render.setViewport(width, height);
+};
 
-/* Important parameters for SSHLayer: */
+// Important parameters for SSHLayer:
 
-// imgFormat: desired image format to use
+/** imgFormat: desired image format to use */
 SSHLayer.imgFormat = "png";
 
-// loadPrefix: path prefix to append to date for frame to load
+/** loadPrefix: path prefix to append to date for frame to load */
 SSHLayer.loadPrefix = "../data/";
 
-// loadFrame: hyphenless date of frame to load
+/** loadFrame: hyphenless date of frame to load */
 SSHLayer.loadFrame = "19921014";
 
-// shadeStyle: See the procData() function for details
+/** shadeStyle: See the pixelPP() function for details */
 SSHLayer.shadeStyle = 1;
 
+// TODO: Add JSON format reader.  Use conversion classes.
+
+/* TODO: Fast shortcuts.
+
+CSS renderer
+
+Video renderer
+
+*/
+
 SSHLayer.initCtx = function() {
-  SSHLayer.url =
-    SSHLayer.loadPrefix +
-    SSHLayer.imgFormat + "ssh/ssh_" + SSHLayer.loadFrame +
-    "." + SSHLayer.imgFormat;
-  this.backBuf = null;
-  RayTracer.prototype.initCtx.call(this);
-  return ImageLoader.prototype.initCtx.call(this);
+  var newUrl;
+  if (this.imgFormat == "dat") {
+    newUrl = this.loadPrefix + "SSH/ssh_" + this.loadFrame +
+      "." + this.imgFormat;
+    SSHLayer.loadData = SSHLayer.loadXHRData;
+  } else {
+    newUrl =
+      this.loadPrefix +
+      this.imgFormat + "ssh/ssh_" + this.loadFrame +
+      "." + this.imgFormat;
+    SSHLayer.loadData = SSHLayer.loadImageData;
+  }
+
+  if (newUrl != this.loadData.url) {
+    this.loadData.timeout = this.timeout;
+    this.loadData.notifyFunc = this.notifyFunc;
+    this.loadData.url = newUrl;
+    this.loadData.initCtx();
+  }
+
+  this.render.timeout = this.timeout;
+  this.render.initCtx();
+
+  this.status.returnType = CothreadStatus.PREEMPTED;
+  this.status.preemptCode = 0;
+  this.status.percent = 0;
 };
 
-SSHLayer.procData = function(image) {
-  if (!this.backBuf) this.initBackBuf(image);
+SSHLayer.contExec = function() {
+  if (this.loadData.status.returnType != CothreadStatus.FINISHED) {
+    var status = this.loadData.continueCT();
+    this.status.returnType = CothreadStatus.PREEMPTED;
+    this.status.preemptCode = status.preemptCode;
+    this.status.percent = status.percent;
+    if (status.returnType == CothreadStatus.FINISHED) {
+      if (this.loadData.retVal == 200 ||
+	  this.loadData.retVal == ImageLoader.SUCCESS) {
+	this.render.backBuf = this.loadData.backBuf;
+	this.loadData.backBuf = null;
+      } else {
+	this.status.returnType = CothreadStatus.FINISHED;
+	this.retVal = RenderLayer.LOAD_ERROR;
+      }
+    }
+    return this.status;
+  }
 
-  /* Note: Although we're normally not allowed to modify the
-     CothreadStatus before a tail data processing function in finished
-     in an AJAX loader, here it is okay for us to take a liberation
-     from this rule, since the Cothread controller is setup to handle
-     this.  */
-  return RayTracer.prototype.contExec.call(this);
+  return this.render.continueCT();
 };
 
-SSHLayer.initBackBuf = function(image) {
+SSHLayer.loadXHRData.procData = function(httpRequest, responseText) {
+  var doneProcData = false;
+  var procError = false;
+
+  if (httpRequest.readyState == 3) { // LOADING
+    /* Process partial data here (possibly with timed cothread
+       loop).  */
+  }
+  else if (httpRequest.readyState == 4) { // DONE
+    /* Determine if the HTTP status code is an acceptable success
+       condition.  */
+    if ((httpRequest.status == 200 || httpRequest.status == 206) &&
+	responseText == null)
+      this.retVal = XHRLoader.LOAD_FAILED;
+    if (httpRequest.status != 200 && httpRequest.status != 206 ||
+	responseText == null) {
+      // Error
+      httpRequest.onreadystatechange = null;
+      this.httpRequest = null;
+      this.status.returnType = CothreadStatus.FINISHED;
+      this.status.preemptCode = 0;
+      return this.status;
+    }
+
+    /* Perform final cothreaded (or possibly synchronous) data
+       processing here.  */
+    this.backBuf = csvParseFlat(responseText);
+    doneProcData = true;
+    if (!this.backBuf)
+      procError = true;
+  }
+
+  if (procError) {
+    httpRequest.abort();
+    httpRequest.onreadystatechange = null;
+    this.httpRequest = null;
+    this.retVal = XHRLoader.PROC_ERROR;
+    this.status.returnType = CothreadStatus.FINISHED;
+    this.status.preemptCode = 0;
+    return this.status;
+  }
+
+  if (httpRequest.readyState == 4 && doneProcData) {
+    /* Only manipulate the CothreadStatus object from within this
+       function when processing is entirely finished.  */
+    httpRequest.onreadystatechange = null;
+    this.httpRequest = null;
+    this.status.returnType = CothreadStatus.FINISHED;
+    this.status.preemptCode = 0;
+  }
+
+  return this.status;
+};
+
+SSHLayer.loadImageData.procData = function(image) {
   /* Pull the pixels off of the image and fill them into the sshData
      array as floating point numbers.  */
   var tmpCanvas = document.createElement("canvas");
@@ -90,26 +164,15 @@ SSHLayer.initBackBuf = function(image) {
   ctx.drawImage(image, 0, 0);
   /* We no longer need the original image, so free up the associated
      memory.  */
-  /* But don't actually do this, because it will mess up the
-     ImageLoader cothreading mechanism.  */
-  // this.image = null;
+  this.image = null;
   var tmpImgData = ctx.getImageData(0, 0, tmpCanvas.width, tmpCanvas.height);
-  // document.documentElement.children[1].appendChild(tmpCanvas);
   tmpCanvas = null; ctx = null;
-
-  /* var iSz = 1440 * 721 * 4;
-     var sshData = new Float32Array(1440 * 721);
-     SSHLayer.sshData = sshData;
-     var ntohl = new DataView(tmpImgData.data.buffer);
-     for (var i = 0, j = 0; i < iSz; i += 4) {
-     sshData[j++] = ntohl.getFloat32(i, false);
-     } */
 
   this.backBuf = { data: [], width: image.width, height: image.height };
   var i = 0;
   var bad; // Bits After Decimal
   var bbd; // Bits Before Decimal
-  if (this.imgFormat == "jpg") {
+  if (SSHLayer.imgFormat == "jpg") {
     bad = 2;
     bbd = 6;
     while (i < tmpImgData.data.length) {
@@ -122,8 +185,8 @@ SSHLayer.initBackBuf = function(image) {
 			       (1 << (bbd - 1)));
       i += 4;
     }
-
-  } else if (this.imgFormat == "png") {
+  }
+  else if (SSHLayer.imgFormat == "png") {
     bad = 8; // Actually only 7, but we decode it as 8.
     bbd = 8;
     while (i < tmpImgData.data.length) {
@@ -140,27 +203,13 @@ SSHLayer.initBackBuf = function(image) {
     }
   }
 
-  /* this.backBuf.data = new Float32Array(1440 * 721 * 4);
-  var sshData = this.backBuf.data;
-  var bytePacker = new Uint8Array(this.backBuf.data.buffer);
-  var badCSize = 1440 * 4 * 721 * 4;
-  var ntohlBuf = new Uint8Array(4);
-  var ntohl = new DataView(ntohlBuf.buffer);
-  for (var i = 0, j = 0; i < badCSize; i += 16) {
-    /\* FIXME: Optimize loader.  *\/
-    ntohlBuf[0] = tmpImgData.data[i+0];
-    ntohlBuf[1] = tmpImgData.data[i+4];
-    ntohlBuf[2] = tmpImgData.data[i+8];
-    ntohlBuf[3] = tmpImgData.data[i+12];
-    sshData[j++] = ntohl.getFloat32(0, false);
-  } */
-
-  // this.backBuf.data = csvParse(httpRequest.responseText);
-  // httpRequest.onreadystatechange = null;
-  // this.httpRequest = null;
+  this.status.returnType = CothreadStatus.FINISHED;
+  this.status.preemptCode = 0;
+  return this.status;
 };
 
-SSHLayer.colorTbl = (function() {
+// MATLAB Jet color table
+SSHLayer.render.mlColorTbl = (function() {
   var grad = [ [ 0x00, 0x00, 0x7f ],
 	       [ 0x00, 0x00, 0xff ],
 	       [ 0x00, 0x7f, 0xff ],
@@ -171,27 +220,27 @@ SSHLayer.colorTbl = (function() {
 	       [ 0xff, 0x00, 0x00 ],
 	       [ 0x7f, 0x00, 0x00 ] ];
 
-  var colorTbl = [];
+  var mlColorTbl = [];
   for (var i = 0; i < 256; i++) {
     var value = i / 256 * 8;
     var index =  0|value;
     var ix2 = index + 1;
     if (ix2 > 8) ix2 = 8;
     var interpol = value % 1;
-    colorTbl.push((1 - interpol) * grad[index][0] +
+    mlColorTbl.push((1 - interpol) * grad[index][0] +
 		  interpol *  grad[ix2][0]);
-    colorTbl.push((1 - interpol) * grad[index][1] +
+    mlColorTbl.push((1 - interpol) * grad[index][1] +
 		  interpol *  grad[ix2][1]);
-    colorTbl.push((1 - interpol) * grad[index][2] +
+    mlColorTbl.push((1 - interpol) * grad[index][2] +
 		  interpol *  grad[ix2][2]);
-    colorTbl.push(255);
+    mlColorTbl.push(255);
   }
-  return colorTbl;
+  return mlColorTbl;
 })();
 
-SSHLayer.pixelPP = function(value, data, destIdx,
-			    osaFac, inv_osaFac) {
-  if (value == -128) { // Undefined SSH
+SSHLayer.render.pixelPP = function(value, data, destIdx,
+				   osaFac, inv_osaFac) {
+  if (value == -128 || isNaN(value)) { // Undefined SSH
     data[destIdx+0] = 0|(data[destIdx+0] * inv_osaFac + 0 * osaFac);
     data[destIdx+1] = 0|(data[destIdx+1] * inv_osaFac + 0 * osaFac);
     data[destIdx+2] = 0|(data[destIdx+2] * inv_osaFac + 0 * osaFac);
@@ -200,16 +249,16 @@ SSHLayer.pixelPP = function(value, data, destIdx,
   }
 
   var red, green, blue;
-  switch (this.shadeStyle) {
+  switch (SSHLayer.shadeStyle) {
   case 1: // MATLAB
     value /= 32;
     if (value < -1) value = -1;
     if (value > 1) value = 1;
     value = 0|((value + 1) / 2 * 255);
     value <<= 2;
-    red = this.colorTbl[value++];
-    green = this.colorTbl[value++];
-    blue = this.colorTbl[value++];
+    red = this.mlColorTbl[value++];
+    green = this.mlColorTbl[value++];
+    blue = this.mlColorTbl[value++];
     break;
   case 2: // Contour bands
     value += 32;

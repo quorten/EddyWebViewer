@@ -461,3 +461,26 @@ ParallelCTCtl.prototype.contExec = function() {
 			 numJobs);
   return this.status;
 };
+
+/*
+
+NOTE: One more kind of controller (and cothread type) is a "bare"
+cothread and parallel bare cothread controller.  A bare cothread is
+almost like a normal cothread, except that the contExec() method only
+performs one iteration and does not check for timeouts.  All timeout
+checking is delegated to the bare cothread controller.
+
+A bare cothread controller is useful for sequencing many cothreads
+within a small timeframe, such as 15 ms.  A normal cothread would not
+be able to make accurate timings for very short intervals, and thus
+the user experience would be jerky since the cothread controller would
+not be able to consistently meet its timeout deadline.  Bare cothread
+controllers solve this problem by coalescing the timeout intervals
+into a single larger interval.
+
+Bare cothreads possibly suffer from lower performance since not as
+many variables can be cached for tight inner loop computations, and
+CPU cache misses are going to be more common when rapidly jumping
+between unrelated code segments.
+
+*/

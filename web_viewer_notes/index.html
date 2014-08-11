@@ -6,10 +6,9 @@
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
   <title>Ocean Eddies Web Viewer Notes</title>
   <style id="internalStyle" type="text/css">
-    html, body { background-color: white; }
+    html, body { color: black; background-color: white; }
     p.image-flow { page-break-inside: avoid; }
     p.image-flow object, p.image-flow img { vertical-align: top; }
-    /* TODO: Put margins in images, not HTML page.  */
   </style>
 </head>
 <body>
@@ -71,13 +70,12 @@ following hold true:</p>
   the way down to Firefox 3.6, Internet Explorer 6, and versions of
   Safari from 2004, provided that adding such support does not require
   an unreasonable amount of effort.</li>
-  <li>The viewer will be easy to use.</li>
-  <li>The viewer will have an attractive look, feel, and feature set.
-  Think Google Earth: the viewer will have both 2D and 3D map views.
-  However, unlike Google Earth, you do not need to install a browser
-  plugin to use the viewer.</li>
-  <li>The viewer has to be fast and responsive: high resolution images
-  should be broken up into tiles and loaded individually.</li>
+  <li>The viewer should be easy to use.</li>
+  <li>The viewer should have an attractive look, feel, and feature
+  set.  Think Google Earth: the viewer will have both 2D and 3D map
+  views.  However, unlike Google Earth, you do not need to install a
+  browser plugin to use the viewer.</li>
+  <li>The viewer has to be fast and responsive.</li>
 </ol>
 
 <p>These are some links to general resources for this project.</p>
@@ -95,18 +93,75 @@ following hold true:</p>
   slow and doesn't work well with older browsers:
     <a href="http://earth.nullschool.net/">
       http://earth.nullschool.net/</a></li>
-  <li>Good public domain dataset for images of the Earth:
+  <li>Good public domain dataset for graphics of the Earth:
     <a href="http://www.naturalearthdata.com/">
       http://www.naturalearthdata.com/</a></li>
 </ul>
 
+<p>From a developer's perspective, the most likely point for
+maintenance is exporting the SSH (Sea Surface Height) and tracks data
+to the correct formats.  The formats of these data are heavily
+optimized to maximize the performance of the web viewer.  Here is a
+quick walk-through on how to setup the web viewer with some data:</p>
+
+<ol>
+  <li>All generated text files should use Unix newlines.  There should
+  be a newline character just before the end of the file.</li>
+  <li>Unpack the source code for the web viewer into a directory of
+  your choice.  The sources will be contained in a directory called
+  "<code>EddyWebViewer</code>".  Within that directory, create an
+  empty directory called "<code>data</code>".  This is where both the
+  unconverted and the converted data is stored.</li>
+  <li>Generate a text file named "<code>dates.dat</code>" with 8-digit
+  dates formatted as YYYYMMDD, with one date per line.  This is the
+  list of dates that your data will cover.  The dates must be listed
+  in ascending order.</li>
+  <li>Create a directory named "<code>SSH</code>" within the data
+  directory to store the sea surface height data in.  For each date,
+  there should be a file named "YYYYMMDD.dat" (substitute the actual
+  date) containing the SSH data for that date.  CSV (comma-separated
+  values) is the format that the SSH data must be.  The CSV file
+  should not have any spaces after the commas.  The CSV file
+  represents an equirectangular-projection image of the Earth's
+  surface.  The resolution of the image should be 1440x721, and the
+  sea surface height is measured in centimeters.  "<code>NaN</code>"
+  is stored on samples where the sea surface height is undefined, such
+  as on land or the polar ice caps.  The prime meridian should be the
+  first meridian at the left side of the image, and the first row of
+  data represents latitude -90 degrees, the center of the south
+  pole.</li>
+  <li>Create a directory called "<code>tracks</code>" to store the
+  eddy tracks data in.  The anticyclonic tracks should be stored in a
+  file named "<code>acyc_bu_tracks.json</code>", and the cyclonic
+  tracks file should be named "<code>cyc_bu_tracks.json</code>".  See
+  the top of the section <a href="#tracks_format">Optimized Eddy
+  Tracks Storage Format</a> for details on this format.  Note that for
+  these files, you are recommended not to use any space or newline
+  characters between any of the semantic delimiters.</li>
+  <li>Change to the "<code>src</code>" directory to run the
+  converters:<br />
+  <code>cd src && make sshdata optracks</code></li>
+  <li>Converting the data will take a little while.  Once the build
+  has finished, the converted data will be stored within the
+  "<code>data</code>" directory.  You can now proceed to copying this
+  data to the proper location on the web server.</li>
+</ol>
+
+<p>These are some general resources that you are expected to be
+familiar with for working on this project.  The code and knowledge
+base covered is quite extensive, and the purpose of these notes is to
+help pin down and document all the nuances of this code.</p>
+
+<p>Additional details on the implementation are described in the
+Implementation Center.</p>
+
 <h3><a name="intro_interact" id="intro_interact">Interactivity
 Basis</a></h3>
 
-<p>The primary technology that will be used to provide interactive
-user interface elements within the web browser will be using
-JavaScript to manipulate Dynamic HTML.  Interactive display of
-graphics will be handled by a variety of different technologies.</p>
+<p>The primary technology that is used to provide interactive user
+interface elements within the web browser is using JavaScript to
+manipulate Dynamic HTML.  Interactive display of graphics is handled
+by a variety of different technologies.</p>
 
 <p>For 2D vector graphics, there are four choices for display, listed
 in order from least compatibility issues to most compatibility
@@ -122,6 +177,9 @@ issues:</p>
 <p>3D graphics can be achieved through either manual projection before
 rendering 2D vector graphics, per-pixel ray tracing of textures onto
 an HTML Canvas, or through WebGL GLSL pixel shaders.</p>
+
+<!-- NOT: high resolution images
+  should be broken up into tiles and loaded individually -->
 
 <h3><a name="intro_graph_render" id="intro_graph_render">
     Graphics Rendering</a></h3>
@@ -473,6 +531,10 @@ images:</p>
   equal area projection.<br />
   <a href="http://en.wikipedia.org/wiki/Sinusoidal_projection">
     http://en.wikipedia.org/wiki/Sinusoidal_projection</a></li>
+  <li><strong>Orthographic projection:</strong> See the next
+  section.</li>
+  <li><strong>Perspective projection:</strong> See the next
+  section.</li>
 </ul>
 
 <p>Although there are many more map projections of the Earth then the
@@ -490,12 +552,16 @@ less powerful GPGPUs.</p>
 projection?  For the purposes of this application, it is basically the
 need to carry around three of some kind of position variables in the
 projection/unprojection equations.  Tilting the pole of the globe
-before projection computations basically requires three-dimensional
-mathematics in the intermediate equations.</p>
+before or after projection computations basically requires
+three-dimensional mathematics in the intermediate equations.  Although
+previous versions of this document considered only orthographic and
+perspective projections to be 3D projections, it turns out that they
+too can be specified to have identical semantics to the projections
+above and vice versa.</p>
 
 <p>Raytrace rendering a 3D view of the Earth is less trivial than one
 would think at first.  The process of backtracing from screen pixels
-to a a map pixel is a multistep process.</p>
+to a map pixel is a multistep process.</p>
 
 <p class="image-flow">
 <object type="image/svg+xml" data="orthographic.svg"
@@ -549,8 +615,12 @@ the geometry, determine if the projected point is visible or not.  If
 it is not visible, don't render it.</p>
 
 <p>The specific mathematics used for backtracing a ray or projecting a
-vector in step 1 depends on whether perspective is used for rendering
-or not.</p>
+vector in step 1 depends on which projection method is chosen for
+rendering.  For raytracing, the reverse projection method is used.
+The mathematics for all projection methods other than orthographic and
+perspective projection were given in the previous section.
+Orthographic and perspective projections are detailed in the following
+sections.</p>
 
 <h4 style="clear: left">Orthographic Projection</h4>
 
@@ -864,6 +934,20 @@ rectangular coordinates) is as follows:</p>
   <li><code>y = r * sin(&theta;)</code></li>
 </ul>
 
+<p class="image-flow">
+<object type="image/svg+xml" data="grat1.svg"
+	width="226" height="226">
+  <img src="grat1.png" alt="Graticule equator-on-center view."
+       width="226" height="226" />
+</object>
+
+<object type="image/svg+xml" data="grat2.svg"
+	width="226" height="226">
+  <img src="grat2.png" alt="Graticule pole-on-center view."
+       width="226" height="226" />
+</object>
+</p>
+
 <p>Now that review matters are out of the way, here's the solution.
 First, start out simple.  Assume a globe with a radius of unit length
 (1).  Looking at a globe equator-on-center, parallels are straight
@@ -902,6 +986,14 @@ the <code>cos()</code> function as used for computing rotations.  This
 makes mathematical sense, since tilting the globe is simply a rotation
 transformation.</p>
 
+<p class="image-flow" style="float: left">
+<object type="image/svg+xml" data="grat3.svg"
+	width="226" height="226">
+  <img src="grat3.png" alt="Tilted parallels of a graticule."
+       width="226" height="226" />
+</object>
+</p>
+
 <p>Now think about the parallels.</p>
 
 <ul>
@@ -913,14 +1005,16 @@ transformation.</p>
   as simple lines to ellipses, and when the globe is tilted by 90
   degrees, the parallels appear as circles.  The centers of all of
   these circles/lines always lie somewhere on the pole line.  Since
-  rotating a line in orthographic projection squashes every point on
-  the line uniformly by a linear factor, the centers of the circles
-  can easily be computed by multiplying their height along the pole
-  axis by the 2D length of the orthographically-projected pole.</li>
-  <li>The width of the parallel ellipses is always the same.  Because
-  the axis of the ellipses pertaining to the width of the ellipses
-  always runs along the tilt axis, tilting the globe never
-  mathematically changes the width of the parallel ellipses.</li>
+  <a href="rot_trunc.html">rotating a line in orthographic projection
+  squashes every point on the line uniformly by a linear factor</a>,
+  the centers of the circles can easily be computed by multiplying
+  their height along the pole axis by the 2D length of the
+  orthographically-projected pole.</li>
+  <li>The width of the parallel ellipses is always the
+  same.  <a href="rot_axis.html">Because the axis of the ellipses
+  pertaining to the width of the ellipses is always parallel to the
+  axis of rotation</a>, tilting the globe never mathematically changes
+  the width of the parallel ellipses.</li>
   <li>The next challenge in drawing the parallels is determining what
   the vertical height that the parallel ellipses must be.  However,
   this is simply correlated with the rotational tilt of the
@@ -931,18 +1025,26 @@ transformation.</p>
   (<code>sin(tilt)</code> equals 0).</li>
 </ul>
 
+<p class="image-flow" style="float: left">
+<object type="image/svg+xml" data="grat4.svg"
+	width="226" height="226">
+  <img src="grat4.png" alt="Tilted meridians of a graticule."
+       width="226" height="226" />
+</object>
+</p>
+
 <p>Now think about the meridians.</p>
 
 <ul>
   <li>When tilting the globe from equator-on-center to pole-on-center,
   the meridians get progressively squashed into straight lines.  Not
   only do they get progressively squashed, the 2D vertical extent of
-  the squashed shapes also increases from zero to a maximum when
+  the squashed shapes also decreases from a maximum to a minimum when
   looking at the globe pole-on-center.</li>
   <li>The lines seen when looking at the globe pole-on-center can be
   thought of as vertically squashed and sheared ellipses.  When
   looking at the globe equator-on-center, the shear factor is zero and
-  the squash factor is one.</li>
+  the squash (scale) factor is one.</li>
   <li>At this point, one possible way to draw the meridians is to 1)
   squash the meridian circles horizontally and vertically then 2)
   vertically shear the ellipse to get the target ellipse to draw.</li>
@@ -976,32 +1078,45 @@ transformation.</p>
   transformation.  This drops the X extent correctional factor from
   the shear factor equation as follows: <code>shear_factor = sin(tilt) *
   cos(longitude)</code>.  It also avoids a potential divide-by-zero.</li>
-  <li>Consider an alternate process to reaching the solution.  Instead
-  of starting with a view of the globe equator-on-center, think about
-  starting with a view of the globe pole-on-center.  Approaching the
-  problem from this perspective, the first problem solving steps would
-  be to draw the lines as appearing from above simply as straight
-  lines on the equatorial plane.  When viewing such a globe
-  equator-on-center, all of the lines should lie flat and be occluded
-  by the equatorial line.  By simply using only the line that
-  corresponds to the major axis of the elliptical process above, this
-  effect can easily be achieved.  Let's overview how this process
-  works for this simplified case:
-    <ol>
-      <li>Start by drawing a straight horizontal line of length 2,
-      centered at the origin.</li>
-      <li>Vertically shear this horizontal line with
-      <code>shear_factor = sin(tilt) * cos(longitude)</code>.</li>
-      <li>Horizontally squash the sheared line by
-      <code>sin(longitude)</code>.</li>
-    </ol>
-  It should now be easily obvious that the last step to transition
-  from the above partial meridian-drawing procedure to the full
-  procedure is to start by drawing a circle with radius 1, then
-  squashing the circle vertically as appropriate for the current tilt
-  angle, then performing the last two shearing and squashing steps
-  above verbatim.</li>
 </ul>
+
+<p class="image-flow" style="float: left">
+<object type="image/svg+xml" data="grat5.svg"
+	width="226" height="226">
+  <img src="grat5.png" alt="Tilted meridians of a graticule."
+       width="226" height="226" />
+</object>
+</p>
+
+<p>Consider an alternate process to reaching the solution.  Instead of
+starting with a view of the globe equator-on-center, think about
+starting with a view of the globe pole-on-center.  Approaching the
+problem from this perspective, the first problem solving steps would
+be to draw the lines as appearing from above simply as straight lines
+on the equatorial plane.  When viewing such a globe equator-on-center,
+all of the lines should lie flat and be occluded by the equatorial
+line.  By simply using only the line that corresponds to the major
+axis of the previous elliptical process, this effect can easily be
+achieved.  Let's overview how this process works for this simplified
+case:</p>
+
+<!-- NOTE: For some reason, the numbers in the ordered list encroach
+on the graticule diagram on the side. -->
+<ol style="list-style-position: inside">
+  <li>Start by drawing a straight horizontal line of length 2,
+  centered at the origin.</li>
+  <li>Vertically shear this horizontal line with
+  <code>shear_factor = sin(tilt) * cos(longitude)</code>.</li>
+  <li>Horizontally squash the sheared line by
+  <code>sin(longitude)</code>.</li>
+</ol>
+
+<p>It should now be easily obvious that the last step to transition
+from the above partial meridian-drawing procedure to the full
+procedure is to start by drawing a circle with radius 1, then
+squashing the circle vertically as appropriate for the current tilt
+angle, then performing the last two shearing and squashing steps above
+verbatim.</p>
 
 <p>Although the above explanations provide a pretty good graticule
 drawing method so far, there is still one problem: this method must
@@ -1013,9 +1128,19 @@ of the graticule?</p>
 problem: 1) Find a way to parameterize the great circle that divides
 the front and back sides of the globe.  2) Use that equation to
 determine points along the parallels and meridians that lie on this
-boundary to divide the lines into front pieces and back pieces.</p>
+boundary to divide the lines into front pieces and back pieces.  3)
+Discard segments that are on the back side by testing a median point
+on the segment.</p>
 
 <h3>Equation of a Great Circle in Polar Coordinates</h3>
+
+<p class="image-flow">
+<object type="image/svg+xml" data="slice_globe.svg"
+	width="202" height="101">
+  <img src="slice_globe.png" alt="Tilted meridians of a graticule."
+       width="202" height="101" />
+</object>
+</p>
 
 <p>Start by thinking in 2D.  On a 2D orthographic projected globe,
 draw a straight line that runs through the center of the image.  You
@@ -1191,32 +1316,86 @@ eddy record.</p>
 <h4>Kd-tree Construction Algorithm</h4>
 
 <p>The kd-tree construction algorithm used for this project presorts
-the elements in each dimension before building the kd-tree.  The
-algorithms keep track of the "current dimension" with starts at zero,
-goes up to one, then cycles back to zero, for latitude and longitude
-respectively.  Initially, the current dimension is zero.  The sorted
-latitudes are in a first array slot for the current dimension plus
-zero, and the sorted longitudes are in a second array slot for the
-current dimension plus one.  The median is picked in the current
-dimension.  Then, elements from the current dimension plus one are
-copied into the space of the current dimension array.  Each element is
-compared with the median in the current dimension and sent to either
-the left half or the right half.  Thus, each subarray built in will
-still be in sorted order for the current dimension plus one.  Now, the
-current dimension can be cycled to the next dimension, and the process
-can be repeated for the new subarrays now in the current dimension
-plus zero array.  When this process is finished, the complete kd-tree
-will be located in the current dimension plus zero array.  Then, the
-kd-tree is built by cycling the current dimension and copying.  This
-algorithm has been obtained from the following Wikipedia article.
-Although.  Linear time median finding algorithm may not work, since
-this algorithm handles points equal to the median by splitting them
-between the left and right halves rather than exclusively including
-all such points in the right half.</p>
+the elements in each dimension before building the kd-tree.  Next, the
+algorithm recusively selects the median in the "current dimension,"
+which alternates between zero and one (for latitude and longitude
+respectively) during each step to the next deeper level of the
+tree.</p>
+
+<p>Each iteration of the algorithm is carried out as follows.  The
+algorithm maintains three working arrays.  At the start of the
+iteration, the first array is sorted by the current dimension, the
+second array is sorted by the current dimension plus one (with
+wraparound to zero as necessary), and the third array is a temporary
+working array.  The iteration can be broken down into the following
+substeps:</p>
+
+<p class="image-flow" style="float: left">
+<object type="image/svg+xml" data="kdcons.svg"
+	width="202" height="142">
+  <img src="kdcons.png" alt="Kd-tree construction diagram."
+       width="202" height="142" />
+</object>
+</p>
+
+<!-- NOTE: For some reason, the numbers in the ordered list encroach
+on the kd-tree construction diagram on the side. -->
+<ol style="list-style-position: inside">
+  <li>The third array is initialized to be a copy of the first
+  array.</li>
+  <li>The median element in the current dimension is chosen from the
+  first array.  In this case, this is the <em>true</em> median element
+  (min-median, to be exact), not an element with an identical value to
+  the median element that represents a greater-than-or-equal-to
+  division.</li>
+  <li>The "next dimension" is shifted to be the current dimension.
+    <ul>
+      <li>Starting with the current dimension plus one, each working
+      array is scanned from the beginning to the end.</li>
+      <li>For each such element, it's component in the current
+      dimension is compared with the median element.  The current
+      dimension does not change during this construction process.</li>
+      <li>If the element is less than the median element, it is sent to the
+      left side of the list.</li>
+      <li>If the element is greater than the median element, it is
+      sent to the right side of the list.</li>
+      <li>If the element is the median element, it is sent to the
+      position of the median element in the previous array.</li>
+      <li>If the element is equal to the median element, but not the
+      median itself, it is sent into the remaining space immediately
+      adjacent to the median element.</li>
+      <li>Now all of the following properties hold true for all but
+      the last working array:
+	<ul>
+	  <li>The median element in the current dimension is at the
+	  same index in all arrays.</li>
+	  <li>All elements in the left subarrays are less than or
+	  equal to the median in the current dimension.</li>
+	  <li>All elements in the right subarrays are greater than or
+	  equal to the median in the current dimension.</li>
+	  <li>In the first working array, both subarrays are sorted in
+	  the order of the current dimension plus one.  This property
+	  similarly holds true for the subsequent arrays.</li>
+	</ul>
+      Once finished, the current dimension can be incremented and
+      wrapped back to zero if it exceeds the number of dimensions.
+      </li>
+    </ul>
+  </li>
+  <li>Recurse on the two subarrays now in the current dimension.</li>
+</ol>
+
+<p>The algorithm will finish with the fully constructed kd-tree in the
+current dimension working array.  The remaining arrays are just
+temporary workspaces once the algorithm has been completed.</p>
+
+<p>Note: Within recursive steps, the length of the working arrays can
+be constrained to only work with the necessary range of elements
+within that step.</p>
 
 <p>This algorithm has been obtained from the following Wikipedia
 article, although the Wikipedia article does not do as good of a job
-explaining it:<br />
+explaining this specific variant:<br />
 <a href="http://en.wikipedia.org/wiki/K-d_tree">
   http://en.wikipedia.org/wiki/K-d_tree</a></p>
 
@@ -1334,7 +1513,7 @@ Format</h3>
 
 <p>The tracks data is a text file, encoded in UTF-16 little endian
 with byte order mask (BOM).  Little endian was chosen mainly for
-performance: the vast majority of computers (especially older PCs) are
+conformity: the vast majority of computers (especially older PCs) are
 natively little endian, and many computers that are big endian are
 very fast at handling little endian data.  The data is encoded such
 that null characters (<code>0x0000</code>) and surrogate pairs
@@ -1474,8 +1653,14 @@ above.)</p>
     Implementation Center</a></h2>
 
 <p>This is where helpful notes pertaining to the implementation are
-stored.  Some of these notes are only needed during the intermediate
-development stages of the implementation.</p>
+stored.  Here, there is extended commentary on <em>why</em> things are
+the way they are in the code, beyond the comments in the source files.
+When things would otherwise get too verbosive or be too hard to
+communicate with ASCII art, the commentary is continued in here.</p>
+
+<p>Some of these notes are only needed during the intermediate
+development stages of the implementation, but the outdated information
+is in the process of being moved out.</p>
 
 <p>Overall, the implementation of the web viewer is divided into three
 main areas: the CSS user interface (GUI), the renderer, and data
@@ -1698,7 +1883,11 @@ compatibility with older browsers.</p>
   <li>Check that import statements make sense: they should mirror the
   logically equivalent usage of C/C++ include headers, except for
   cases that would cause circular includes.</li>
-  <li>Avoid using <code>window.object</code> as much as possible.</li>
+  <li>Avoid using <code>window.object</code> for non-host
+  objects.</li>
+  <li>Minimize <code>document.getElementById()</code> calls for
+  performance.</li>
+  <li>Note: Deep nested hierarchies are not good for performance.</li>
 </ul>
 
 <h3>Reference Documentation</h3>
@@ -1750,15 +1939,15 @@ access to a copy of the information, to actually view the information,
 you'll need a sufficiently Windows-compatible environment to run the
 help viewers that come with the PSDK, or you'll need to figure out how
 to extract the HTML from the bundled help file formats.  Tough luck,
-but that's Microsoft for you.</p>
+but that's Microsoft for you.  Then again, you don't <em>really</em>
+need to support old versions of Internet Explorer, do you?</p>
 
 <h4>Computer Graphics Concepts and Technologies</h4>
 
-<p>Sorry, but I can't provide sources for this information.  The
-related parts of this program builds upon too many years of experience
-for me to recommend only a single source.  You're going to have to
-search for relevant books/documents yourself.  You should be familiar
-with the following concepts/technologies:</p>
+<p>Only a small handful of resources are provided here.  You're going
+to have to search for additional relevant books/documents related to
+this subject yourself.  You should be familiar with the following
+concepts/technologies:</p>
 
 <ul>
   <li>3D transformations, transformation matrices</li>
@@ -1769,6 +1958,14 @@ with the following concepts/technologies:</p>
   <li>OpenGL programming</li>
   <li>OpenGL vertex shaders and fragment shaders</li>
 </ul>
+
+<p>Information on the OpenGL vertex shaders and fragment shaders can
+be found on the <a href="http://www.opengl.org/">OpenGL website</a>.
+The OpenGL website also provides general information on OpenGL
+programming.  Wikipedia seems to provide adequate information on
+quadtrees/octrees and kd-trees.
+The <a href="http://www.w3.org/TR/SVG/">SVG 1.1 specification</a> also
+provides helpful background information on transformations.</p>
 
 <pre>----------------------------------------</pre>
 
@@ -2434,15 +2631,15 @@ limitations in the various versions of Internet Explorer:</p>
   <li>IE5 interprets "width" and "height" to mean the content
   width/height, plus the padding, plus the border widths.  IE6 doesn't
   do this when standards-conformant mode is triggered via
-  a <code>&lt;DOCTYPE&gt;</code> declaration.</li>
+  a <code>&lt;!DOCTYPE&gt;</code> declaration.</li>
   <li>You probably cannot go further back in time to support DHTML and
   JavaScript on a browser earlier than Internet Explorer 5.  IE5 was
   the first version to include support for the Microsoft.XMLHTTP
   ActiveX object and VML.  IE4 was first to include support for
   ActiveX objects, IE3 was first to support CSS, IE2 had basic support
-  for JavaScript, and IE1 is too old to consider for web applications.
-  (This information was obtained from the Wikipedia articles on
-  Internet Explorer.)</li>
+  for JavaScript and double byte character sets, and IE1 is too old to
+  consider for web applications.  (This information was obtained from
+  the Wikipedia articles on Internet Explorer.)</li>
   <li>The display style "<code>inline-block</code>" is incomplete and
   buggy in IE6 and IE7.  Often times, you can get the intended effect
   if you use "<code>inline</code>" instead, but only if you use it in

@@ -89,23 +89,6 @@ EquirectProjector.unproject = function(mapToPol) {
 };
 
 /**
- * Sinusoidal map projector.
- * @type Projector
- */
-var SinProjector = new Projector();
-OEV.SinProjector = SinProjector;
-
-SinProjector.project = function(polToMap) {
-  polToMap[0] = polToMap[0] * Math.cos(DEG2RAD * polToMap[1]) / 180;
-  polToMap[1] = polToMap[1] / 180;
-};
-
-SinProjector.unproject = function(mapToPol) {
-  mapToPol[1] = mapToPol[1] * 180;
-  mapToPol[0] = mapToPol[0] / Math.cos(DEG2RAD * mapToPol[1]) * 180;
-};
-
-/**
  * Mercator map projector.
  * @type Projector
  */
@@ -196,6 +179,40 @@ RobinsonProjector.unproject = function(mapToPol) {
 };
 
 /**
+ * Sinusoidal map projector.
+ * @type Projector
+ */
+var SinProjector = new Projector();
+OEV.SinProjector = SinProjector;
+
+SinProjector.project = function(polToMap) {
+  polToMap[0] = polToMap[0] * Math.cos(DEG2RAD * polToMap[1]) / 180;
+  polToMap[1] = polToMap[1] / 180;
+};
+
+SinProjector.unproject = function(mapToPol) {
+  mapToPol[1] = mapToPol[1] * 180;
+  mapToPol[0] = mapToPol[0] / Math.cos(DEG2RAD * mapToPol[1]) * 180;
+};
+
+/**
+ * Mollweide map projector.  Currently, this projector only has an
+ * inverse projection method available.
+ * @type Projector
+ */
+var MollweideProjector = new Projector();
+OEV.MollweideProjector = MollweideProjector;
+
+MollweideProjector.unproject = function(mapToPol) {
+  var theta = Math.asin(mapToPol[1] * Math.sqrt(8) / Math.sqrt(2));
+  var theta_2 = 2 * theta;
+  mapToPol[1] = RAD2DEG * Math.asin((theta_2 + Math.sin(theta_2)) /
+				    Math.PI);
+  mapToPol[0] = RAD2DEG * ((Math.PI * mapToPol[0] * Math.sqrt(8)) /
+			   (2 * Math.sqrt(2) * Math.cos(theta)));
+};
+
+/**
  * 3D map projectors.  This class is designed simply so that common
  * code between the orthographic and perspective projectors can be
  * contained in the same functions.
@@ -250,8 +267,8 @@ TDProjector.prototype.unproject = function(mapToPol, projType) {
     r3src_z = (-b + Math.sqrt(Math.pow(b, 2) - 4 * a * c)) / (2 * a);
     if (isNaN(r3src_z))
       { mapToPol[0] = NaN; mapToPol[1] = NaN; return; }
-    r3src_x = x_pix / f * (-r3src_z + (r + d));
-    r3src_y = y_pix / f * (-r3src_z + (r + d));
+    r3src_x = x_pix / f * (-r3src_z + (r + d)) /* / r */;
+    r3src_y = y_pix / f * (-r3src_z + (r + d)) /* / r */;
   }
 
   /* 2. Inverse rotate this coordinate around the x axis by the
@@ -281,63 +298,69 @@ TDProjector.prototype.unproject = function(mapToPol, projType) {
 
 /**
  * Orthographic map projector.
- * @type TDProjector
+ * @type Projector
  */
-var OrthoProjector =  new TDProjector();
+var OrthoProjector =  new Projector();
 OEV.OrthoProjector = OrthoProjector;
+
+OrthoProjector.project = function(polToMap) {
+  if (polToMap[0] < -90 || polToMap[0] > 90)
+    { polToMap[0] = NaN; polToMap[1] = NaN; return; }
+  var latitude = DEG2RAD * mapToPol[1];
+  mapToPol[1] = Math.sin(latitude);
+  mapToPol[0] = Math.sin(DEG2RAD * mapToPol[0]) * Math.cos(latitude);
+};
+
 OrthoProjector.unproject = function(mapToPol) {
-  return TDProjector.prototype.unproject(mapToPol, 0);
+  var latitude = Math.asin(mapToPol[1]);
+  mapToPol[1] = RAD2DEG * latitude;
+  mapToPol[0] = RAD2DEG * Math.asin(mapToPol[0] / Math.cos(latitude));
 };
 
 /**
  * Perspective map projector.
- * @type TDProjector
+ * @type Projector
  */
-var PerspProjector = new TDProjector();
+var PerspProjector = new Projector();
 OEV.PerspProjector = PerspProjector;
-PerspProjector.unproject = function(mapToPol) {
-  return TDProjector.prototype.unproject(mapToPol, 1);
+
+PerspProjector.project = function(polToMap) {
+  if (polToMap[0] < -90 || polToMap[0] > 90)
+    { polToMap[0] = NaN; polToMap[1] = NaN; return; }
+  // r must be one: this simplifies the calculations
+  var r = 1; // 6371; // radius of the earth in kilometers
+  var d = ViewParams.perspAltitude / 6371; // altitude in kilometers
+  // focal length in units of the screen dimensions
+  var f = 1 / Math.tan(DEG2RAD * ViewParams.perspFOV / 2);
+  var latitude = DEG2RAD * mapToPol[1];
+  var x_pix = Math.sin(DEG2RAD * mapToPol[0]) * Math.cos(latitude);
+  var y_pix = Math.sin(latitude);
+  var r3src_z = Math.cos(DEG2RAD * mapToPol[0]) * Math.cos(latitude);
+
+  polToMap[0] = x_pix / f * (-r3src_z + (r + d)) /* / r */;
+  polToMap[1] = y_pix / f * (-r3src_z + (r + d)) /* / r */;
 };
 
-/**
- * Shift a point to so that it is on a globe with the given center.
- */
-var polShiftOrigin = function(polarPt) {
-  if (isNaN(polarPt[0]))
-    return;
-  /* 1. Get the 3D rectangular coordinate of the given polar
-     coordinate.  The camera is looking down the negative z axis.  */
+PerspProjector.unproject = function(mapToPol) {
   var r3src_x, r3src_y, r3src_z;
 
-  var latitude = DEG2RAD * polarPt[1];
-  var longitude = DEG2RAD * polarPt[0];
-  r3src_y = Math.sin(latitude);
-  r3src_x = Math.sin(longitude) * Math.cos(latitude);
-  r3src_z = Math.cos(longitude) * Math.cos(latitude);
+  // r must be one: this simplifies the calculations
+  var r = 1; // 6371; // radius of the earth in kilometers
+  var d = ViewParams.perspAltitude / 6371; // altitude in kilometers
+  // focal length in units of the screen dimensions
+  var f = 1 / Math.tan(DEG2RAD * ViewParams.perspFOV / 2);
+  var x_pix = mapToPol[0];
+  var y_pix = mapToPol[1];
 
-  /* 2. Inverse rotate this coordinate around the x axis by the
-     current globe tilt.  */
-  var i_tilt = DEG2RAD * ViewParams.polCenter[1];
-  var cos_tilt = Math.cos(i_tilt); var sin_tilt = Math.sin(i_tilt);
-  var r3dest_x, r3dest_y, r3dest_z;
-  r3dest_x = r3src_x;
-  r3dest_z = r3src_z * cos_tilt - r3src_y * sin_tilt;
-  r3dest_y = r3src_z * sin_tilt + r3src_y * cos_tilt;
+  var w = (Math.pow(x_pix, 2) + Math.pow(y_pix, 2)) / Math.pow(f, 2);
 
-  /* 3. Measure the latitude and longitude of this coordinate.  */
-  latitude = RAD2DEG * Math.asin(r3dest_y);
-  longitude = RAD2DEG * Math.atan2(r3dest_x, r3dest_z);
+  var a = 1 + w;
+  var b = -2 * w * (r + d);
+  var c = w * Math.pow(r + d, 2) - 1 /* 1 == Math.pow(r, 2) */;
 
-  /* 4. Shift by the longitudinal rotation around the pole.  */
-  longitude += 180 + ViewParams.polCenter[0];
-
-  /* 5. Verify that the coordinates are in bounds.  */
-  if (latitude < -90) latitude = -90;
-  if (latitude > 90) latitude = 90;
-  longitude += (longitude < 0) * 360;
-  longitude = longitude % 360.0 - 180;
-  polarPt[0] = longitude;
-  polarPt[1] = latitude;
+  r3src_z = (-b + Math.sqrt(Math.pow(b, 2) - 4 * a * c)) / (2 * a);
+  if (isNaN(r3src_z))
+    { mapToPol[0] = NaN; mapToPol[1] = NaN; return; }
+  r3src_x = x_pix / f * (-r3src_z + (r + d)) /* / r */;
+  r3src_y = y_pix / f * (-r3src_z + (r + d)) /* / r */;
 };
-
-OEV.polShiftOrigin = polShiftOrigin;

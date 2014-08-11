@@ -404,3 +404,38 @@ Things to go over at this current time:
   it.
 
 * (On the other hand, raster data is much larger in size.)
+
+* Eddy boundaries.  For this, generate a monochrome image of the
+  boundaries.
+
+----------------------------------------
+
+Icons TODO:
+
+* Compass and calendar icons
+
+Use a switch to control two modes of scrolling: pinned or
+linear angle.
+
+Test the most generic algorithm for tilt.
+
+Rewrite Implementation Center to take the following form:
+
+* Data Coversion and Export
+
+* Overall Internal Code Architecture
+
+* CSS User Interface
+
+See the User Documentation for an overview of the new CSS
+GUI.
+
+Adding new projections?  Replace with d3?  In particular,
+see this section.  d3 uses a conceptually incorrect model
+for what it does, but the reason why... better performance
+for some common projection calculations.
+
+Why not: when.js: only designed for "promises", not
+coroutines.
+
+Strikedown of all popular JavaScript libraries.

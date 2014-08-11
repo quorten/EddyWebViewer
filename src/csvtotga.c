@@ -34,7 +34,7 @@ int main(int argc, char *argv[]) {
 			   worst JPEG compression due to high noise),
 			   7 preferred for high detail.  */
 
-  unsigned int overflow = 2, noise_margin = 0, chs = 1, ics = 1,
+  unsigned int overflow = 2, noise_margin = 0, s_chs = 1, s_ics = 1,
     bitsplit = 0, chanflow = 1;
 
   { /* Check if the command line is valid, or display help.  */
@@ -81,8 +81,8 @@ int main(int argc, char *argv[]) {
       if ((*argv)[0] == '-') {
   	switch ((*argv)[1]) {
   	case 'm': noise_margin = strtoul(*argv + 2, NULL, 0); break;
-	case 'h': chs = strtoul(*argv + 2, NULL, 0); break;
-	case 'i': ics = strtoul(*argv + 2, NULL, 0); break;
+	case 'h': s_chs = strtoul(*argv + 2, NULL, 0); break;
+	case 'i': s_ics = strtoul(*argv + 2, NULL, 0); break;
 	case 'p': bitsplit = strtoul(*argv + 2, NULL, 0); break;
 	case 'c': chanflow = strtoul(*argv + 2, NULL, 0); break;
 	case 'o': overflow = strtoul(*argv + 2, NULL, 0); break;
@@ -152,11 +152,11 @@ int main(int argc, char *argv[]) {
 
     if (bbd + bad <= 8) {
       bpp = 8;
-      chs = 0;
+      s_chs = 0;
     }
 
     if (bitsplit) {
-      chs = 12;
+      s_chs = 12;
       if (bbd + bad != 12) {
 	fprintf(stderr,
 		"%s: Error: Bitsplit can only be used with 12-bit formats.\n",
@@ -199,6 +199,7 @@ int main(int argc, char *argv[]) {
     unsigned int col_pos = col_start;
 
     while (scanf("%f", &in_val) != EOF) {
+      unsigned int chs = s_chs, ics = s_ics;
       unsigned int out_val;
       unsigned char red, green, blue;
 

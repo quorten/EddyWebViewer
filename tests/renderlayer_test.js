@@ -21,7 +21,7 @@ var execTime = function() {
   if (preemptCode == CothreadStatus.IOWAIT) {
     progElmt.childNodes[0].nodeValue =
       [ "Download: ",
-      (status.percent * 100 / CothreadStatus.MAX_PERCENT).toFixed(2), "%"].
+      (status.percent * 100 / CothreadStatus.MAX_PERCENT).toFixed(2), "%" ].
       join("");
   } else if (preemptCode == CothreadStatus.PROC_DATA)
     progElmt.childNodes[0].nodeValue =

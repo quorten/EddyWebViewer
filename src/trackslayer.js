@@ -2,6 +2,7 @@
 
 import "oevns";
 import "renderlayer";
+import "viewparams";
 import "ajaxloaders";
 
 import "dates";
@@ -26,11 +27,68 @@ TracksLayer.minLength = 0;
 // Maximum track length in seconds, -1 for any
 TracksLayer.maxLength = -1;
 
-TracksLayer.setCacheLimits = function(dataCache, renderCache) {
+TracksLayer.initCtx = function() {
+  if (!this.acTracksData) {
+    this.acLoad.timeout = this.timeout;
+    this.acLoad.notifyFunc = this.notifyFunc;
+    this.acLoad.initCtx();
+  }
+  if (!this.cTracksData) {
+    this.cLoad.timeout = this.timeout;
+    this.cLoad.notifyFunc = this.notifyFunc;
+    this.cLoad.initCtx();
+  }
+
+  this.render.timeout = this.timeout;
+  this.render.initCtx();
+
+  this.status.returnType = CothreadStatus.PREEMPTED;
+  this.status.preemptCode = 0;
+  this.status.percent = 0;
 };
 
-TracksLayer.acLoad = new XHRLoader("../data/tracks/acyc_bu_tracks.json",
-				   execTime);
+TracksLayer.contExec = function() {
+  console.log(this.cLoad.status.returnType);
+  if (this.acLoad.status.returnType != CothreadStatus.FINISHED) {
+    var status = this.acLoad.continueCT();
+    this.status.returnType = CothreadStatus.PREEMPTED;
+    this.status.preemptCode = status.preemptCode;
+    this.status.percent = status.percent / 2;
+    if (status.returnType == CothreadStatus.FINISHED) {
+      if (this.acLoad.retVal == 200)
+	this.retVal = 0;
+      else {
+	this.status.returnType = CothreadStatus.FINISHED;
+	this.retVal = RenderLayer.LOAD_ERROR;
+      }
+    }
+    return this.status;
+  }
+
+  if (this.cLoad.status.returnType != CothreadStatus.FINISHED) {
+    var status = this.cLoad.continueCT();
+    this.status.returnType = CothreadStatus.PREEMPTED;
+    this.status.preemptCode = status.preemptCode;
+    this.status.percent = CothreadStatus.MAX_PERCENT / 2 +
+      status.percent / 2;
+    if (status.returnType == CothreadStatus.FINISHED) {
+      if (this.cLoad.retVal == 200)
+	this.retVal = 0;
+      else {
+	this.status.returnType = CothreadStatus.FINISHED;
+	this.retVal = RenderLayer.LOAD_ERROR;
+      }
+    }
+    return this.status;
+  }
+
+  if (!this.acTracksData || !this.cTracksData)
+    return this.status;
+
+  return this.render.continueCT();
+};
+
+TracksLayer.acLoad = new XHRLoader("../data/tracks/acyc_bu_tracks.json");
 
 TracksLayer.acLoad.procData = function(httpRequest, responseText) {
   var doneProcData = false;
@@ -58,6 +116,7 @@ TracksLayer.acLoad.procData = function(httpRequest, responseText) {
     doneProcData = true;
     if (!this.jsonObject)
       procError = true;
+    TracksLayer.acTracksData = this.jsonObject;
   }
 
   if (procError) {
@@ -82,8 +141,7 @@ TracksLayer.acLoad.procData = function(httpRequest, responseText) {
   return this.status;
 };
 
-TracksLayer.cLoad = new XHRLoader("../data/tracks/cyc_bu_tracks.json",
-				   execTime);
+TracksLayer.cLoad = new XHRLoader("../data/tracks/cyc_bu_tracks.json");
 
 TracksLayer.cLoad.procData = function(httpRequest, responseText) {
   var doneProcData = false;
@@ -111,6 +169,7 @@ TracksLayer.cLoad.procData = function(httpRequest, responseText) {
     doneProcData = true;
     if (!this.jsonObject)
       procError = true;
+    TracksLayer.cTracksData = this.jsonObject;
   }
 
   if (procError) {
@@ -157,17 +216,9 @@ TracksLayer.cLoad.procData = function(httpRequest, responseText) {
 TracksLayer.loadData = new SeriesCTCtl([ Dates, TracksLayer.acLoad,
 					 TracksLayer.cLoad ]);
 
-TracksLayer.setViewport = function(center, width, height,
-				   aspectXY, projector) {
-  // RenderLayer.call(center, width, height, projection);
+TracksLayer.setViewport = function(width, height) {
   this.frontBuf.width = width;
   this.frontBuf.height = height;
-
-  this.aspectXY = aspectXY;
-  this.center = center;
-  this.projector = projector;
-
-  return RenderLayer.READY;
 };
 
 var minTrackLen = 0, maxTrackLen = -1;
@@ -183,7 +234,7 @@ TracksLayer.render = (function() {
     this.edc = edc;
 
     edc.clearRect(0, 0, frontBuf.width, frontBuf.height);
-    edc.lineWidth = Compositor.backbufScale;
+    edc.lineWidth = /* Compositor.backbufScale */ 1;
     edc.strokeStyle = "#800080";
     edc.lineJoin = "round";
 
@@ -203,7 +254,7 @@ TracksLayer.render = (function() {
        eddy: [ latitude, longitude, date_index, eddy_index ]
        Date indexes start from one, not zero.
      */
-    var backbufScale = Compositor.backbufScale;
+    var backbufScale = /* Compositor.backbufScale */ 1;
     var curDate = Dates.curDate;
     var acTracksData = TracksLayer.acTracksData;
     var acTracksData_length = acTracksData.length;
@@ -220,9 +271,9 @@ TracksLayer.render = (function() {
 
     var frontBuf_width = TracksLayer.frontBuf.width;
     var frontBuf_height = TracksLayer.frontBuf.height;
-    var aspectXY = TracksLayer.aspectXY;
-    // var projector = TracksLayer.projector;
-    var projector_project = TracksLayer.projector.project;
+    var aspectXY = ViewParams.aspectXY;
+    // var projector = ViewParams.projector;
+    var projector_project = ViewParams.projector.project;
 
     var ctnow = Cothread.now;
 
@@ -237,6 +288,11 @@ TracksLayer.render = (function() {
       /* This still doesn't quite work... gets skipped on
 	 preemption.  */
       if (renderPart == 2) { renderPart = 0; i++; }
+
+      // We can rephrase this as short-circuit logic in the loop head.
+      if (renderPart == 0 && i % 1024 == 0 &&
+	  ctnow() - startTime >= timeout)
+	break;
 
       /* Rather than rendering all the anticyclonic tracks in one loop
 	 and then render all the cyclonic tracks in a second loop,
@@ -323,16 +379,10 @@ TracksLayer.render = (function() {
       edc.stroke();
 
       renderPart++;
-
-      // Bad... we skip this check when we `continue'.
-      // We can rephrase this as short-circuit logic in the loop head.
-      if (renderPart == 2 && i % 1024 == 0 &&
-	  ctnow() - startTime >= timeout)
-	break;
     }
 
     this.setExitStatus(i < numTracks);
-    this.status.preemptCode = RenderLayer.FRAME_AVAIL;
+    this.status.preemptCode = 0;
     this.status.percent = i * CothreadStatus.MAX_PERCENT / numTracks;
 
     this.i = i;

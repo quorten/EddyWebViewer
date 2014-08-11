@@ -241,7 +241,7 @@ XHRLoader.prototype.contExec = function() {
     } else
       this.status.percent = 0;
 
-    return this.procData(httpRequest);
+    return this.procData(httpRequest, httpRequest.responseText);
   }
 
   // (httpRequest.readyState == 4)
@@ -251,6 +251,13 @@ XHRLoader.prototype.contExec = function() {
   /* Process any remaining data that has not yet been processed.  */
   this.status.returnType = CothreadStatus.PREEMPTED;
   this.status.preemptCode = CothreadStatus.PROC_DATA;
+  /* if (this.url == "../data/tracks/acyc_bu_tracks.json") {
+    console.log("Give up");
+    console.log(this.status);
+    console.log(this);
+    console.log(this.status.returnType);
+    console.log(CothreadStatus.PREEMPTED);
+  } */
 
   /* The processing function following this point may be a synchronous
      function that cannot be interrupted, such as JSON parsing, so
@@ -268,7 +275,7 @@ XHRLoader.prototype.contExec = function() {
 /* For those wishing to reuse this library but not use advanced
    feature detection at startup, this is a default function for
    safeJSONParse().  */
-/* var safeJSONParse = function(text) {
+var safeJSONParse = function(text) {
   var jsonObject = null;
   try {
     jsonObject = JSON.parse(text);
@@ -277,7 +284,7 @@ XHRLoader.prototype.contExec = function() {
     return null;
   }
   return jsonObject;
-}; */
+};
 
 /**
  * Example data processing hook that parses JSON synchronously.

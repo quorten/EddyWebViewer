@@ -89,6 +89,7 @@ SSHLayer.contExec = function() {
 	  this.loadData.retVal == ImageLoader.SUCCESS) {
 	this.render.backBuf = this.loadData.backBuf;
 	this.loadData.backBuf = null;
+	this.retVal = 0;
       } else {
 	this.status.returnType = CothreadStatus.FINISHED;
 	this.retVal = RenderLayer.LOAD_ERROR;

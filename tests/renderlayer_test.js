@@ -5,6 +5,7 @@ import "../src/sshlayer";
 import "../src/trackslayer";
 import "../src/projector";
 import "../src/viewparams";
+import "../src/dates";
 
 var safeJSONParse = function(text) {
   var jsonObject = null;
@@ -76,11 +77,9 @@ var start = function() {
   rendStartTime = Date.now();
 
   var status = TestLayer.start();
-  if (status.returnType != CothreadStatus.FINISHED) {
-    if (status.preemptCode == CothreadStatus.IOWAIT)
-      return;
-    return browserTime();
-  }
+  if (status.preemptCode == CothreadStatus.IOWAIT)
+    return;
+  return browserTime();
 };
 
 var halt = function() {
@@ -101,6 +100,16 @@ var setScale = function(scale) {
   OEV.ViewParams.inv_scale = 1 / scale;
 };
 
+var finishSetup = function() {
+  if (OEV.Dates.dateList) {
+    OEV.Dates.notifyFunc = null;
+    return start();
+  } else {
+    OEV.Dates.continueCT();
+    return setTimeout(finishSetup, 15);
+  }
+};
+
 var setup = function() {
   // Append a progress counter element to the document body.
   progElmt = document.createElement("p");
@@ -109,6 +118,7 @@ var setup = function() {
   rendTimeElmt = document.createElement("p");
   rendTimeElmt.id = "rendTimeElmt";
   rendTimeElmt.appendChild(document.createTextNode(""));
+  TestLayer.frontBuf.id = "testLayer";
   TestLayer.frontBuf.style.cssText = "border-style: solid";
 
   var body = document.getElementById("topBody");
@@ -133,5 +143,22 @@ var setup = function() {
 
   setViewport(width, height);
   OEV.ViewParams.projector = OEV.EquirectProjector;
-  return start();
+
+  // Load the dates.
+  OEV.Dates.notifyFunc = finishSetup;
+  OEV.Dates.start();
 };
+
+var setTestLayer = function(layer) {
+  var oldTestEl = document.getElementById("testLayer");
+  oldTestEl.parentNode.removeChild(oldTestEl);
+  TestLayer = layer;
+  TestLayer.frontBuf.id = "testLayer";
+  TestLayer.frontBuf.style.cssText = "border-style: solid";
+  TestLayer.timeout = 15;
+  TestLayer.notifyFunc = execTime;
+  var body = document.getElementById("topBody");
+  body.appendChild(TestLayer.frontBuf);
+
+  setViewport(OEV.ViewParams.viewport[0], OEV.ViewParams.viewport[1]);
+}

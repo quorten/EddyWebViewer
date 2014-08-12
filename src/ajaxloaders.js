@@ -62,6 +62,11 @@ import "cothread";
  * "notifyFunc" (if specified) every time a `progress` event is
  * processed.
  *
+ * "prontoMode" (this.prontoMode) -- (optional) Assume that the final
+ * data processing step will be very fast, so it will not be necessary
+ * to notify the caller just before that last processing step is
+ * executed.
+ *
  * Return value:
  *
  * * `XHRLoader.CREATE_FAILED` on failure due to inability
@@ -106,6 +111,7 @@ var XHRLoader = function(url, notifyFunc) {
   this.charRange = null;
   this.listenOnProgress = null;
   this.notifyProgress = null;
+  this.prontoMode = false;
   this.httpRequest = null;
 
   /**
@@ -265,7 +271,7 @@ XHRLoader.prototype.contExec = function() {
      function that cannot be interrupted, such as JSON parsing, so
      return here to provide updated status to the cothread
      controller.  */
-  if (!this.readySyncProcess) {
+  if (!this.readySyncProcess && !this.prontoMode) {
     this.readySyncProcess = true;
     return this.status;
   }
@@ -426,6 +432,11 @@ XHRLoader.prototype.abort = function() {
  * "notifyFunc" (if specified) every time a `progress` event is
  * processed.
  *
+ * "prontoMode" (this.prontoMode) -- (optional) Assume that the final
+ * data processing step will be very fast, so it will not be necessary
+ * to notify the caller just before that last processing step is
+ * executed.
+ *
  * Return value:
  *
  * * `ImageLoader.SUCCESS` -- Success
@@ -465,6 +476,7 @@ var ImageLoader = function(url, notifyFunc) {
   this.notifyFunc = notifyFunc;
   this.listenOnProgress = null;
   this.notifyProgress = null;
+  this.prontoMode = false;
   this.image = null;
 
   /**
@@ -582,7 +594,7 @@ ImageLoader.prototype.contExec = function() {
   /* The processing function following this point may be a synchronous
      function that cannot be interrupted, so return here to provide
      updated status to the cothread controller.  */
-  if (!this.readySyncProcess) {
+  if (!this.readySyncProcess && !this.prontoMode) {
     this.readySyncProcess = true;
     return this.status;
   }

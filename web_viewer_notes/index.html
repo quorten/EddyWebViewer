@@ -2213,6 +2213,9 @@ ffmpeg -threads 2 -r 25 -i vidgen/ssh_%05d.jpg -r 25 -s 1440x720 \
 ffmpeg -threads 2 -r 25 -i vidgen/ssh_%05d.jpg -r 25 -s 1440x720 \
   -b 16000k ssh.webm
 
+ffmpeg -threads 2 -r 4 -i vidgen/ssh_%05d.jpg -r 4 -s 1440x720 \
+  -b 2560k ssh.webm
+
 ffmpeg -threads 2 -r 25 -i vidgen/ssh_%05d.jpg -r 25 -s 1440x720 \
   -vcodec libx264 -b 16000k ssh.mp4
 

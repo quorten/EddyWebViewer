@@ -4,25 +4,7 @@ import "oevns";
 import "renderlayer";
 import "csv";
 import "ajaxloaders";
-
-/**
- * Sea Surface Height Layer.
- *
- * `this.notifyFunc` is used to wake up the main loop to load more
- * data, if provided.
- */
-var SSHLayer = new RenderLayer();
-OEV.SSHLayer = SSHLayer;
-SSHLayer.loadXHRData = new XHRLoader();
-SSHLayer.loadImageData = new ImageLoader();
-SSHLayer.loadData = SSHLayer.loadImageData;
-SSHLayer.render = new RayTracer(null, 1, 1);
-SSHLayer.frontBuf = SSHLayer.render.frontBuf;
-SSHLayer.setViewport = function(width, height) {
-  return this.render.setViewport(width, height);
-};
-
-// Important parameters for SSHLayer:
+import "dates";
 
 /**
  * This object has many important parameters for SSHLayer rendering.
@@ -37,9 +19,6 @@ SSHParams.imgFormat = "png";
 
 /** Path prefix to append to date for frame to load */
 SSHParams.loadPrefix = "../data/";
-
-/** Hyphenless date of frame to load */
-SSHParams.loadFrame = "19921014";
 
 /**
  * One of the following values:
@@ -56,25 +35,47 @@ SSHParams.shadeStyle = 1;
  */
 SSHParams.shadeScale = 4;
 
-SSHLayer.initCtx = function() {
+/********************************************************************/
+
+/**
+ * Generic Sea Surface Height Layer.  This variant can render in every
+ * possible style.  It is also the slowest of all variants,
+ * unfortunately.
+ *
+ * `this.notifyFunc` is used to wake up the main loop to load more
+ * data, if provided.
+ */
+var GenSSHLayer = new RenderLayer();
+OEV.GenSSHLayer = GenSSHLayer;
+GenSSHLayer.loadXHRData = new XHRLoader();
+GenSSHLayer.loadImageData = new ImageLoader();
+GenSSHLayer.loadData = GenSSHLayer.loadImageData;
+GenSSHLayer.render = new RayTracer(null, 1, 1);
+GenSSHLayer.frontBuf = GenSSHLayer.render.frontBuf;
+GenSSHLayer.setViewport = function(width, height) {
+  return this.render.setViewport(width, height);
+};
+
+GenSSHLayer.initCtx = function() {
+  var loadFrame = Dates.dateList[Dates.curDate].split("-").join("");
   var newUrl;
   if (SSHParams.imgFormat == "dat") {
-    newUrl = SSHParams.loadPrefix + "SSH/ssh_" + SSHParams.loadFrame +
+    newUrl = SSHParams.loadPrefix + "SSH/ssh_" + loadFrame +
       "." + SSHParams.imgFormat;
-    SSHLayer.loadData = SSHLayer.loadXHRData;
+    this.loadData = this.loadXHRData;
   } else {
     newUrl =
       SSHParams.loadPrefix +
-      SSHParams.imgFormat + "ssh/ssh_" + SSHParams.loadFrame +
+      SSHParams.imgFormat + "ssh/ssh_" + loadFrame +
       "." + SSHParams.imgFormat;
-    SSHLayer.loadData = SSHLayer.loadImageData;
+    this.loadData = this.loadImageData;
   }
 
-  if (newUrl != SSHLayer.loadData.url) {
-    SSHLayer.loadData.timeout = SSHLayer.timeout;
-    SSHLayer.loadData.notifyFunc = SSHLayer.notifyFunc;
-    SSHLayer.loadData.url = newUrl;
-    SSHLayer.loadData.initCtx();
+  if (newUrl != this.loadData.url) {
+    this.loadData.timeout = this.timeout;
+    this.loadData.notifyFunc = this.notifyFunc;
+    this.loadData.url = newUrl;
+    this.loadData.initCtx();
   }
 
   this.render.timeout = this.timeout;
@@ -85,7 +86,7 @@ SSHLayer.initCtx = function() {
   this.status.percent = 0;
 };
 
-SSHLayer.contExec = function() {
+GenSSHLayer.contExec = function() {
   // Load the SSH frame if it has not yet been loaded.
   if (this.loadData.status.returnType != CothreadStatus.FINISHED) {
     var status = this.loadData.continueCT();
@@ -110,7 +111,7 @@ SSHLayer.contExec = function() {
   return this.render.continueCT();
 };
 
-SSHLayer.loadXHRData.procData = function(httpRequest, responseText) {
+GenSSHLayer.loadXHRData.procData = function(httpRequest, responseText) {
   var doneProcData = false;
   var procError = false;
 
@@ -164,7 +165,7 @@ SSHLayer.loadXHRData.procData = function(httpRequest, responseText) {
   return this.status;
 };
 
-SSHLayer.loadImageData.procData = function(image) {
+GenSSHLayer.loadImageData.procData = function(image) {
   /* Pull the pixels off of the image and fill them into the sshData
      array as floating point numbers.  */
   var tmpCanvas = document.createElement("canvas");
@@ -219,7 +220,7 @@ SSHLayer.loadImageData.procData = function(image) {
 };
 
 // MATLAB Jet color table
-SSHLayer.render.mlColorTbl = (function() {
+GenSSHLayer.render.mlColorTbl = (function() {
   var grad = [ [ 0x00, 0x00, 0x7f ],
 	       [ 0x00, 0x00, 0xff ],
 	       [ 0x00, 0x7f, 0xff ],
@@ -248,7 +249,7 @@ SSHLayer.render.mlColorTbl = (function() {
   return mlColorTbl;
 })();
 
-SSHLayer.render.pixelPP = function(value, data, destIdx,
+GenSSHLayer.render.pixelPP = function(value, data, destIdx,
 				   osaFac, inv_osaFac) {
   if (value == -128 || isNaN(value)) { // Undefined SSH
     data[destIdx+0] = 0|(data[destIdx+0] * inv_osaFac + 0 * osaFac);
@@ -304,15 +305,17 @@ SSHLayer.render.pixelPP = function(value, data, destIdx,
 var EquiGraySSHLayer = new RenderLayer();
 OEV.EquiGraySSHLayer = EquiGraySSHLayer;
 EquiGraySSHLayer.loadData = new ImageLoader();
+EquiGraySSHLayer.loadData.prontoMode = true;
 
 EquiGraySSHLayer.initCtx = function() {
-  var newUrl = SSHParams.loadPrefix + "jpgssh/ssh_" + SSHParams.loadFrame +
+  var loadFrame = Dates.dateList[Dates.curDate].split("-").join("");
+  var newUrl = SSHParams.loadPrefix + "jpgssh/ssh_" + loadFrame +
     ".jpg";
-  if (newUrl != EquiGraySSHLayer.loadData.url) {
-    EquiGraySSHLayer.loadData.timeout = EquiGraySSHLayer.timeout;
-    EquiGraySSHLayer.loadData.notifyFunc = EquiGraySSHLayer.notifyFunc;
-    EquiGraySSHLayer.loadData.url = newUrl;
-    EquiGraySSHLayer.loadData.initCtx();
+  if (newUrl != this.loadData.url) {
+    this.loadData.timeout = this.timeout;
+    this.loadData.notifyFunc = this.notifyFunc;
+    this.loadData.url = newUrl;
+    this.loadData.initCtx();
   }
 
   this.status.returnType = CothreadStatus.PREEMPTED;
@@ -374,3 +377,114 @@ EquiGraySSHLayer.render = function() {
   this.status.percent = CothreadStatus.MAX_PERCENT;
   return this.status;
 };
+
+/********************************************************************/
+
+/**
+ * An SSHLayer implementation that is optimized to quickly and
+ * exclusively render a grayscale, equirectangular projection SSH
+ * layer.  This renderer attempts to load the current frame from a
+ * video element.  If that fails, then this render falls back to
+ * loading the current frame from an image.
+ */
+var EquiGrayVidSSHLayer = new RenderLayer();
+OEV.EquiGrayVidSSHLayer = EquiGrayVidSSHLayer;
+// EquiGrayVidSSHLayer.loadData = new ImageLoader();
+
+/**
+ * NOTE: Although it would be nice if we could just keep updating
+ * currentTime to play a video forwards or backwards or at any speed,
+ * we cannot practically do that.
+ */
+
+// Initialize the back buffer.
+(function() {
+  var backBuf = document.createElement("video");
+  backBuf.id = "sshVidBackBuf";
+  backBuf.preload = "auto";
+  backBuf.width = 1440; backBuf.height = 720;
+  backBuf.src = "../data/ssh.ogv";
+
+  EquiGrayVidSSHLayer.backBuf = backBuf;
+})();
+
+EquiGrayVidSSHLayer.initCtx = function() {
+  /* var loadFrame = Dates.dateList[Dates.curDate].split("-").join("");
+  var newUrl = SSHParams.loadPrefix + "jpgssh/ssh_" + loadFrame +
+    ".jpg";
+  if (newUrl != this.loadData.url) {
+    this.loadData.timeout = this.timeout;
+    this.loadData.notifyFunc = this.notifyFunc;
+    this.loadData.url = newUrl;
+    this.loadData.initCtx();
+  } */
+
+  this.status.returnType = CothreadStatus.PREEMPTED;
+  this.status.preemptCode = 0;
+  this.status.percent = 0;
+};
+
+EquiGrayVidSSHLayer.contExec = function() {
+  // Load the SSH frame if it has not yet been loaded.
+  /* if (this.loadData.status.returnType != CothreadStatus.FINISHED) {
+    var status = this.loadData.continueCT();
+    this.status.returnType = CothreadStatus.PREEMPTED;
+    this.status.preemptCode = status.preemptCode;
+    this.status.percent = status.percent;
+    if (status.returnType == CothreadStatus.FINISHED) {
+      if (this.loadData.retVal == 200 ||
+	  this.loadData.retVal == ImageLoader.SUCCESS) {
+	this.backBuf = this.loadData.image;
+	this.loadData.backBuf = null;
+	this.retVal = 0;
+      } else {
+	this.status.returnType = CothreadStatus.FINISHED;
+	this.retVal = RenderLayer.LOAD_ERROR;
+      }
+    }
+    return this.status;
+  } */
+
+  // Otherwise, render.
+  /* NOTE: It's important that we can seek through the video with
+     sub-second precision.  Thus, we set `currentTime' rather than use
+     `fastSeek()'. */
+  this.backBuf.currentTime = Dates.curDate / 25;
+  return this.render();
+};
+
+EquiGrayVidSSHLayer.render = function() {
+  var fbwidth = this.frontBuf.width;
+  var x = (ViewParams.mapCenter[0] + 1) / 2 *
+    fbwidth;
+  var y = (-ViewParams.mapCenter[1] + 1) / 2 *
+    fbwidth / ViewParams.aspectXY;
+  var width = fbwidth * ViewParams.scale;
+  var height = fbwidth * ViewParams.scale / ViewParams.aspectXY;
+
+  /* this.frontBuf.style.cssText =
+    "position: relative; left: " +
+    ViewParams.mapCenter[0] * width + "; top: " +
+    ViewParams.mapCenter[1] * height * ViewParams.aspectXY; */
+
+  var ctx = this.frontBuf.getContext("2d");
+  ctx.clearRect(0, 0, this.frontBuf.width, this.frontBuf.height);
+  ctx.drawImage(this.backBuf, x - width / 2, y - height / 2, width, height);
+
+  // Draw duplicates on the left and right sides.
+  ctx.drawImage(this.backBuf, x - width / 2 - width, y - height / 2,
+		width, height);
+  ctx.drawImage(this.backBuf, x - width / 2 + width, y - height / 2,
+		width, height);
+
+  this.status.returnType = CothreadStatus.FINISHED;
+  this.status.preemptCode = RenderLayer.RENDERING;
+  this.status.percent = CothreadStatus.MAX_PERCENT;
+  return this.status;
+};
+
+/********************************************************************/
+
+/** Pointer to the current SSHLayer implementation.  */
+var SSHLayer = GenSSHLayer;
+OEV.SSHLayer = SSHLayer;

@@ -27,7 +27,7 @@ ViewParams.clip = true;
 ViewParams.scale = 1;
 /** 1 / scale, used for improving performance.  */
 ViewParams.inv_scale = 1;
-/** [ x, y ] 2D center of projected map.  */
+/** [ x, y ] 2D center of projected map, in relative coordinates.  */
 ViewParams.mapCenter = [ 0, 0 ];
 
 /** Perspective field of view */

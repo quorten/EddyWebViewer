@@ -49,7 +49,7 @@ OEV.csvParse = csvParse;
  * endings or quoting.
  *
  * @param {String} csvText - The text to parse.
- * @returns { data, width, height } object describing the parsed data.
+ * @returns {} { data, width, height } object describing the parsed data.
  */
 var csvParseFlat = function(csvText) {
   var tgtArray = [], width = 0, height = 0;

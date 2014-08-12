@@ -29,6 +29,10 @@ import "viewparams";
  * @constructor
  */
 var RenderLayer = function() {
+  /* Note: We must be careful to make sure that the base cothread
+     initializations take place.  */
+  Cothread.call(this, this.initCtx, this.contExec);
+
   /**
    * RenderLayer front buffer (HTML Canvas by default), used for
    * storing completed renders.  This doesn't have to be an HTML
@@ -95,6 +99,10 @@ RenderLayer.prototype.setViewport = function(width, height) {
  * @param {integer} maxOsaPasses
  */
 var RayTracer = function(backBuf, backBufType, maxOsaPasses) {
+  /* Note: We must be careful to make sure that the base cothread
+     initializations take place.  */
+  Cothread.call(this, this.initCtx, this.contExec);
+
   this.frontBuf = document.createElement("canvas");
   this.backBuf = backBuf;
   this.backBufType = backBufType;

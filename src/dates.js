@@ -5,11 +5,14 @@
 import "oevns";
 import "ajaxloaders";
 
-var Dates = new XHRLoader("../data/dates.dat", execTime);
+/**
+ * Dates list object.  This object keeps track of the list of date
+ * indexes and the current date index selected by the user.
+ */
+var Dates = new XHRLoader("../data/dates.dat");
 OEV.Dates = Dates;
 
-/* Important parameter: the current date index selected by the
-   user.  */
+/** The current date index selected by the user.  */
 Dates.curDate = 0;
 
 Dates.procData = function(httpRequest, responseText) {

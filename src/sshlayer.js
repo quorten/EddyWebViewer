@@ -8,9 +8,6 @@ import "ajaxloaders";
 /**
  * Sea Surface Height Layer.
  *
- * This object has many important parameters.  However, they do not
- * show up in the JSDocs.  See the source code for these details.
- *
  * `this.notifyFunc` is used to wake up the main loop to load more
  * data, if provided.
  */
@@ -27,47 +24,57 @@ SSHLayer.setViewport = function(width, height) {
 
 // Important parameters for SSHLayer:
 
-/** imgFormat: desired image format to use */
-SSHLayer.imgFormat = "png";
+/**
+ * This object has many important parameters for SSHLayer rendering.
+ * However, they do not show up in the JSDocs.  See the source code
+ * for these details.
+ */
+var SSHParams = {};
+OEV.SSHParams = SSHParams;
 
-/** loadPrefix: path prefix to append to date for frame to load */
-SSHLayer.loadPrefix = "../data/";
+/** Desired image format to use */
+SSHParams.imgFormat = "png";
 
-/** loadFrame: hyphenless date of frame to load */
-SSHLayer.loadFrame = "19921014";
+/** Path prefix to append to date for frame to load */
+SSHParams.loadPrefix = "../data/";
 
-/** shadeStyle: See the pixelPP() function for details */
-SSHLayer.shadeStyle = 1;
+/** Hyphenless date of frame to load */
+SSHParams.loadFrame = "19921014";
 
-// TODO: Add JSON format reader.  Use conversion classes.
+/**
+ * One of the following values:
+ * * 0: Grayscale
+ * * 1: MATLAB Jet color palette
+ * * 2: Contour bands
+ */
+SSHParams.shadeStyle = 1;
 
-/* TODO: Fast shortcuts.
-
-CSS renderer
-
-Video renderer
-
-*/
+/**
+ * Scale factor for shading the SSH values.  When set to one, -128 and
+ * +128 correspond to the bottom and top of the visualized value range
+ * respectively.
+ */
+SSHParams.shadeScale = 4;
 
 SSHLayer.initCtx = function() {
   var newUrl;
-  if (this.imgFormat == "dat") {
-    newUrl = this.loadPrefix + "SSH/ssh_" + this.loadFrame +
-      "." + this.imgFormat;
+  if (SSHParams.imgFormat == "dat") {
+    newUrl = SSHParams.loadPrefix + "SSH/ssh_" + SSHParams.loadFrame +
+      "." + SSHParams.imgFormat;
     SSHLayer.loadData = SSHLayer.loadXHRData;
   } else {
     newUrl =
-      this.loadPrefix +
-      this.imgFormat + "ssh/ssh_" + this.loadFrame +
-      "." + this.imgFormat;
+      SSHParams.loadPrefix +
+      SSHParams.imgFormat + "ssh/ssh_" + SSHParams.loadFrame +
+      "." + SSHParams.imgFormat;
     SSHLayer.loadData = SSHLayer.loadImageData;
   }
 
-  if (newUrl != this.loadData.url) {
-    this.loadData.timeout = this.timeout;
-    this.loadData.notifyFunc = this.notifyFunc;
-    this.loadData.url = newUrl;
-    this.loadData.initCtx();
+  if (newUrl != SSHLayer.loadData.url) {
+    SSHLayer.loadData.timeout = SSHLayer.timeout;
+    SSHLayer.loadData.notifyFunc = SSHLayer.notifyFunc;
+    SSHLayer.loadData.url = newUrl;
+    SSHLayer.loadData.initCtx();
   }
 
   this.render.timeout = this.timeout;
@@ -79,6 +86,7 @@ SSHLayer.initCtx = function() {
 };
 
 SSHLayer.contExec = function() {
+  // Load the SSH frame if it has not yet been loaded.
   if (this.loadData.status.returnType != CothreadStatus.FINISHED) {
     var status = this.loadData.continueCT();
     this.status.returnType = CothreadStatus.PREEMPTED;
@@ -98,6 +106,7 @@ SSHLayer.contExec = function() {
     return this.status;
   }
 
+  // Otherwise, render.
   return this.render.continueCT();
 };
 
@@ -173,7 +182,7 @@ SSHLayer.loadImageData.procData = function(image) {
   var i = 0;
   var bad; // Bits After Decimal
   var bbd; // Bits Before Decimal
-  if (SSHLayer.imgFormat == "jpg") {
+  if (SSHParams.imgFormat == "jpg") {
     bad = 2;
     bbd = 6;
     while (i < tmpImgData.data.length) {
@@ -187,7 +196,7 @@ SSHLayer.loadImageData.procData = function(image) {
       i += 4;
     }
   }
-  else if (SSHLayer.imgFormat == "png") {
+  else if (SSHParams.imgFormat == "png") {
     bad = 8; // Actually only 7, but we decode it as 8.
     bbd = 8;
     while (i < tmpImgData.data.length) {
@@ -250,9 +259,10 @@ SSHLayer.render.pixelPP = function(value, data, destIdx,
   }
 
   var red, green, blue;
-  switch (SSHLayer.shadeStyle) {
+  switch (SSHParams.shadeStyle) {
   case 1: // MATLAB
-    value /= 32;
+    value *= SSHParams.shadeScale;
+    value /= 128;
     if (value < -1) value = -1;
     if (value > 1) value = 1;
     value = 0|((value + 1) / 2 * 255);
@@ -262,14 +272,15 @@ SSHLayer.render.pixelPP = function(value, data, destIdx,
     blue = this.mlColorTbl[value++];
     break;
   case 2: // Contour bands
-    value += 32;
-    value *= (1 << 5);
+    value += 128;
+    value *= SSHParams.shadeScale;
     if (value & 0x100) value = ~value;
     value &= 0xff;
     red = green = blue = value;
     break;
   default: // Grayscale
-    value /= 32;
+    value *= SSHParams.shadeScale;
+    value /= 128;
     if (value > 1) value = 1;
     if (value < -1) value = -1;
     value = 0|((value + 1) / 2 * 255);
@@ -281,4 +292,85 @@ SSHLayer.render.pixelPP = function(value, data, destIdx,
   data[destIdx+1] = 0|(data[destIdx+1] * inv_osaFac + green * osaFac);
   data[destIdx+2] = 0|(data[destIdx+2] * inv_osaFac + blue * osaFac);
   data[destIdx+3] = 0|(data[destIdx+3] * inv_osaFac + 255 * osaFac);
+};
+
+/********************************************************************/
+
+/**
+ * An SSHLayer implementation that is optimized to quickly and
+ * exclusively render a grayscale, equirectangular projection SSH
+ * layer.
+ */
+var EquiGraySSHLayer = new RenderLayer();
+OEV.EquiGraySSHLayer = EquiGraySSHLayer;
+EquiGraySSHLayer.loadData = new ImageLoader();
+
+EquiGraySSHLayer.initCtx = function() {
+  var newUrl = SSHParams.loadPrefix + "jpgssh/ssh_" + SSHParams.loadFrame +
+    ".jpg";
+  if (newUrl != EquiGraySSHLayer.loadData.url) {
+    EquiGraySSHLayer.loadData.timeout = EquiGraySSHLayer.timeout;
+    EquiGraySSHLayer.loadData.notifyFunc = EquiGraySSHLayer.notifyFunc;
+    EquiGraySSHLayer.loadData.url = newUrl;
+    EquiGraySSHLayer.loadData.initCtx();
+  }
+
+  this.status.returnType = CothreadStatus.PREEMPTED;
+  this.status.preemptCode = 0;
+  this.status.percent = 0;
+};
+
+EquiGraySSHLayer.contExec = function() {
+  // Load the SSH frame if it has not yet been loaded.
+  if (this.loadData.status.returnType != CothreadStatus.FINISHED) {
+    var status = this.loadData.continueCT();
+    this.status.returnType = CothreadStatus.PREEMPTED;
+    this.status.preemptCode = status.preemptCode;
+    this.status.percent = status.percent;
+    if (status.returnType == CothreadStatus.FINISHED) {
+      if (this.loadData.retVal == 200 ||
+	  this.loadData.retVal == ImageLoader.SUCCESS) {
+	this.backBuf = this.loadData.image;
+	this.loadData.backBuf = null;
+	this.retVal = 0;
+      } else {
+	this.status.returnType = CothreadStatus.FINISHED;
+	this.retVal = RenderLayer.LOAD_ERROR;
+      }
+    }
+    return this.status;
+  }
+
+  // Otherwise, render.
+  return this.render();
+};
+
+EquiGraySSHLayer.render = function() {
+  var fbwidth = this.frontBuf.width;
+  var x = (ViewParams.mapCenter[0] + 1) / 2 *
+    fbwidth;
+  var y = (-ViewParams.mapCenter[1] + 1) / 2 *
+    fbwidth / ViewParams.aspectXY;
+  var width = fbwidth * ViewParams.scale;
+  var height = fbwidth * ViewParams.scale / ViewParams.aspectXY;
+
+  /* this.frontBuf.style.cssText =
+    "position: relative; left: " +
+    ViewParams.mapCenter[0] * width + "; top: " +
+    ViewParams.mapCenter[1] * height * ViewParams.aspectXY; */
+
+  var ctx = this.frontBuf.getContext("2d");
+  ctx.clearRect(0, 0, this.frontBuf.width, this.frontBuf.height);
+  ctx.drawImage(this.backBuf, x - width / 2, y - height / 2, width, height);
+
+  // Draw duplicates on the left and right sides.
+  ctx.drawImage(this.backBuf, x - width / 2 - width, y - height / 2,
+		width, height);
+  ctx.drawImage(this.backBuf, x - width / 2 + width, y - height / 2,
+		width, height);
+
+  this.status.returnType = CothreadStatus.FINISHED;
+  this.status.preemptCode = RenderLayer.RENDERING;
+  this.status.percent = CothreadStatus.MAX_PERCENT;
+  return this.status;
 };

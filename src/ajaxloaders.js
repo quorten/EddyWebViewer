@@ -96,6 +96,10 @@ import "cothread";
  * explained above.
  */
 var XHRLoader = function(url, notifyFunc) {
+  /* Note: We must be careful to make sure that the base cothread
+     initializations take place.  */
+  Cothread.call(this, this.initCtx, this.contExec);
+
   this.url = url;
   this.notifyFunc = notifyFunc;
   this.byteRange = null;
@@ -229,6 +233,7 @@ XHRLoader.prototype.contExec = function() {
   else if (httpRequest.readyState != 4) {
     this.status.returnType = CothreadStatus.PREEMPTED;
     this.status.preemptCode = CothreadStatus.IOWAIT;
+    var responseText = null;
 
     if (!this.reqLen && httpRequest.readyState >= 2) // HEADERS_RECEIVED
       this.reqLen = +httpRequest.getResponseHeader("Content-Length");
@@ -236,12 +241,16 @@ XHRLoader.prototype.contExec = function() {
       if (this.progLen)
 	this.status.percent = this.progLen *
 	  CothreadStatus.MAX_PERCENT / this.reqLen;
-      else this.status.percent = httpRequest.responseText.length *
-	     CothreadStatus.MAX_PERCENT / this.reqLen;
+      else {
+	responseText = httpRequest.responseText;
+	this.status.percent = responseText.length *
+	  CothreadStatus.MAX_PERCENT / this.reqLen;
+      }
     } else
       this.status.percent = 0;
 
-    return this.procData(httpRequest, httpRequest.responseText);
+    if (!responseText) responseText = httpRequest.responseText;
+    return this.procData(httpRequest, responseText);
   }
 
   // (httpRequest.readyState == 4)
@@ -251,13 +260,6 @@ XHRLoader.prototype.contExec = function() {
   /* Process any remaining data that has not yet been processed.  */
   this.status.returnType = CothreadStatus.PREEMPTED;
   this.status.preemptCode = CothreadStatus.PROC_DATA;
-  /* if (this.url == "../data/tracks/acyc_bu_tracks.json") {
-    console.log("Give up");
-    console.log(this.status);
-    console.log(this);
-    console.log(this.status.returnType);
-    console.log(CothreadStatus.PREEMPTED);
-  } */
 
   /* The processing function following this point may be a synchronous
      function that cannot be interrupted, such as JSON parsing, so
@@ -274,8 +276,10 @@ XHRLoader.prototype.contExec = function() {
 
 /* For those wishing to reuse this library but not use advanced
    feature detection at startup, this is a default function for
-   safeJSONParse().  */
-var safeJSONParse = function(text) {
+   safeJSONParse().  The main disadvantage with this default function
+   is that is uses try-catch exception handling, which can be a
+   stumbling point for some JavaScript implementations.  */
+/* var safeJSONParse = function(text) {
   var jsonObject = null;
   try {
     jsonObject = JSON.parse(text);
@@ -284,7 +288,7 @@ var safeJSONParse = function(text) {
     return null;
   }
   return jsonObject;
-};
+}; */
 
 /**
  * Example data processing hook that parses JSON synchronously.
@@ -453,6 +457,10 @@ XHRLoader.prototype.abort = function() {
  * explained above.
  */
 var ImageLoader = function(url, notifyFunc) {
+  /* Note: We must be careful to make sure that the base cothread
+     initializations take place.  */
+  Cothread.call(this, this.initCtx, this.contExec);
+
   this.url = url;
   this.notifyFunc = notifyFunc;
   this.listenOnProgress = null;

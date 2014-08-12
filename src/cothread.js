@@ -278,6 +278,10 @@ CothreadStatus.MAX_PERCENT = 32767;
  * @constructor
  */
 var SeriesCTCtl = function(jobList) {
+  /* Note: We must be careful to make sure that the base cothread
+     initializations take place.  */
+  Cothread.call(this, this.initCtx, this.contExec);
+
   this.jobList = jobList;
 };
 
@@ -371,6 +375,10 @@ SeriesCTCtl.prototype.contExec = function() {
  * @constructor
  */
 var ParallelCTCtl = function(jobList) {
+  /* Note: We must be careful to make sure that the base cothread
+     initializations take place.  */
+  Cothread.call(this, this.initCtx, this.contExec);
+
   this.jobList = jobList;
 };
 

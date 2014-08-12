@@ -6,6 +6,17 @@ import "../src/trackslayer";
 import "../src/projector";
 import "../src/viewparams";
 
+var safeJSONParse = function(text) {
+  var jsonObject = null;
+  try {
+    jsonObject = JSON.parse(text);
+  }
+  catch (e) {
+    return null;
+  }
+  return jsonObject;
+};
+
 /* We want the test instrumentation to be outside of the OEV
    namespace.  */
 import "../src/oevnsend";

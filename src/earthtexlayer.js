@@ -19,7 +19,7 @@ import "ajaxloaders";
 var EarthTexData = {};
 OEV.EarthTexData = EarthTexData;
 EarthTexData.loadTrans =
-  new ImageLoader("../slim_gui/ocean.png");
+  new ImageLoader("../misc_earth/ocean.png");
 EarthTexData.loadTrans.prontoMode = true;
 EarthTexData.loadColors =
   new ImageLoader("../data/blue_marble/land_shallow_topo_2048.jpg");

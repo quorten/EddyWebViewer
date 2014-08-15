@@ -1,7 +1,8 @@
 /* Mathematical definitions of the Ocean Eddies Web Viewer.  Many of
-   these mathematical definitions turned out to be extra and don't
-   have much use in the implementation of the Ocean Eddies Web
-   Viewer.  */
+   these mathematical definitions aren't actually used in the main
+   body code, but they are here for completeness: the main body code
+   algorithms were derived by hand-optimizing compositions of these
+   primitives.  */
 
 import "oevns";
 
@@ -36,11 +37,14 @@ OEV.PolarPoint = PolarPoint;
  */
 PolarPoint.degNormalize = function(polarPt) {
   polarPt.lat %= 180;
+  if (polarPt.lat < -90)
+    { polarPt.lat = -180 - polarPt.lat; polarPt.lon += 180; }
+  if (polarPt.lat > 90)
+    { polarPt.lat = 180 - polarPt.lat; polarPt.lon += 180 }
   polarPt.lon %= 360;
-  if (polarPt.lat < -90) polarPt.lat += 180;
-  if (polarPt.lat > 90) polarPt.lat -= 180;
   if (polarPt.lon < -180) polarPt.lon += 360;
-  if (polarPt.lon >= 180) polarPt.lon -= 180;
+  if (polarPt.lon >= 180) polarPt.lon -= 360;
+  return polarPt;
 };
 
 /**
@@ -56,6 +60,7 @@ PolarPoint.prototype.degNormalize = function() {
 PolarPoint.radToDeg = function(polarPt) {
   polarPt.lat *= RAD2DEG;
   polarPt.lon *= RAD2DEG;
+  return polarPt;
 };
 
 /**
@@ -71,6 +76,7 @@ PolarPoint.prototype.radToDeg = function() {
 PolarPoint.degToRad = function(polarPt) {
   polarPt.lat *= DEG2RAD;
   polarPt.lon *= DEG2RAD;
+  return polarPt;
 };
 
 /**
@@ -190,6 +196,7 @@ Point3D.scale = function(srcPoint, scaleFactor) {
   srcPoint.x *= scaleFactor;
   srcPoint.y *= scaleFactor;
   srcPoint.z *= scaleFactor;
+  return srcPoint;
 };
 
 /**
@@ -209,6 +216,7 @@ Point3D.translate = function(srcPoint, vectorPt) {
   srcPoint.x += vectorPt.x;
   srcPoint.y += vectorPt.y;
   srcPoint.z += vectorPt.z;
+  return srcPoint;
 };
 
 /**
@@ -253,9 +261,9 @@ Point3D.rotateY = function(srcPoint, angle) {
   var cosAngle = Math.cos(angle);
   var sinAngle = Math.sin(angle);
   var rotPoint = new Point3D();
-  rotPoint.x = cosAngle * srcPoint.x - sinAngle * srcPoint.z;
+  rotPoint.x = sinAngle * srcPoint.z + cosAngle * srcPoint.x;
   rotPoint.y = srcPoint.y;
-  rotPoint.z = sinAngle * srcPoint.x + cosAngle * srcPoint.z;
+  rotPoint.z = cosAngle * srcPoint.z - sinAngle * srcPoint.x;
   return rotPoint;
 };
 
@@ -352,25 +360,24 @@ Point3D.prototype.toYPolarPoint = function() {
   return Point3D.toYPolarPoint(this);
 };
 
-/*
+/********************************************************************/
 
-The following function is the same as:
-
-polarPt = new PolarPoint(polarPt[1], polarPt[0]);
-polarPt.degToRad();
-var r3src = polarPt.yppToPoint3D();
-var r3dest = r3src.copy();
-r3dest.rotateX(-fwd * DEG2RAD * ViewParams.polCenter[1]);
-var polDest = r3dest.toYPolarPoint();
-polDest.radToDeg();
-polDest.lon += 180 - fwd * ViewParams.polCenter[0];
-polDest.degNormalize();
-polarPt[0] = polDest.lon;
-polarPt[1] = polDest.lat;
-
-...but with all sub-operations composed into one function body.
-
+/**
+ * This function is the same as {@linkcode polShiftOrigin}, except
+ * that it is decomposed into the respective conceptual modules.
  */
+var modPolShiftOrigin = function(polarPt, fwd) {
+  var objPolarPt = new PolarPoint(polarPt[1], polarPt[0]);
+  var r3src = objPolarPt.degToRad().yppToPoint3D();
+  var r3dest = r3src.rotateX(fwd * DEG2RAD * ViewParams.polCenter[1]);
+  var polDest = r3dest.toYPolarPoint().radToDeg();
+  polDest.lon += -fwd * ViewParams.polCenter[0];
+  polDest.degNormalize();
+  polarPt[0] = polDest.lon;
+  polarPt[1] = polDest.lat;
+};
+
+OEV.modPolShiftOrigin = modPolShiftOrigin;
 
 /**
  * Rotate a point to so that it is on a globe with
@@ -395,14 +402,14 @@ var polShiftOrigin = function(polarPt, fwd) {
     r3src_x = Math.sin(longitude) * Math.cos(latitude);
     r3src_z = Math.cos(longitude) * Math.cos(latitude);
 
-    /* 2. Inverse rotate this coordinate around the x axis by the
-       current globe tilt.  */
-    var i_tilt = -fwd * DEG2RAD * polCenter[1];
-    var cos_tilt = Math.cos(i_tilt); var sin_tilt = Math.sin(i_tilt);
+    /* 2. Rotate this coordinate around the x axis by the current
+       globe tilt.  */
+    var tilt = fwd * DEG2RAD * polCenter[1];
+    var cos_tilt = Math.cos(tilt); var sin_tilt = Math.sin(tilt);
     var r3dest_x, r3dest_y, r3dest_z;
     r3dest_x = r3src_x;
-    r3dest_z = r3src_z * cos_tilt - r3src_y * sin_tilt;
-    r3dest_y = r3src_z * sin_tilt + r3src_y * cos_tilt;
+    r3dest_y = r3src_y * cos_tilt - r3src_z * sin_tilt;
+    r3dest_z = r3src_y * sin_tilt + r3src_z * cos_tilt;
 
     /* 3. Measure the latitude and longitude of this coordinate.  */
     latitude = RAD2DEG * Math.asin(r3dest_y);
@@ -431,3 +438,98 @@ var polShiftOrigin = function(polarPt, fwd) {
 };
 
 OEV.polShiftOrigin = polShiftOrigin;
+
+/**
+ * Check if a line is partially contained within a bounding box.  Note
+ * that for this algorithm, lines that only touch the outside of the
+ * box, but don't go through it, are excluded.
+ * @param {Array} line - Line segment defined in the form [ minX,
+ * minY, maxX, maxY ].
+ * @param {Array} vbox - Bounding box defined in the form [ minX,
+ * minY, maxX, maxY ].
+ * @returns `true` if partially contained, `false` otherwise
+ */
+var lineInVBox = function(line, vbox) {
+  var vbox_min_x = vbox[0], vbox_min_y = vbox[1];
+  var vbox_max_x = vbox[2], vbox_max_y = vbox[3];
+  var p1_x = line[0], p1_y = line[1];
+  var p2_x = line[2], p2_y = line[3];
+
+  /* Check if either of the line's points are entirely within the
+     bounding box.  We will know for sure the line is visible.  */
+  if ((vbox_min_x < p1_x && p1_x < vbox_max_x &&
+       vbox_min_y < p1_y && p1_y < vbox_max_y) ||
+      (vbox_min_x < p2_x && p2_x < vbox_max_x &&
+       vbox_min_y < p2_y && p2_y < vbox_max_y))
+    return true;
+
+  // a*x + b*y + c == 0
+  var a = p1_y - p2_y;
+  var b = p2_x - p1_x;
+  var c = p1_x * p2_y - p1_y * p2_x;
+
+  // y = -(a*x + c) / b
+  // x = -(b*y + c) / a
+
+  // Compute the intersections.
+  var vbox_min_y_ict = (a != 0) ? (-(b * vbox_min_y) / a) : vbox_max_x * 2;
+  var vbox_max_y_ict = (a != 0) ? (-(b * vbox_max_y) / a) : vbox_max_x * 2;
+  var vbox_min_x_ict = (b != 0) ? (-(a * vbox_min_x) / b) : vbox_max_y * 2;
+  var vbox_max_x_ict = (b != 0) ? (-(a * vbox_max_x) / b) : vbox_max_y * 2;
+  if ((vbox_min_x < vbox_min_y_ict && vbox_min_y_ict < vbox_max_x) ||
+      (vbox_min_x < vbox_max_y_ict && vbox_max_y_ict < vbox_max_x) ||
+      (vbox_min_y < vbox_min_x_ict && vbox_min_x_ict < vbox_max_y) ||
+      (vbox_min_y < vbox_max_x_ict && vbox_max_x_ict < vbox_max_y))
+    return true;
+  return false;
+};
+
+/**
+ * Check if a box is partially contained within a bounding box.  Note
+ * that for this algorithm, boxes that only touch on the edges, but do
+ * not intersect at the interiors, are excluded.
+ * @param box1 - Box to test defined in the form [ minX, minY, maxX,
+ * maxY ].
+ * @param vbox - Bounding box defined in the form [ minX, minY, maxX,
+ * maxY ].
+ * @returns `true` if partially contained, `false` otherwise
+ */
+var boxInVBox = function(box1, vbox) {
+  var vbox_min_x = vbox[0], vbox_min_y = vbox[1];
+  var vbox_max_x = vbox[2], vbox_max_y = vbox[3];
+  var p1_x = line[0], p1_y = line[1];
+  var p2_x = line[2], p2_y = line[3];
+  var box1_min_x = vbox[0], box1_min_y = vbox[1];
+  var box1_max_x = vbox[2], box1_max_y = vbox[3];
+
+  /* Check if any of the first box's points are within the bounding
+     box.  */
+  if ((vbox_min_x < box1_min_x && box1_min_x < vbox_max_x &&
+       vbox_min_y < box1_min_y && box1_min_y < vbox_max_y) ||
+      (vbox_min_x < box1_max_x && box1_max_x < vbox_max_x &&
+       vbox_min_y < box1_max_y && box1_max_y < vbox_max_y) ||
+      (vbox_min_x < box1_min_x && box1_min_x < vbox_max_x &&
+       vbox_min_y < box1_max_y && box1_max_y < vbox_max_y) ||
+      (vbox_min_x < box1_max_x && box1_max_x < vbox_max_x &&
+       vbox_min_y < box1_min_y && box1_min_y < vbox_max_y))
+    return true;
+  return false;
+};
+
+/**
+ * Check if a point is contained within a bounding box.  Note that for
+ * this algorithm, points that only touch the edge of the box, but are
+ * not contained within it, are excluded.
+ * @param {Array} point [ x, y ]
+ * @param {Array} vbox [ minX, minY, maxX, maxY ]
+ * @returns `true` if contained, `false` otherwise
+ */
+var ptInVBox = function(point, vbox) {
+  var vbox_min_x = vbox[0], vbox_min_y = vbox[1];
+  var vbox_max_x = vbox[2], vbox_max_y = vbox[3];
+  var pt_x = point[0], pt_y = point[1];
+  if (vbox_min_x < pt_x && pt_x < vbox_max_x &&
+      vbox_min_y < pt_y && pt_y < vbox_max_y)
+    return true;
+  return false;
+};

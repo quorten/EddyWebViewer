@@ -26,6 +26,18 @@ import "viewparams";
  * * `RenderLayer.RENDERING` -- The `RenderLayer` was preempted during
  *   rendering.
  *
+ * By convention, most RenderLayer implementations provide two
+ * standard methods, `loadData()` and `render()`, which may or may not
+ * be cothreaded.  The return value from `loadData()` and its
+ * interpretation is implementation-specific, but for the `render()`
+ * method, the return value is always the final return value of the
+ * RenderLayer.  Some `loadData()` implementations may be designed in
+ * a pipelined manner where rendering can be performed with partially
+ * available data while `loadData()` is still fetching more data that
+ * needs to be rendered.  Calling `loadData()` directly from an
+ * external routine can also be used to preload some data, but the
+ * calling convention is implementation-specific.
+ *
  * @constructor
  */
 var RenderLayer = function() {

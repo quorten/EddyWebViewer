@@ -274,18 +274,20 @@ TDProjector.prototype.unproject = function(mapToPol, projType) {
 
   /* 2. Inverse rotate this coordinate around the x axis by the
      current globe tilt.  */
-  var i_tilt = -DEG2RAD * ViewParams.center[1];
-  var cos_tilt = Math.cos(i_tilt); var sin_tilt = Math.sin(i_tilt);
+  var tilt = DEG2RAD * ViewParams.center[1];
+  var cos_tilt = Math.cos(tilt); var sin_tilt = Math.sin(tilt);
   var r3dest_x, r3dest_y, r3dest_z;
   r3dest_x = r3src_x;
-  r3dest_z = r3src_z * cos_tilt - r3src_y * sin_tilt;
-  r3dest_y = r3src_z * sin_tilt + r3src_y * cos_tilt;
+  r3dest_y = r3src_y * cos_tilt - r3src_z * sin_tilt;
+  r3dest_z = r3src_y * sin_tilt + r3src_z * cos_tilt;
 
   /* 3. Measure the latitude and longitude of this coordinate.  */
   var latitude = RAD2DEG * Math.asin(r3dest_y);
   var longitude = RAD2DEG * Math.atan2(r3dest_x, r3dest_z);
 
-  /* 4. Shift by the longitudinal rotation around the pole.  */
+  /* 4. Shift by the longitudinal rotation around the pole.  For the
+     sake of the normalization calculation below, move the prime
+     meridian to 180 degrees.  */
   longitude += 180 + ViewParams.center[0];
 
   /* 5. Verify that the coordinates are in bounds.  */
@@ -335,12 +337,12 @@ PerspProjector.project = function(polToMap) {
   var f = 1 / Math.tan(DEG2RAD * ViewParams.perspFOV / 2);
   var latitude = DEG2RAD * polToMap[1];
   var cos_latitude = Math.cos(latitude);
-  var x_pix = Math.sin(DEG2RAD * polToMap[0]) * cos_latitude;
-  var y_pix = Math.sin(latitude);
-  var r3src_z = Math.cos(DEG2RAD * polToMap[0]) * cos_latitude;
+  var r3src_x = Math.sin(DEG2RAD * polToMap[0]) * cos_latitude /* * r */;
+  var r3src_y = Math.sin(latitude) /* * r */;
+  var r3src_z = Math.cos(DEG2RAD * polToMap[0]) * cos_latitude /* * r */;
 
-  polToMap[0] = x_pix * f / (-r3src_z + (r + d)) /* * r */;
-  polToMap[1] = y_pix * f / (-r3src_z + (r + d)) /* * r */;
+  polToMap[0] = r3src_x * f / (-r3src_z + (r + d));
+  polToMap[1] = r3src_y * f / (-r3src_z + (r + d));
 };
 
 PerspProjector.unproject = function(mapToPol) {
@@ -363,6 +365,6 @@ PerspProjector.unproject = function(mapToPol) {
   r3src_z = (-b + Math.sqrt(Math.pow(b, 2) - 4 * a * c)) / (2 * a);
   if (isNaN(r3src_z))
     { mapToPol[0] = NaN; mapToPol[1] = NaN; return; }
-  r3src_x = x_pix / f * (-r3src_z + (r + d)) /* / r */;
-  r3src_y = y_pix / f * (-r3src_z + (r + d)) /* / r */;
+  r3src_x = x_pix / f * (-r3src_z + (r + d));
+  r3src_y = y_pix / f * (-r3src_z + (r + d));
 };

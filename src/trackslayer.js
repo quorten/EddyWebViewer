@@ -7,47 +7,50 @@ import "ajaxloaders";
 import "dates";
 
 /**
- * Eddy Tracks Layer.
- *
- * This object has many important parameters.  However, they do not
- * show up in the JSDocs.  See the source code for these details.
- *
- * `this.notifyFunc` is used to wake up the main loop to load more
- * data, if provided.
+ * This object has many important parameters for TracksLayer
+ * rendering.  However, they do not show up in the JSDocs.  See the
+ * source code for these details.
  */
-var TracksLayer = new RenderLayer();
-OEV.TracksLayer = TracksLayer;
-
-// Important parameters for TracksLayer:
+var TracksParams = {};
+OEV.TracksParams = TracksParams;
 
 /** Whether or not to display anticyclonic tracks.  */
-TracksLayer.dispAcyc = true;
+TracksParams.dispAcyc = true;
 
 /** Whether or not to display cyclonic tracks.  */
-TracksLayer.dispCyc = true;
+TracksParams.dispCyc = true;
 
 /**
  * Minimum track length in seconds.  This is used to determine if a
  * track should be rendered or not.
  */
-TracksLayer.minLength = 0;
+TracksParams.minLength = 0;
 
 /**
  * Maximum track length in seconds, -1 for any.  This is used to
  * determine if a track should be rendered or not.
  */
-TracksLayer.maxLength = -1;
+TracksParams.maxLength = -1;
 
-TracksLayer.initCtx = function() {
-  if (!this.acTracksData) {
+/********************************************************************/
+
+/**
+ * An eddy TracksLayer that loads its data via two JSON files.
+ *
+ * `this.notifyFunc` is used to wake up the main loop to load more
+ * data, if provided.
+ */
+var JSONTracksLayer = new RenderLayer();
+OEV.JSONTracksLayer = JSONTracksLayer;
+
+JSONTracksLayer.initCtx = function() {
+  if (!this.acTracksData || !this.cTracksData) {
+    this.loadData.timeout = this.timeout;
     this.acLoad.timeout = this.timeout;
-    this.acLoad.notifyFunc = this.notifyFunc;
-    this.acLoad.initCtx();
-  }
-  if (!this.cTracksData) {
     this.cLoad.timeout = this.timeout;
+    this.acLoad.notifyFunc = this.notifyFunc;
     this.cLoad.notifyFunc = this.notifyFunc;
-    this.cLoad.initCtx();
+    this.loadData.initCtx();
   }
 
   this.render.timeout = this.timeout;
@@ -58,32 +61,15 @@ TracksLayer.initCtx = function() {
   this.status.percent = 0;
 };
 
-TracksLayer.contExec = function() {
+JSONTracksLayer.contExec = function() {
   // Load the tracks data if it has not yet been loaded.
-  if (this.acLoad.status.returnType != CothreadStatus.FINISHED) {
-    var status = this.acLoad.continueCT();
+  if (this.loadData.status.returnType != CothreadStatus.FINISHED) {
+    var status = this.loadData.continueCT();
     this.status.returnType = CothreadStatus.PREEMPTED;
     this.status.preemptCode = status.preemptCode;
-    this.status.percent = status.percent / 2;
+    this.status.percent = status.percent;
     if (status.returnType == CothreadStatus.FINISHED) {
-      if (this.acLoad.retVal == 200)
-	this.retVal = 0;
-      else {
-	this.status.returnType = CothreadStatus.FINISHED;
-	this.retVal = RenderLayer.LOAD_ERROR;
-      }
-    }
-    return this.status;
-  }
-
-  if (this.cLoad.status.returnType != CothreadStatus.FINISHED) {
-    var status = this.cLoad.continueCT();
-    this.status.returnType = CothreadStatus.PREEMPTED;
-    this.status.preemptCode = status.preemptCode;
-    this.status.percent = CothreadStatus.MAX_PERCENT / 2 +
-      status.percent / 2;
-    if (status.returnType == CothreadStatus.FINISHED) {
-      if (this.cLoad.retVal == 200)
+      if (this.acLoad.retVal == 200 && this.cLoad.retVal == 200)
 	this.retVal = 0;
       else {
 	this.status.returnType = CothreadStatus.FINISHED;
@@ -98,9 +84,9 @@ TracksLayer.contExec = function() {
 };
 
 /** Anticyclonic tracks loader.  */
-TracksLayer.acLoad = new XHRLoader("../data/tracks/acyc_bu_tracks.json");
+JSONTracksLayer.acLoad = new XHRLoader("../data/tracks/acyc_bu_tracks.json");
 
-TracksLayer.acLoad.procData = function(httpRequest, responseText) {
+JSONTracksLayer.acLoad.procData = function(httpRequest, responseText) {
   var doneProcData = false;
   var procError = false;
 
@@ -122,9 +108,12 @@ TracksLayer.acLoad.procData = function(httpRequest, responseText) {
 
     /* Perform final cothreaded (or possibly synchronous) data
        processing here.  */
-    TracksLayer.acTracksData = safeJSONParse(responseText);
+    if (this == JSONTracksLayer.acLoad)
+      JSONTracksLayer.acTracksData = safeJSONParse(responseText);
+    else
+      JSONTracksLayer.cTracksData = safeJSONParse(responseText);
     doneProcData = true;
-    if (!TracksLayer.acTracksData)
+    if (!JSONTracksLayer.acTracksData)
       procError = true;
   }
 
@@ -151,71 +140,21 @@ TracksLayer.acLoad.procData = function(httpRequest, responseText) {
 };
 
 /** Cyclonic tracks loader.  */
-// TracksLayer.cLoad = new XHRLoader("../data/tracks/cyc_bu_tracks.json");
-TracksLayer.cLoad = new XHRLoader("../data/tracks/scyc.json");
+// JSONTracksLayer.cLoad = new XHRLoader("../data/tracks/cyc_bu_tracks.json");
+JSONTracksLayer.cLoad = new XHRLoader("../data/tracks/scyc.json");
 
-TracksLayer.cLoad.procData = function(httpRequest, responseText) {
-  var doneProcData = false;
-  var procError = false;
+JSONTracksLayer.cLoad.procData = JSONTracksLayer.acLoad.procData;
 
-  if (httpRequest.readyState == 4) { // DONE
-    /* Determine if the HTTP status code is an acceptable success
-       condition.  */
-    if ((httpRequest.status == 200 || httpRequest.status == 206) &&
-	responseText == null)
-      this.retVal = XHRLoader.LOAD_FAILED;
-    if (httpRequest.status != 200 && httpRequest.status != 206 ||
-	responseText == null) {
-      // Error
-      httpRequest.onreadystatechange = null;
-      this.httpRequest = null;
-      this.status.returnType = CothreadStatus.FINISHED;
-      this.status.preemptCode = 0;
-      return this.status;
-    }
-
-    /* Perform final cothreaded (or possibly synchronous) data
-       processing here.  */
-    TracksLayer.cTracksData = safeJSONParse(responseText);
-    doneProcData = true;
-    if (!TracksLayer.cTracksData)
-      procError = true;
-  }
-
-  if (procError) {
-    httpRequest.abort();
-    httpRequest.onreadystatechange = null;
-    this.httpRequest = null;
-    this.retVal = XHRLoader.PROC_ERROR;
-    this.status.returnType = CothreadStatus.FINISHED;
-    this.status.preemptCode = 0;
-    return this.status;
-  }
-
-  if (httpRequest.readyState == 4 && doneProcData) {
-    /* Only manipulate the CothreadStatus object from within this
-       function when processing is entirely finished.  */
-    httpRequest.onreadystatechange = null;
-    this.httpRequest = null;
-    this.status.returnType = CothreadStatus.FINISHED;
-    this.status.preemptCode = 0;
-  }
-
-  return this.status;
-};
-
-TracksLayer.setViewport = function(width, height) {
-  this.frontBuf.width = width;
-  this.frontBuf.height = height;
-};
+JSONTracksLayer.loadData = new SeriesCTCtl([ JSONTracksLayer.acLoad,
+					     JSONTracksLayer.cLoad ]);
 
 var inv_180 = 1 / 180,  inv_360 = 1 / 360;
 
-TracksLayer.render = (function() {
+JSONTracksLayer.render = (function() {
   "use strict";
 
   function initCtx() {
-    var frontBuf = TracksLayer.frontBuf;
+    var frontBuf = JSONTracksLayer.frontBuf;
     var edc = frontBuf.getContext("2d");
     this.edc = edc;
 
@@ -249,12 +188,12 @@ TracksLayer.render = (function() {
      */
     var backbufScale = /* Compositor.backbufScale */ 1;
     var curDate = Dates.curDate;
-    var acTracksData = TracksLayer.acTracksData;
+    var acTracksData = JSONTracksLayer.acTracksData;
     var acTracksData_length = acTracksData.length;
-    var dispAcyc = TracksLayer.dispAcyc;
-    var cTracksData = TracksLayer.cTracksData;
+    var dispAcyc = TracksParams.dispAcyc;
+    var cTracksData = JSONTracksLayer.cTracksData;
     var cTracksData_length = cTracksData.length;
-    var dispCyc = TracksLayer.dispCyc;
+    var dispCyc = TracksParams.dispCyc;
     var numTracks = 0;
     if (dispAcyc)
       numTracks = acTracksData_length;
@@ -262,8 +201,8 @@ TracksLayer.render = (function() {
       numTracks = cTracksData_length;
     var renderPart = 0;
 
-    var frontBuf_width = TracksLayer.frontBuf.width;
-    var frontBuf_height = TracksLayer.frontBuf.height;
+    var frontBuf_width = JSONTracksLayer.frontBuf.width;
+    var frontBuf_height = JSONTracksLayer.frontBuf.height;
     var aspectXY = ViewParams.aspectXY;
     // var projector = ViewParams.projector;
     var projector_project = ViewParams.projector.project;
@@ -273,6 +212,7 @@ TracksLayer.render = (function() {
     var startTime = ctnow();
     var timeout = this.timeout;
 
+    edc.beginPath();
     while (true /* i < numTracks */) {
       /* This line is actually supposed to be a goto at the end of the
 	 loop body, but JavaScript doesn't support goto with a clean
@@ -319,25 +259,25 @@ TracksLayer.render = (function() {
 	continue;
       }
 
-      if (TracksLayer.minLength > 0 || TracksLayer.maxLength != -1) {
+      if (TracksParams.minLength > 0 || TracksParams.maxLength != -1) {
 	// Determine the length of the eddy in weeks.
 	var numEddies = tracksData[i].length;
 	var firstDateIdx = tracksData[i][0][2] - 1;
 	var lastDateIdx = tracksData[i][numEddies-1][2] - 1;
 	var trackLen = Dates.realTimes[lastDateIdx] -
 	  Dates.realTimes[firstDateIdx];
-	if (trackLen < TracksLayer.minLength) {
+	if (trackLen < TracksParams.minLength) {
 	  renderPart++;
 	  continue;
 	}
-	if (TracksLayer.maxLength != -1 &&
-	    trackLen > TracksLayer.maxLength) {
+	if (TracksParams.maxLength != -1 &&
+	    trackLen > TracksParams.maxLength) {
 	  renderPart++;
 	  continue;
 	}
       }
 
-      edc.beginPath();
+      // edc.beginPath();
       var lat = tracksData[i][0][0];
       var lon = tracksData[i][0][1];
       var mapX = (lon + 180) * inv_360 * frontBuf_width;
@@ -355,6 +295,8 @@ TracksLayer.render = (function() {
 	mapCoord_x = (polToMap[0] + 1) * 0.5 * frontBuf_width;
 	mapCoord_y = (-polToMap[1] * aspectXY + 1) * 0.5 * frontBuf_height;
       }
+      if (isNaN(mapCoord_x) || isNaN(mapCoord_y))
+	{ renderPart++; continue; }
 
       edc.moveTo(mapCoord_x, mapCoord_y);
       if (tracksData[i][0][2] - 1 == Dates.curDate)
@@ -377,16 +319,21 @@ TracksLayer.render = (function() {
 	  mapCoord_x = (polToMap[0] + 1) * 0.5 * frontBuf_width;
 	  mapCoord_y = (-polToMap[1] * aspectXY + 1) * 0.5 * frontBuf_height;
 	}
+	if (isNaN(mapCoord_x) || isNaN(mapCoord_y))
+	  continue;
 
 	edc.lineTo(mapCoord_x, mapCoord_y);
 	if (tracksData[i][j][2] - 1 == Dates.curDate)
 	  edc.arc(mapCoord_x, mapCoord_y,
 		  2 * backbufScale, 0, 2 * Math.PI, false);
       }
-      edc.stroke();
+      /* Stroking this often is not necessary unless different colors
+	 are used for anticyclonic and cyclonic tracks.  */
+      // edc.stroke();
 
       renderPart++;
     }
+    edc.stroke();
 
     this.setExitStatus(i < numTracks);
     this.status.preemptCode = RenderLayer.RENDERING;
@@ -398,3 +345,149 @@ TracksLayer.render = (function() {
 
   return new Cothread(initCtx, contExec);
 })();
+
+/********************************************************************/
+
+/**
+ * An eddy TracksLayer that loads its data via a single UTF-16 little
+ * endian (wide character) file.  This loader and renderer for this
+ * TracksLayer is substantially more efficient than the other one.
+ *
+ * This object has many important parameters.  However, they do not
+ * show up in the JSDocs.  See the source code for these details.
+ *
+ * `this.notifyFunc` is used to wake up the main loop to load more
+ * data, if provided.
+ */
+var WCTracksLayer = new RenderLayer();
+OEV.WCTracksLayer = WCTracksLayer;
+
+WCTracksLayer.initCtx = function() {
+  if (!this.textBuf) {
+    this.loadData.timeout = this.timeout;
+    this.loadData.notifyFunc = this.notifyFunc;
+    this.loadData.initCtx();
+  }
+
+  this.render.timeout = this.timeout;
+  this.render.initCtx();
+
+  this.status.returnType = CothreadStatus.PREEMPTED;
+  this.status.preemptCode = 0;
+  this.status.percent = 0;
+};
+
+WCTracksLayer.contExec = function() {
+  // Load the tracks data if it has not yet been loaded.
+  if (this.loadData.status.returnType != CothreadStatus.FINISHED) {
+    var status = this.loadData.continueCT();
+    this.status.returnType = CothreadStatus.PREEMPTED;
+    this.status.preemptCode = status.preemptCode;
+    this.status.percent = status.percent / 2;
+    if (status.returnType == CothreadStatus.FINISHED) {
+      if (this.loadData.retVal == 200)
+	this.retVal = 0;
+      else {
+	this.status.returnType = CothreadStatus.FINISHED;
+	this.retVal = RenderLayer.LOAD_ERROR;
+      }
+    }
+    return this.status;
+  }
+
+  // Otherwise, render.
+  return this.render.continueCT();
+};
+
+WCTracksLayer.loadData = new XHRLoader("../data/tracks.wtxt");
+WCTracksLayer.loadData.overrideMimeType = "text/plain; charset=utf-16le";
+
+WCTracksLayer.loadData.procData = function() {
+  var doneProcData = false;
+  var procError = false;
+
+  if (httpRequest.readyState == 4) { // DONE
+    /* Determine if the HTTP status code is an acceptable success
+       condition.  */
+    if ((httpRequest.status == 200 || httpRequest.status == 206) &&
+	responseText == null)
+      this.retVal = XHRLoader.LOAD_FAILED;
+    if (httpRequest.status != 200 && httpRequest.status != 206 ||
+	responseText == null) {
+      // Error
+      httpRequest.onreadystatechange = null;
+      this.httpRequest = null;
+      this.status.returnType = CothreadStatus.FINISHED;
+      this.status.preemptCode = 0;
+      return this.status;
+    }
+
+    /* Perform final cothreaded (or possibly synchronous) data
+       processing here.  */
+    WCTracksLayer.textBuf = responseText;
+    doneProcData = true;
+  }
+
+  if (procError) {
+    httpRequest.abort();
+    httpRequest.onreadystatechange = null;
+    this.httpRequest = null;
+    this.retVal = XHRLoader.PROC_ERROR;
+    this.status.returnType = CothreadStatus.FINISHED;
+    this.status.preemptCode = 0;
+    return this.status;
+  }
+
+  if (httpRequest.readyState == 4 && doneProcData) {
+    /* Only manipulate the CothreadStatus object from within this
+       function when processing is entirely finished.  */
+    httpRequest.onreadystatechange = null;
+    this.httpRequest = null;
+    this.status.returnType = CothreadStatus.FINISHED;
+    this.status.preemptCode = 0;
+  }
+
+  return this.status;
+};
+
+WCTracksLayer.render = (function() {
+  "use strict";
+
+  function initCtx() {
+    this.status.returnType = CothreadStatus.PREEMPTED;
+    this.status.preemptCode = 0;
+    this.status.percent = 0;
+  }
+
+  function contExec() {
+
+    // 1. Kd-tree pvs traversal.
+
+    // 2. For each eddy on the current date index:
+    // * Draw the marker at the current date index.
+    // Parse backward to get the starting point.
+    // Keep track of the current bounding box.
+    // If the backtrack is fully visible.
+    // Parse forward to draw the line.
+
+    // (optional) Once finished with definitely visible,
+    // move to possibly visible and do bounding box checks for each line.
+
+    // Need two parts:
+    // * Critical render loop
+    // * Auxiliary render loop
+
+    // Single traversal will be way better than double traversal,
+    // since earth.nullschool.net does just fine with it's terribly
+    // inefficient rendering mechanisms.
+
+  }
+
+  return new Cothread(initCtx, contExec);
+})();
+
+/********************************************************************/
+
+/** Pointer to the current TracksLayer implementation.  */
+var TracksLayer = JSONTracksLayer;
+OEV.TracksLayer = TracksLayer;

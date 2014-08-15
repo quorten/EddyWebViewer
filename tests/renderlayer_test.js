@@ -1,11 +1,50 @@
-/* Test a RenderLayer.  Within the HTML test bench, the `TestLayer'
-   variable must be defined to be the layer that should be tested.  */
+/* A convenient unified framework for testing RenderLayers.  To use
+   this test framework:
 
+   1. Make sure the code of the RenderLayer to be tested is within the
+      list of `import' statements below.
+
+   2. Create a JavaScript bundle.
+
+   3. Include the bundle in a webpage.
+
+   4. Within the webpage, define and set the `TestLayer' variable to
+      point to the RenderLayer object that should be tested.
+
+   5. Add the attribute-value pair `onload="setup()' to the body
+      element of your HTML test container.
+
+   The idea of this JavaScript file is to provide not only setup
+   routines for a test webpage, but also convenient functions for
+   typing directly in a web developer console.  Here is the command
+   repertoire:
+
+   * start() -- Initiate a new render job.
+
+   * halt(), stop() -- Stop a render job in progress.
+
+   * setViewport(width, height) -- Change all variables needed to set
+     the viewport to the given dimensions.
+
+   * setScale(scale) -- Change all variables needed to set the scale
+     to the given dimensions.
+
+   * `play = true', `play = false': Toggle playing a RenderLayer in
+     full-stop animation.
+
+   * setTestLayer(layer) -- Dynamically switch the layer to be tested
+     to the given layer, performing all necessary reconfiguration.
+
+*/
+
+import "../src/cothread";
+import "../src/compat";
+import "../src/dates";
 import "../src/sshlayer";
 import "../src/trackslayer";
+import "../src/earthtexlayer";
 import "../src/projector";
 import "../src/viewparams";
-import "../src/dates";
 
 var safeJSONParse = function(text) {
   var jsonObject = null;
@@ -22,39 +61,57 @@ var safeJSONParse = function(text) {
    namespace.  */
 import "../src/oevnsend";
 
-var CothreadStatus = OEV.CothreadStatus;
-
 var progElmt, rendTimeElmt, rendStartTime;
 var stopSignal = false;
+var play = false;
 
 var execTime = function() {
   var status = TestLayer.continueCT();
   var preemptCode = status.preemptCode;
-  if (preemptCode == CothreadStatus.IOWAIT) {
-    progElmt.childNodes[0].nodeValue =
-      [ "Download: ",
-      (status.percent * 100 / CothreadStatus.MAX_PERCENT).toFixed(2), "%" ].
-      join("");
-  } else if (preemptCode == CothreadStatus.PROC_DATA)
-    progElmt.childNodes[0].nodeValue =
-      "Processing downloaded data, please wait...";
-  else if (preemptCode == OEV.RenderLayer.RENDERING) {
-    progElmt.childNodes[0].nodeValue =
-      [ "Render: ",
-      (status.percent * 100 / CothreadStatus.MAX_PERCENT).toFixed(2), "%" ].
-      join("");
+  if (!play) {
+    if (preemptCode == OEV.CothreadStatus.IOWAIT) {
+      progElmt.childNodes[0].nodeValue =
+	[ "Download: ",
+	  (status.percent * 100 /
+	   OEV.CothreadStatus.MAX_PERCENT).toFixed(2), "%" ].
+	join("");
+    } else if (preemptCode == OEV.CothreadStatus.PROC_DATA)
+      progElmt.childNodes[0].nodeValue =
+	"Processing downloaded data, please wait...";
+    else if (preemptCode == OEV.RenderLayer.RENDERING) {
+      progElmt.childNodes[0].nodeValue =
+	[ "Render: ",
+	  (status.percent * 100 /
+	   OEV.CothreadStatus.MAX_PERCENT).toFixed(2), "%" ].
+	join("");
+    }
   }
 
-  if (status.returnType == CothreadStatus.FINISHED) {
+  if (status.returnType == OEV.CothreadStatus.FINISHED) {
     if (TestLayer.retVal == OEV.RenderLayer.LOAD_ERROR)
       progElmt.childNodes[0].nodeValue =
 	"Error occurred during download.";
     var totalTime = (Date.now() - rendStartTime) / 1000;
-    rendTimeElmt.childNodes[0].nodeValue = "Total render time: " +
-      totalTime.toFixed(3) + " seconds";
+    if (play)
+      rendTimeElmt.childNodes[0].nodeValue = "FPS: " +
+	(1 / totalTime).toFixed(3);
+    else
+      rendTimeElmt.childNodes[0].nodeValue = "Total render time: " +
+	totalTime.toFixed(3) + " seconds";
+    if (stopSignal)
+      { stopSignal = false; return; }
+    if (play && TestLayer.retVal != OEV.RenderLayer.LOAD_ERROR) {
+      OEV.Dates.curDate++;
+      if (OEV.Dates.curDate < OEV.Dates.dateList.length)
+	return requestAnimationFrame(start);
+      else {
+	OEV.Dates.curDate = 0;
+	progElmt.childNodes[0].nodeValue = "Done";
+      }
+    }
     return;
   }
-  if (preemptCode == CothreadStatus.IOWAIT)
+  if (preemptCode == OEV.CothreadStatus.IOWAIT)
     return;
   return browserTime();
 };
@@ -62,22 +119,19 @@ var execTime = function() {
 var browserTime = function() {
   if (stopSignal)
     { stopSignal = false; return; }
-  /* Note: On older browsers, the timeout interval might need to be
-     larger than zero in order for the control to actually return to
-     the browser.  Setting a timeout larger than zero also helps
-     prevent mobile devices from being overloaded.  */
-  return window.setTimeout(execTime, 0);
+  return requestAnimationFrame(execTime);
 };
 
 var start = function() {
   progElmt.childNodes[0].nodeValue =
     "Please wait...";
-  rendTimeElmt.childNodes[0].nodeValue =
-    "Calculating total render time...";
+  if (!play)
+    rendTimeElmt.childNodes[0].nodeValue =
+      "Calculating total render time...";
   rendStartTime = Date.now();
 
   var status = TestLayer.start();
-  if (status.preemptCode == CothreadStatus.IOWAIT)
+  if (status.preemptCode == OEV.CothreadStatus.IOWAIT)
     return;
   return browserTime();
 };
@@ -106,7 +160,7 @@ var finishSetup = function() {
     return start();
   } else {
     OEV.Dates.continueCT();
-    return setTimeout(finishSetup, 15);
+    return window.setTimeout(finishSetup, 15);
   }
 };
 
@@ -114,12 +168,13 @@ var setup = function() {
   // Append a progress counter element to the document body.
   progElmt = document.createElement("p");
   progElmt.id = "progElmt";
-  progElmt.appendChild(document.createTextNode(""));
+  progElmt.appendChild(document.createTextNode("Please wait..."));
   rendTimeElmt = document.createElement("p");
   rendTimeElmt.id = "rendTimeElmt";
-  rendTimeElmt.appendChild(document.createTextNode(""));
+  rendTimeElmt.appendChild(document.createTextNode("Starting up..."));
   TestLayer.frontBuf.id = "testLayer";
-  TestLayer.frontBuf.style.cssText = "border-style: solid";
+  TestLayer.frontBuf.style.cssText =
+    "border-style: solid; margin: 0px auto; display: block";
 
   var body = document.getElementById("topBody");
   body.appendChild(progElmt);
@@ -154,7 +209,8 @@ var setTestLayer = function(layer) {
   oldTestEl.parentNode.removeChild(oldTestEl);
   TestLayer = layer;
   TestLayer.frontBuf.id = "testLayer";
-  TestLayer.frontBuf.style.cssText = "border-style: solid";
+  TestLayer.frontBuf.style.cssText =
+    "border-style: solid; margin: 0px auto; display: block";
   TestLayer.timeout = 15;
   TestLayer.notifyFunc = execTime;
   var body = document.getElementById("topBody");

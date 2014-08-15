@@ -354,7 +354,7 @@ Point3D.prototype.toYPolarPoint = function() {
 
 /*
 
-Same as:
+The following function is the same as:
 
 polarPt = new PolarPoint(polarPt[1], polarPt[0]);
 polarPt.degToRad();
@@ -368,6 +368,8 @@ polDest.degNormalize();
 polarPt[0] = polDest.lon;
 polarPt[1] = polDest.lat;
 
+...but with all sub-operations composed into one function body.
+
  */
 
 /**
@@ -378,39 +380,52 @@ polarPt[1] = polDest.lat;
  * if it is for reverse transformation.
  */
 var polShiftOrigin = function(polarPt, fwd) {
+  var polCenter = ViewParams.polCenter;
   if (isNaN(polarPt[0]))
     return;
-  /* 1. Get the 3D rectangular coordinate of the given polar
-     coordinate.  The camera is looking down the negative z axis.  */
-  var r3src_x, r3src_y, r3src_z;
+  if (polCenter[1] != 0) {
+    /* 1. Get the 3D rectangular coordinate of the given polar
+       coordinate.  The camera is looking down the negative z
+       axis.  */
+    var r3src_x, r3src_y, r3src_z;
 
-  var latitude = DEG2RAD * polarPt[1];
-  var longitude = DEG2RAD * polarPt[0];
-  r3src_y = Math.sin(latitude);
-  r3src_x = Math.sin(longitude) * Math.cos(latitude);
-  r3src_z = Math.cos(longitude) * Math.cos(latitude);
+    var latitude = DEG2RAD * polarPt[1];
+    var longitude = DEG2RAD * polarPt[0];
+    r3src_y = Math.sin(latitude);
+    r3src_x = Math.sin(longitude) * Math.cos(latitude);
+    r3src_z = Math.cos(longitude) * Math.cos(latitude);
 
-  /* 2. Inverse rotate this coordinate around the x axis by the
-     current globe tilt.  */
-  var i_tilt = -fwd * DEG2RAD * ViewParams.polCenter[1];
-  var cos_tilt = Math.cos(i_tilt); var sin_tilt = Math.sin(i_tilt);
-  var r3dest_x, r3dest_y, r3dest_z;
-  r3dest_x = r3src_x;
-  r3dest_z = r3src_z * cos_tilt - r3src_y * sin_tilt;
-  r3dest_y = r3src_z * sin_tilt + r3src_y * cos_tilt;
+    /* 2. Inverse rotate this coordinate around the x axis by the
+       current globe tilt.  */
+    var i_tilt = -fwd * DEG2RAD * polCenter[1];
+    var cos_tilt = Math.cos(i_tilt); var sin_tilt = Math.sin(i_tilt);
+    var r3dest_x, r3dest_y, r3dest_z;
+    r3dest_x = r3src_x;
+    r3dest_z = r3src_z * cos_tilt - r3src_y * sin_tilt;
+    r3dest_y = r3src_z * sin_tilt + r3src_y * cos_tilt;
 
-  /* 3. Measure the latitude and longitude of this coordinate.  */
-  latitude = RAD2DEG * Math.asin(r3dest_y);
-  longitude = RAD2DEG * Math.atan2(r3dest_x, r3dest_z);
+    /* 3. Measure the latitude and longitude of this coordinate.  */
+    latitude = RAD2DEG * Math.asin(r3dest_y);
+    longitude = RAD2DEG * Math.atan2(r3dest_x, r3dest_z);
 
-  /* 4. Shift by the longitudinal rotation around the pole.  */
-  longitude += 180 - fwd * ViewParams.polCenter[0];
+    /* 4. Shift by the longitudinal rotation around the pole.  For the
+       sake of the normalization calculation below, move the prime
+       meridian to 180 degrees.  */
+    longitude += 180 - fwd * polCenter[0];
+  } else {
+    /* Only perform the longitude shift computations.  For the sake of
+       the normalization calculation below, move the prime meridian to
+       180 degrees.  */
+    latitude = polarPt[1];
+    longitude = polarPt[0] + 180 - fwd * polCenter[0];
+  }
 
   /* 5. Verify that the coordinates are in bounds.  */
   if (latitude < -90) latitude = -90;
   if (latitude > 90) latitude = 90;
+  longitude %= 360;
   longitude += (longitude < 0) * 360;
-  longitude = longitude % 360.0 - 180;
+  longitude -= 180;
   polarPt[0] = longitude;
   polarPt[1] = latitude;
 };

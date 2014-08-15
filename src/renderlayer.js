@@ -68,10 +68,14 @@ RenderLayer.prototype.setViewport = function(width, height) {
   this.frontBuf.height = height;
 };
 
+/********************************************************************/
+
 /**
  * Cothreaded RayTracer base class.  A raytracer is a per-pixel
  * renderer that maps a pixel on the frontbuffer to the backbuffer
  * using a {@linkcode Projector}.
+ *
+ * Base class: {@linkcode RenderLayer}
  *
  * Parameters:
  *
@@ -88,9 +92,17 @@ RenderLayer.prototype.setViewport = function(width, height) {
  *
  * "maxOsaPasses" (this.maxOsaPasses) -- The maximum number of
  * oversampling passes to perform before the raytrace is considered
- * complete.  The current multipass progressive oversampling algorithm
- * does not use extended precision for the intermediate samples, so a
- * factor greater than 8 is effectively useless.
+ * complete.  This value must be greater than zero (at least one
+ * sampling pass is required).  The current multipass progressive
+ * oversampling algorithm does not use extended precision for the
+ * intermediate samples, so a factor greater than 8 is effectively
+ * useless.
+ *
+ * "blockFactor" (this.blockFactor) -- (optional) This indicates the
+ * number of continuous scanlines to raytrace before checking the
+ * timeout condition.  Setting this to a larger value can help
+ * increase raytracing efficiency by reducing the number of possibly
+ * expensive Web API calls per iteration.
  *
  * @constructor
  *
@@ -107,6 +119,7 @@ var RayTracer = function(backBuf, backBufType, maxOsaPasses) {
   this.backBuf = backBuf;
   this.backBufType = backBufType;
   this.maxOsaPasses = maxOsaPasses;
+  this.blockFactor = 0;
 
   this.mapToPol = [ NaN, NaN ];
 };
@@ -133,7 +146,8 @@ RayTracer.prototype.setViewport = function(width, height) {
 
 /**
  * Additional post-processing operations to perform on a pixel before
- * display.
+ * display.  This function should directly modify the destination data
+ * at the given destination index to set the color value.
  * @function
  * @param {Number} value - If the source data is a `Number` array,
  * then this is the numeric value of the input.
@@ -164,6 +178,15 @@ RayTracer.prototype.initCtx = function() {
   this.y = 0;
   this.osaPass = 1;
 
+  /* Non-function-call handling of equirectangular projection shows no
+     significant performance gains with JIT JavaScript runtimes.
+     Dynamic function inlining must provide sufficient
+     auto-optimization.  */
+  /* if (ViewParams.projector == EquirectProjector &&
+      ViewParams.polCenter[1] == 0 && ViewParams.polCenter[0] == 0)
+    this.fastEqui = true;
+  else this.fastEqui = false; */
+
   this.status.returnType = CothreadStatus.PREEMPTED;
   this.status.preemptCode = 0;
   this.status.percent = 0;
@@ -189,7 +212,9 @@ RayTracer.prototype.contExec = function() {
   var inv_aspectXY = 1 / aspectXY;
   var projector_unproject = ViewParams.projector.unproject;
   var mapToPol = this.mapToPol;
+  // var fastEqui = this.fastEqui;
   var maxOsaPasses = this.maxOsaPasses;
+  var blockFactor = this.blockFactor;
 
   var osaFac = 1 / osaPass;
   var inv_osaFac = 1 - osaFac;
@@ -202,7 +227,7 @@ RayTracer.prototype.contExec = function() {
 
   while (osaPass <= maxOsaPasses) {
     while (x < destImg_width) {
-      var xj = 0, yj = 0; // X and Y jitter
+      var xj = 0, yj = 0; // X and Y jitter for oversampling
       if (osaPass > 1) {
 	xj = 0.5 - Math.random();
 	yj = 0.5 - Math.random();
@@ -217,14 +242,17 @@ RayTracer.prototype.contExec = function() {
 	ViewParams.inv_scale;
 
       // Unproject.
-      projector_unproject(mapToPol);
+      /* if (fastEqui)
+	{ mapToPol[1] *= 180; mapToPol[0] *= 180; }
+      else */ projector_unproject(mapToPol);
 
       // Clip to the projection boundaries, if specified.
       if (ViewParams.clip && (mapToPol[1] < -90 || mapToPol[1] > 90 ||
 			      mapToPol[0] < -180 || mapToPol[0] > 180))
 	{ mapToPol[0] = NaN; mapToPol[1] = NaN; }
 
-      // Shift to the given latitude and longitude.
+      /* Shift to the given latitude and longitude, and normalize the
+         coordinates at the same time.  */
       polShiftOrigin(mapToPol, -1);
 
       if (isNaN(mapToPol[0]) ||
@@ -266,10 +294,8 @@ RayTracer.prototype.contExec = function() {
       /* if (ctnow() - startTime >= timeout)
 	 break; */
     }
-    if (x >= destImg_width) {
-      x = 0;
-      y++;
-    }
+    if (x >= destImg_width)
+      { x = 0; y++; }
     if (y >= destImg_height) {
       destIdx = 0;
       y = 0;
@@ -278,19 +304,17 @@ RayTracer.prototype.contExec = function() {
       inv_osaFac = 1 - osaFac;
       wrapOver = true;
     }
-    /* Note: Previously, in the interest of throughput, we mandated
-       completion of a certain number of rows per cothread interval.
-       However, we now disable that requirement in the interest of
-       maintaining browser responsiveness.  */
-    if (/* y % 32 == 0 && */ ctnow() - startTime >= timeout)
+    var atBlockPos = (blockFactor > 0) ? (y % blockFactor == 0) : true;
+    if (atBlockPos && ctnow() - startTime >= timeout)
       break;
   }
 
-  this.setExitStatus(osaPass <= maxOsaPasses);
   if (!wrapOver)
     ctx.putImageData(destImg, 0, 0, 0, oldY, destImg_width, y - oldY);
   else
     ctx.putImageData(destImg, 0, 0, 0, 0, destImg_width, destImg_height);
+
+  this.setExitStatus(osaPass <= maxOsaPasses);
   this.status.preemptCode = RenderLayer.RENDERING;
   this.status.percent = ((y + destImg_height * (osaPass - 1)) *
 			 CothreadStatus.MAX_PERCENT /
@@ -300,5 +324,248 @@ RayTracer.prototype.contExec = function() {
   this.x = x;
   this.y = y;
   this.osaPass = osaPass;
+  return this.status;
+};
+
+/********************************************************************/
+
+/**
+ * Generic specialized RenderLayer for equirectangular backbuffers:
+ * Copies the backbuffer to the frontbuffer with tiling.  You will
+ * need to provide implementations for `initCtx()' and `loadData()' in
+ * a derived class or object.  `loadData()' should initialize a member
+ * named `backBuf' within itself.  This is used to initialize
+ * `this.backBuf' in this object.
+ *
+ * Base class: {@linkcode RenderLayer}
+ */
+var EquiRenderLayer = function() {
+  /* Note: We must be careful to make sure that the base cothread
+     initializations take place.  */
+  Cothread.call(this, this.initCtx, this.contExec);
+
+  this.frontBuf = document.createElement("canvas");
+  this.backBuf = null;
+};
+
+OEV.EquiRenderLayer = EquiRenderLayer;
+EquiRenderLayer.prototype = new RenderLayer();
+EquiRenderLayer.prototype.constructor = EquiRenderLayer;
+
+/**
+ * Example `initCtx()' implementation.  Currently, it doesn't do
+ * anything useful.
+ */
+EquiRenderLayer.prototype.initCtx = function() {
+  /* Check if data needs to be loaded here.  */
+
+  this.status.returnType = CothreadStatus.PREEMPTED;
+  this.status.preemptCode = 0;
+  this.status.percent = 0;
+};
+
+EquiRenderLayer.prototype.contExec = function() {
+  // Load the back buffer if it has not yet been loaded.
+  if (this.loadData.status.returnType != CothreadStatus.FINISHED) {
+    var status = this.loadData.continueCT();
+    this.status.returnType = CothreadStatus.PREEMPTED;
+    this.status.preemptCode = status.preemptCode;
+    this.status.percent = status.percent;
+    if (status.returnType == CothreadStatus.FINISHED) {
+      if (this.loadData.retVal == 200 ||
+	  this.loadData.retVal == ImageLoader.SUCCESS) {
+	if (this.loadData.backBuf) {
+	  this.backBuf = this.loadData.backBuf;
+	  this.loadData.backBuf = null;
+	}
+	this.retVal = 0;
+      } else {
+	this.status.returnType = CothreadStatus.FINISHED;
+	this.retVal = RenderLayer.LOAD_ERROR;
+	return this.status;
+      }
+    } else return this.status;
+  }
+
+  // Otherwise, render.
+  return this.render();
+};
+
+EquiRenderLayer.prototype.render = function() {
+  var ctx = this.frontBuf.getContext("2d");
+  ctx.clearRect(0, 0, this.frontBuf.width, this.frontBuf.height);
+
+  /* This loop allows for tile rendering a left and right copy of the
+     SSH image.  */
+  for (var i = 0; i < 3; i++) {
+    /* Convert the map center from relative coordinates to the
+       coordinate space of the destination canvas.  */
+    var fbwidth = this.frontBuf.width;
+    var fbheight = this.frontBuf.height;
+    var x = (ViewParams.mapCenter[0] + 1) / 2 * fbwidth;
+    var y = (-ViewParams.mapCenter[1] + 1) / 2 * fbheight;
+
+    /* Find the coordinates on the destination canvas where the left,
+       top, right, and bottom edges of the image lie.  */
+    var width = fbwidth * ViewParams.scale;
+    var height = fbheight * ViewParams.scale * ViewParams.aspectXY / 2;
+    if (i == 1) x -= width;
+    if (i == 2) x += width;
+    var left = x - width / 2;
+    var top = y - height / 2;
+    var right = x + width / 2;
+    var bottom = y + height / 2;
+
+    /* Skip rendering entirely if the image is invisible.  */
+    if (left < fbwidth && top < fbheight && right >= 0 && bottom >= 0) {
+      /* Compute any necessary clipping on the source image.
+	 (Clipping could actually be skipped entirely, since the
+	 underlying canvas implementation will clip as necessary, but
+	 the clipping code is included here for robustness.)  */
+      var bbwidth = this.backBuf.width;
+      var bbheight = this.backBuf.height;
+      var srcleft, srctop, srcright, srcbottom;
+      if (left < 0) {
+	srcleft = -left / width * bbwidth;
+	left = 0;
+      } else srcleft = 0;
+      if (top < 0) {
+	srctop = -top / height * bbheight;
+	top = 0;
+      } else srctop = 0;
+      if (right > fbwidth) {
+	srcright = bbwidth + (fbwidth - right) / width * bbwidth;
+	right = fbwidth;
+      } else srcright = bbwidth;
+      if (bottom > fbheight) {
+	srcbottom = bbheight + (fbheight - bottom) / height * bbheight;
+	bottom = fbheight;
+      } else srcbottom = bbheight;
+
+      ctx.drawImage(this.backBuf,
+		    srcleft, srctop, srcright - srcleft, srcbottom - srctop,
+		    left, top, right - left, bottom - top);
+    }
+  }
+
+  this.status.returnType = CothreadStatus.FINISHED;
+  this.status.preemptCode = RenderLayer.RENDERING;
+  this.status.percent = CothreadStatus.MAX_PERCENT;
+  return this.status;
+};
+
+/********************************************************************/
+
+/**
+ * Generic specialized CSS rendering routine for equirectangular
+ * backbuffers: Uses CSS to position the backbuffer as an HTML element
+ * within a "frontbuffer" container element.  You will
+ * need to provide implementations for `initCtx()' and `loadData()' in
+ * a derived class or object.  `loadData()' should initialize a member
+ * named `backBuf' within itself.  This is used to initialize
+ * `this.backBuf' in this object.
+ *
+ * Base class: {@linkcode RenderLayer}
+ */
+var EquiCSSRenderLayer = function() {
+  /* Note: We must be careful to make sure that the base cothread
+     initializations take place.  */
+  Cothread.call(this, this.initCtx, this.contExec);
+
+  this.frontBuf = document.createElement("div");
+  this.frontBuf.appendChild(document.createElement("div"));
+  this.backBuf = null;
+};
+
+OEV.EquiCSSRenderLayer = EquiCSSRenderLayer;
+EquiCSSRenderLayer.prototype = new RenderLayer();
+EquiCSSRenderLayer.prototype.constructor = EquiCSSRenderLayer;
+
+EquiCSSRenderLayer.prototype.setViewport = function(width, height) {
+  var inner = this.frontBuf.firstChild;
+  var fbstyle = this.frontBuf.style;
+  fbstyle.width = width + "px";
+  fbstyle.height = height + "px";
+  var cssText = "";
+  /* NOTE: You must have the "ie-inline-block" class defined in your
+     HTML for this to work.  */
+  var className = document.getElementById("topBody").className;
+  if (className == "ie6" || className =="ie7")
+    inner.className = "ie-inline-block";
+  else cssText = "display: inline-block; ";
+  cssText += "position: relative; width: " + width +
+    "px; height: " + height + "px; overflow: hidden";
+  inner.style.cssText = cssText;
+};
+
+/**
+ * Example `initCtx()' implementation.  Currently, it doesn't do
+ * anything useful.
+ */
+EquiCSSRenderLayer.prototype.initCtx = function() {
+  /* Check if data needs to be loaded here.  */
+
+  this.status.returnType = CothreadStatus.PREEMPTED;
+  this.status.preemptCode = 0;
+  this.status.percent = 0;
+};
+
+EquiCSSRenderLayer.prototype.contExec = function() {
+  // Load the back buffer if it has not yet been loaded.
+  if (this.loadData.status.returnType != CothreadStatus.FINISHED) {
+    var status = this.loadData.continueCT();
+    this.status.returnType = CothreadStatus.PREEMPTED;
+    this.status.preemptCode = status.preemptCode;
+    this.status.percent = status.percent;
+    if (status.returnType == CothreadStatus.FINISHED) {
+      if (this.loadData.retVal == 200 ||
+	  this.loadData.retVal == ImageLoader.SUCCESS) {
+	if (this.loadData.backBuf) {
+	  this.backBuf = this.loadData.backBuf;
+	  this.loadData.backBuf = null;
+	}
+	var inner = this.frontBuf.firstChild;
+	if (inner.hasChildNodes())
+	  inner.removeChild(inner.firstChild);
+	inner.appendChild(this.backBuf);
+	this.retVal = 0;
+      } else {
+	this.status.returnType = CothreadStatus.FINISHED;
+	this.retVal = RenderLayer.LOAD_ERROR;
+	return this.status;
+      }
+    } else return this.status;
+  }
+
+  // Otherwise, render.
+  return this.render();
+};
+
+EquiCSSRenderLayer.prototype.render = function() {
+  /* Convert the map center from relative coordinates to the
+     coordinate space of the destination canvas.  */
+  var fbwidth = ViewParams.viewport[0];
+  var fbheight = ViewParams.viewport[1];
+  var x = (ViewParams.mapCenter[0] + 1) / 2 * fbwidth;
+  var y = (-ViewParams.mapCenter[1] + 1) / 2 * fbheight;
+
+  /* Find the coordinates on the destination canvas where the left,
+     top, right, and bottom edges of the image lie.  */
+  var width = fbwidth * ViewParams.scale;
+  var height = fbheight * ViewParams.scale * ViewParams.aspectXY / 2;
+  var left = x - width / 2;
+  var top = y - height / 2;
+  var right = x + width / 2;
+  var bottom = y + height / 2;
+
+  /* Set the CSS parameters.  */
+  this.backBuf.style.cssText =
+    "position: absolute; left: " + left + "px; top: " + top + "px";
+  this.backBuf.width = width;
+  this.backBuf.height = height;
+
+  this.status.returnType = CothreadStatus.FINISHED;
+  this.status.preemptCode = RenderLayer.RENDERING;
+  this.status.percent = CothreadStatus.MAX_PERCENT;
   return this.status;
 };

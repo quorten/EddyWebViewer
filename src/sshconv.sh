@@ -85,7 +85,7 @@ for date in $DATES; do
   # provide for a PNG with unassociated alpha:
   # -define tiff:alpha=unassociated
 
-  # Also note that it is currently not possible for a web browser to
+  # Because of this, it is currently not possible for a web browser to
   # reliably read arbitrary data out of the alpha channel of an image.
   # (In the future, web browsers might be fixed to support this,
   # though.)

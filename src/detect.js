@@ -86,7 +86,7 @@ var detectXHR = function(resume) {
     window.defonerror = onerror;
     window.onerror = function() {
       OEV.xhrDetectStage++;
-      setTimeout(function { return detectXHR(resume); }, 0);
+      window.setTimeout(function { return detectXHR(resume); }, 0);
       return true;
     };
   }

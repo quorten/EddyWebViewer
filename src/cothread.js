@@ -260,18 +260,35 @@ CothreadStatus.MAX_PERCENT = 32767;
  * to be executed in series.  If any of the jobs set their `retVal` to
  * `SeriesCTCtl.QUIT` (to signify a terminal error condition), then
  * the cothread controller will finish without executing the rest of
- * the sequence.
+ * the sequence.  Normal functions can also be provided.  Note that
+ * the timeouts of each job must be set manually by the user of this
+ * function.
  *
  * If the preemptCode of a job's return status is
  * `CothreadStatus.IOWAIT`, then the cothread controller returns
  * immediately with the same preemptCode, with the expectation that
  * the controller will be resumed once I/O is available.
  *
+ * Basic usage:
+ *
+ * ~~~
+ * var job1 = new Cothread(j1StartExec, j1ContExec);
+ * var job2 = new Cothread(j2StartExec, j2ContExec);
+ * var jobSeries = new SeriesCTCtl([ job1, job2 ]);
+ * jobSeries.timeout = 15;
+ * jobSeries.start();
+ * // Execute main loop until the series completes...
+ * var status = jobSeries.continueCT();
+ * if (status.returnType == CothreadStatus.PREEMPTED)
+ *   return window.setTimeout(mainLoop, 15);
+ * ~~~
+ *
  * Parameters:
  *
  * "jobList" (this.jobList) -- The list of cothreaded jobs to execute.
  *
- * Return value: Zero on success, `SeriesCTCtl.QUIT` on early exit.
+ * Return value: The return value of the last job on success,
+ * `SeriesCTCtl.QUIT` on early exit.
  *
  * @param {Array} jobList - The list of cothreaded jobs to execute.
  *
@@ -295,6 +312,10 @@ SeriesCTCtl.QUIT = 1;
 SeriesCTCtl.prototype.initCtx = function() {
   this.curJob = 0;
   this.jobList[0].initCtx();
+
+  this.status.returnType = CothreadStatus.PREEMPTED;
+  this.status.preemptCode = 0;
+  this.status.percent = 0;
 };
 
 SeriesCTCtl.prototype.contExec = function() {
@@ -308,12 +329,19 @@ SeriesCTCtl.prototype.contExec = function() {
   var timeout = this.timeout;
 
   while (true) {
-    status = jobList[curJob].continueCT();
-    if (ctnow() - startTime >= timeout)
+    var execJob = jobList[curJob];
+    var isCothread = typeof(execJob) != "function";
+    var retVal;
+    if (isCothread) {
+      status = execJob.continueCT();
+      retVal = execJob.retVal;
+    } else { status = {}; retVal = execJob(); }
+
+    if (isCothread && ctnow() - startTime >= timeout)
       break;
 
-    if (status.returnType == CothreadStatus.FINISHED) {
-      if (jobList[curJob].retVal == SeriesCTCtl.QUIT) {
+    if (!isCothread || status.returnType == CothreadStatus.FINISHED) {
+      if (retVal == SeriesCTCtl.QUIT) {
 	this.retVal = SeriesCTCtl.QUIT;
 	this.status.returnType = CothreadStatus.FINISHED;
 	this.status.preemptCode = 0;
@@ -324,14 +352,18 @@ SeriesCTCtl.prototype.contExec = function() {
       curJob++; this.curJob = curJob;
 
       if (curJob >= numJobs) {
-	this.retVal = 0;
+	this.retVal = retVal;
 	this.status.returnType = CothreadStatus.FINISHED;
 	this.status.preemptCode = 0;
 	this.status.percent = CothreadStatus.MAX_PERCENT;
 	return this.status;
       }
 
-      jobList[curJob].initCtx();
+      execJob = jobList[curJob];
+      if (typeof(execJob) != "function")
+	execJob.initCtx();
+      if (!isCothread && ctnow() - startTime >= timeout)
+	break;
 
     } else if (status.preemptCode == CothreadStatus.IOWAIT) {
       this.status.returnType = CothreadStatus.PREEMPTED;
@@ -365,6 +397,20 @@ SeriesCTCtl.prototype.contExec = function() {
  * returns with a preemptCode of `CothreadStatus.IOWAIT`, with the
  * expectation that the controller will be resumed once I/O is
  * available.
+ *
+ * Basic usage:
+ *
+ * ~~~
+ * var job1 = new Cothread(j1StartExec, j1ContExec);
+ * var job2 = new Cothread(j2StartExec, j2ContExec);
+ * var jobSeries = new ParallelCTCtl([ job1, job2 ]);
+ * jobSeries.timeout = 15;
+ * jobSeries.start();
+ * // Execute main loop until the jobs complete...
+ * var status = jobSeries.continueCT();
+ * if (status.returnType == CothreadStatus.PREEMPTED)
+ *   return window.setTimeout(mainLoop, 15);
+ * ~~~
  *
  * Parameters:
  *
@@ -403,6 +449,10 @@ ParallelCTCtl.prototype.initCtx = function() {
     jobList[i].timeout = timeSlice;
     jobList[i].initCtx();
   }
+
+  this.status.returnType = CothreadStatus.PREEMPTED;
+  this.status.preemptCode = 0;
+  this.status.percent = 0;
 };
 
 ParallelCTCtl.prototype.contExec = function() {

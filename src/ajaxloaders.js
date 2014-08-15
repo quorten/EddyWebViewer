@@ -15,11 +15,15 @@ import "cothread";
  *
  * var jsonLoader = new XHRLoader("data.json", resumeMainLoop);
  * jsonLoader.listenOnProgress = true;
+ * jsonLoader.timeout = 15;
  * jsonLoader.start();
  * // Enter the main loop, wait for finish condition...
  * var status = jsonLoader.continueCT();
- * if (status.returnType == CothreadStatus.FINISHED)
- *   jsonObject = jsonLoader.jsonObject;
+ * if (status.returnType == CothreadStatus.FINISHED) {
+ *   if (jsonLoader.retVal == 200)
+ *     jsonObject = jsonLoader.jsonObject;
+ *   else console.log("Error: Could not load data.");
+ * }
  * ~~~
  *
  * Usually, you will create a derived class using
@@ -66,6 +70,12 @@ import "cothread";
  * data processing step will be very fast, so it will not be necessary
  * to notify the caller just before that last processing step is
  * executed.
+ *
+ * "overrideMimeType" (this.overrideMimeType) -- (optional) If
+ * provided, this variable is used as the argument to the
+ * XMLHttpRequest method of the same name.  Note that this is only
+ * applicable if the underlying XMLHttpRequest implementation supports
+ * this method.
  *
  * Return value:
  *
@@ -217,6 +227,11 @@ XHRLoader.prototype.initCtx = function() {
     var max = this.byteRange[1];
     httpRequest.setRequestHeader("Range", "bytes=" + min + "-" + max);
   }
+  /* FIXME: overrideMimeType has compatibility issues.  Only do this
+     if a startup feature detect indicates the availability of this
+     feature.  */
+  if (this.overrideMimeType)
+    httpRequest.overrideMimeType(this.overrideMimeType);
   httpRequest.send();
   this.progLen = null;
   this.reqLen = 0;
@@ -397,11 +412,15 @@ XHRLoader.prototype.abort = function() {
  *
  * var imageLoader = new ImageLoader("image.png", resumeMainLoop);
  * imageLoader.listenOnProgress = true;
+ * imageLoader.timeout = 15;
  * imageLoader.start();
  * // Enter the main loop, wait for finish condition...
  * var status = imageLoader.continueCT();
- * if (status.returnType == CothreadStatus.FINISHED)
- *   image = imageLoader.image;
+ * if (status.returnType == CothreadStatus.FINISHED) {
+ *   if (imageLoader.retVal == ImageLoader.SUCCESS)
+ *     image = imageLoader.image;
+ *   else console.log("Error: Could not load image.");
+ * }
  * ~~~
  *
  * Usually, you will create a derived class using

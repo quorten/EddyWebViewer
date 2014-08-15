@@ -442,3 +442,44 @@ Strikedown of all popular JavaScript libraries.
 
 Think about including a pre-MATLAB colored version of all SSH images
 just to be nice.
+
+----------------------------------------
+
+Docs:
+
+For every module:
+
+* Problem: Solution, why this module exists.
+
+* Basic usage example
+
+* Document everything.  It's always nice to see that /everything/ has
+  been covered comprehensively.  Everything.  Say that you must use
+  TrigLUT as memoization.  Earth.nullschool.net used grid, but you
+  must say it as that.  Conceptual framework.
+
+* High-level framework.
+
+* MapPol shift container: CSS shifting within box vs. draw to canvas.
+
+Don't know if all variable caching is necessary.  Need to perform a
+perf benchmark to decide.
+
+Compute box edges and center.
+
+Example functions are given in the base implementations.
+
+Use return value checking in the examples.
+
+Use requestAnimationFrame to request an arbitrary amount of time that
+is appropriate for the browser.
+
+Note: Many of the internal mathematics assume quadrant I as the
+top-right, whereas many of the APIs assume top-left.
+
+Flowchart to describe high-level modules.
+
+Be careful about which Web API calls you make at the root document
+level.  Better yet, wrap all root-level initializers into a special
+startup function.  Maybe actually defer creating global objects until
+it is known that they can be created safely.

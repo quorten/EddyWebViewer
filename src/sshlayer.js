@@ -29,11 +29,26 @@ SSHParams.loadPrefix = "../data/";
 SSHParams.shadeStyle = 1;
 
 /**
+ * Sea surface height value to consider to be at the center of the
+ * visualized value range.
+ */
+SSHParams.shadeBase = 0;
+
+/**
  * Scale factor for shading the SSH values.  When set to one, -128 and
  * +128 correspond to the bottom and top of the visualized value range
  * respectively.
  */
 SSHParams.shadeScale = 4;
+
+/**
+ * If sets to `true`, render white at SSH positions where the value is
+ * NaN.  This is useful for more informative visualization of the
+ * polar ice caps.  If set to `false` then these positions rendered as
+ * transparent.  Positions where the projection is undefined are
+ * always rendered as transparent.
+ */
+SSHParams.whiteAtUndef = false;
 
 /********************************************************************/
 
@@ -251,18 +266,23 @@ GenSSHLayer.render.mlColorTbl = (function() {
 
 GenSSHLayer.render.pixelPP = function(value, data, destIdx,
 				   osaFac, inv_osaFac) {
+  var red, green, blue;
   if (value == -128 || isNaN(value)) { // Undefined SSH
-    data[destIdx+0] = 0|(data[destIdx+0] * inv_osaFac + 0 * osaFac);
-    data[destIdx+1] = 0|(data[destIdx+1] * inv_osaFac + 0 * osaFac);
-    data[destIdx+2] = 0|(data[destIdx+2] * inv_osaFac + 0 * osaFac);
-    data[destIdx+3] = 0|(data[destIdx+3] * inv_osaFac + 0 * osaFac);
+    var alpha;
+    if (SSHParams.whiteAtUndef)
+      red = green = blue = alpha = 255;
+    else red = green = blue = alpha = 0;
+
+    data[destIdx+0] = 0|(data[destIdx+0] * inv_osaFac + red * osaFac);
+    data[destIdx+1] = 0|(data[destIdx+1] * inv_osaFac + green * osaFac);
+    data[destIdx+2] = 0|(data[destIdx+2] * inv_osaFac + blue * osaFac);
+    data[destIdx+3] = 0|(data[destIdx+3] * inv_osaFac + alpha * osaFac);
     return;
   }
 
-  var red, green, blue;
   switch (SSHParams.shadeStyle) {
   case 1: // MATLAB
-    value *= SSHParams.shadeScale;
+    value = (value - SSHParams.shadeBase) * SSHParams.shadeScale;
     value /= 128;
     if (value < -1) value = -1;
     if (value > 1) value = 1;
@@ -274,13 +294,13 @@ GenSSHLayer.render.pixelPP = function(value, data, destIdx,
     break;
   case 2: // Contour bands
     value += 128;
-    value *= SSHParams.shadeScale;
+    value = (value - SSHParams.shadeBase) * SSHParams.shadeScale;
     if (value & 0x100) value = ~value;
     value &= 0xff;
     red = green = blue = value;
     break;
   default: // Grayscale
-    value *= SSHParams.shadeScale;
+    value = (value - SSHParams.shadeBase) * SSHParams.shadeScale;
     value /= 128;
     if (value > 1) value = 1;
     if (value < -1) value = -1;
@@ -298,11 +318,18 @@ GenSSHLayer.render.pixelPP = function(value, data, destIdx,
 /********************************************************************/
 
 /**
- * An SSHLayer implementation that is optimized to quickly and
- * exclusively render a grayscale, equirectangular projection SSH
- * layer.
+ * A specialized SSHLayer implementation for:
+ *
+ * * equirectangular projection,
+ *
+ * * grayscale shading with default parameters,
+ *
+ * * with data loaded verbatim from JPEG images, and
+ *
+ * * tiling the source image to a front-buffer HTML Canvas via
+ *   drawImage().
  */
-var EquiGraySSHLayer = new RenderLayer();
+var EquiGraySSHLayer = new EquiRenderLayer();
 OEV.EquiGraySSHLayer = EquiGraySSHLayer;
 EquiGraySSHLayer.loadData = new ImageLoader();
 EquiGraySSHLayer.loadData.prontoMode = true;
@@ -323,93 +350,34 @@ EquiGraySSHLayer.initCtx = function() {
   this.status.percent = 0;
 };
 
-EquiGraySSHLayer.contExec = function() {
-  // Load the SSH frame if it has not yet been loaded.
-  if (this.loadData.status.returnType != CothreadStatus.FINISHED) {
-    var status = this.loadData.continueCT();
-    this.status.returnType = CothreadStatus.PREEMPTED;
-    this.status.preemptCode = status.preemptCode;
-    this.status.percent = status.percent;
-    if (status.returnType == CothreadStatus.FINISHED) {
-      if (this.loadData.retVal == 200 ||
-	  this.loadData.retVal == ImageLoader.SUCCESS) {
-	this.backBuf = this.loadData.image;
-	this.loadData.backBuf = null;
-	this.retVal = 0;
-      } else {
-	this.status.returnType = CothreadStatus.FINISHED;
-	this.retVal = RenderLayer.LOAD_ERROR;
-      }
-    }
-    return this.status;
-  }
-
-  // Otherwise, render.
-  return this.render();
-};
-
-EquiGraySSHLayer.render = function() {
-  var fbwidth = this.frontBuf.width;
-  var x = (ViewParams.mapCenter[0] + 1) / 2 *
-    fbwidth;
-  var y = (-ViewParams.mapCenter[1] + 1) / 2 *
-    fbwidth / ViewParams.aspectXY;
-  var width = fbwidth * ViewParams.scale;
-  var height = fbwidth * ViewParams.scale / ViewParams.aspectXY;
-
-  /* this.frontBuf.style.cssText =
-    "position: relative; left: " +
-    ViewParams.mapCenter[0] * width + "; top: " +
-    ViewParams.mapCenter[1] * height * ViewParams.aspectXY; */
-
-  var ctx = this.frontBuf.getContext("2d");
-  ctx.clearRect(0, 0, this.frontBuf.width, this.frontBuf.height);
-  ctx.drawImage(this.backBuf, x - width / 2, y - height / 2, width, height);
-
-  // Draw duplicates on the left and right sides.
-  ctx.drawImage(this.backBuf, x - width / 2 - width, y - height / 2,
-		width, height);
-  ctx.drawImage(this.backBuf, x - width / 2 + width, y - height / 2,
-		width, height);
-
+EquiGraySSHLayer.loadData.procData = function(image) {
+  this.backBuf = image; this.image = null;
   this.status.returnType = CothreadStatus.FINISHED;
-  this.status.preemptCode = RenderLayer.RENDERING;
-  this.status.percent = CothreadStatus.MAX_PERCENT;
+  this.status.preemptCode = 0;
   return this.status;
 };
 
 /********************************************************************/
 
 /**
- * An SSHLayer implementation that is optimized to quickly and
- * exclusively render a grayscale, equirectangular projection SSH
- * layer.  This renderer attempts to load the current frame from a
- * video element.  If that fails, then this render falls back to
- * loading the current frame from an image.
+ * A specialized SSHLayer implementation for:
+ *
+ * * equirectangular projection,
+ *
+ * * grayscale shading with default parameters,
+ *
+ * * with data loaded verbatim from JPEG images, and
+ *
+ * * positioning and scaling the source image as an HTML element via
+ *   CSS.
  */
-var EquiGrayVidSSHLayer = new RenderLayer();
-OEV.EquiGrayVidSSHLayer = EquiGrayVidSSHLayer;
-// EquiGrayVidSSHLayer.loadData = new ImageLoader();
+var EquiGrayCSSSSHLayer = new EquiCSSRenderLayer();
+OEV.EquiGrayCSSSSHLayer = EquiGrayCSSSSHLayer;
+EquiGrayCSSSSHLayer.loadData = new ImageLoader();
+EquiGrayCSSSSHLayer.loadData.prontoMode = true;
 
-/**
- * NOTE: Although it would be nice if we could just keep updating
- * currentTime to play a video forwards or backwards or at any speed,
- * we cannot practically do that.
- */
-
-// Initialize the back buffer.
-(function() {
-  var backBuf = document.createElement("video");
-  backBuf.id = "sshVidBackBuf";
-  backBuf.preload = "auto";
-  backBuf.width = 1440; backBuf.height = 720;
-  backBuf.src = "../data/ssh.ogv";
-
-  EquiGrayVidSSHLayer.backBuf = backBuf;
-})();
-
-EquiGrayVidSSHLayer.initCtx = function() {
-  /* var loadFrame = Dates.dateList[Dates.curDate].split("-").join("");
+EquiGrayCSSSSHLayer.initCtx = function() {
+  var loadFrame = Dates.dateList[Dates.curDate].split("-").join("");
   var newUrl = SSHParams.loadPrefix + "jpgssh/ssh_" + loadFrame +
     ".jpg";
   if (newUrl != this.loadData.url) {
@@ -417,7 +385,72 @@ EquiGrayVidSSHLayer.initCtx = function() {
     this.loadData.notifyFunc = this.notifyFunc;
     this.loadData.url = newUrl;
     this.loadData.initCtx();
-  } */
+  }
+
+  this.status.returnType = CothreadStatus.PREEMPTED;
+  this.status.preemptCode = 0;
+  this.status.percent = 0;
+};
+
+EquiGrayCSSSSHLayer.loadData.procData = function(image) {
+  this.backBuf = image; this.image = null;
+  this.status.returnType = CothreadStatus.FINISHED;
+  this.status.preemptCode = 0;
+  return this.status;
+};
+
+/********************************************************************/
+
+/**
+ * A specialized SSHLayer implementation for:
+ *
+ * * equirectangular projection,
+ *
+ * * grayscale shading with default parameters,
+ *
+ * * with data loaded verbatim from a video, and
+ *
+ * * positioning and scaling the source image as an HTML video element
+ *   via CSS.
+ */
+var EquiGrayVidSSHLayer = new RenderLayer();
+OEV.EquiGrayVidSSHLayer = EquiGrayVidSSHLayer;
+EquiGrayVidSSHLayer.frontBuf = document.createElement("div");
+EquiGrayVidSSHLayer.frontBuf.appendChild(document.createElement("div"));
+
+EquiGrayVidSSHLayer.setViewport = function(width, height) {
+  var inner = this.frontBuf.firstChild;
+  var fbstyle = this.frontBuf.style;
+  fbstyle.width = width + "px";
+  fbstyle.height = height + "px";
+  var cssText = "";
+  /* NOTE: You must have the "ie-inline-block" class defined in your HTML
+     for this to work.  */
+  var className = document.getElementById("topBody").className;
+  if (className == "ie6" || className =="ie7")
+    inner.className = "ie-inline-block";
+  else cssText = "display: inline-block; ";
+  cssText += "position: relative; width: " + width +
+    "px; height: " + height + "px; overflow: hidden";
+  inner.style.cssText = cssText;
+};
+
+EquiGrayVidSSHLayer.initCtx = function() {
+  // Initialize the back buffer.
+  if (!this.backBuf) {
+    var backBuf = document.createElement("video");
+    backBuf.id = "sshVidBackBuf";
+    backBuf.preload = "auto";
+    backBuf.width = 1440; backBuf.height = 720;
+    backBuf.src = "../data/ssh.ogv";
+    if (!backBuf.canPlayType("video/ogg"))
+      ; // That's a load error.
+
+    EquiGrayVidSSHLayer.backBuf = backBuf;
+
+    var inner = EquiGrayVidSSHLayer.frontBuf.firstChild;
+    inner.appendChild(backBuf);
+  }
 
   this.status.returnType = CothreadStatus.PREEMPTED;
   this.status.preemptCode = 0;
@@ -425,27 +458,28 @@ EquiGrayVidSSHLayer.initCtx = function() {
 };
 
 EquiGrayVidSSHLayer.contExec = function() {
-  // Load the SSH frame if it has not yet been loaded.
-  /* if (this.loadData.status.returnType != CothreadStatus.FINISHED) {
-    var status = this.loadData.continueCT();
-    this.status.returnType = CothreadStatus.PREEMPTED;
-    this.status.preemptCode = status.preemptCode;
-    this.status.percent = status.percent;
-    if (status.returnType == CothreadStatus.FINISHED) {
-      if (this.loadData.retVal == 200 ||
-	  this.loadData.retVal == ImageLoader.SUCCESS) {
-	this.backBuf = this.loadData.image;
-	this.loadData.backBuf = null;
-	this.retVal = 0;
-      } else {
-	this.status.returnType = CothreadStatus.FINISHED;
-	this.retVal = RenderLayer.LOAD_ERROR;
-      }
-    }
+  /* If there is no data for the current (soon to be previous) frame,
+     return a load error.  */
+  if (this.backBuf.readyState >= 2) /* HAVE_CURRENT_DATA ||
+				       HAVE_FUTURE_DATA ||
+				       HAVE_ENOUGH_DATA.  */
+    this.retVal = 0;
+  else {
+    this.retVal = RenderLayer.LOAD_ERROR;
+    this.status.returnType = CothreadStatus.FINISHED;
+    this.status.preemptCode = 0;
+    this.status.percent = CothreadStatus.MAX_PERCENT;
     return this.status;
-  } */
+  }
 
-  // Otherwise, render.
+  /* NOTE: Although it would be nice if we could just keep updating
+     currentTime to play a video forwards or backwards or at any
+     speed, we cannot practically do that, due to browser
+     limitations.  */
+
+  /* NOTE: Old versions of Firefox do not support the `seekable' and
+     `playbackRate' properties on a video element.  */
+
   /* NOTE: It's important that we can seek through the video with
      sub-second precision.  Thus, we set `currentTime' rather than use
      `fastSeek()'. */
@@ -453,35 +487,75 @@ EquiGrayVidSSHLayer.contExec = function() {
   return this.render();
 };
 
-EquiGrayVidSSHLayer.render = function() {
-  var fbwidth = this.frontBuf.width;
-  var x = (ViewParams.mapCenter[0] + 1) / 2 *
-    fbwidth;
-  var y = (-ViewParams.mapCenter[1] + 1) / 2 *
-    fbwidth / ViewParams.aspectXY;
-  var width = fbwidth * ViewParams.scale;
-  var height = fbwidth * ViewParams.scale / ViewParams.aspectXY;
+EquiGrayVidSSHLayer.render = EquiGrayCSSSSHLayer.render;
 
-  /* this.frontBuf.style.cssText =
-    "position: relative; left: " +
-    ViewParams.mapCenter[0] * width + "; top: " +
-    ViewParams.mapCenter[1] * height * ViewParams.aspectXY; */
+/********************************************************************/
 
-  var ctx = this.frontBuf.getContext("2d");
-  ctx.clearRect(0, 0, this.frontBuf.width, this.frontBuf.height);
-  ctx.drawImage(this.backBuf, x - width / 2, y - height / 2, width, height);
+/**
+ * A specialized SSHLayer implementation for:
+ *
+ * * equirectangular projection,
+ *
+ * * grayscale shading with default parameters,
+ *
+ * * with data loaded verbatim from a video, and
+ *
+ * * tiling the source image to a front-buffer HTML Canvas via
+ *   drawImage().
+ */
+var EquiGrayVidCanvSSHLayer = new RenderLayer();
+OEV.EquiGrayVidCanvSSHLayer = EquiGrayVidCanvSSHLayer;
 
-  // Draw duplicates on the left and right sides.
-  ctx.drawImage(this.backBuf, x - width / 2 - width, y - height / 2,
-		width, height);
-  ctx.drawImage(this.backBuf, x - width / 2 + width, y - height / 2,
-		width, height);
+EquiGrayVidCanvSSHLayer.initCtx = function() {
+  // Initialize the back buffer.
+  if (!this.backBuf) {
+    var backBuf = document.createElement("video");
+    backBuf.id = "sshVidBackBuf";
+    backBuf.preload = "auto";
+    backBuf.width = 1440; backBuf.height = 720;
+    backBuf.src = "../data/ssh.ogv";
+    if (!backBuf.canPlayType("video/ogg"))
+      ; // That's a load error.
 
-  this.status.returnType = CothreadStatus.FINISHED;
-  this.status.preemptCode = RenderLayer.RENDERING;
-  this.status.percent = CothreadStatus.MAX_PERCENT;
-  return this.status;
+    this.backBuf = backBuf;
+  }
+
+  this.status.returnType = CothreadStatus.PREEMPTED;
+  this.status.preemptCode = 0;
+  this.status.percent = 0;
 };
+
+EquiGrayVidCanvSSHLayer.contExec = function() {
+  /* If there is no data for the current (soon to be previous) frame,
+     return a load error.  */
+  if (this.backBuf.readyState >= 2) /* HAVE_CURRENT_DATA ||
+				       HAVE_FUTURE_DATA ||
+				       HAVE_ENOUGH_DATA.  */
+    this.retVal = 0;
+  else {
+    this.retVal = RenderLayer.LOAD_ERROR;
+    this.status.returnType = CothreadStatus.FINISHED;
+    this.status.preemptCode = 0;
+    this.status.percent = CothreadStatus.MAX_PERCENT;
+    return this.status;
+  }
+
+  /* NOTE: Although it would be nice if we could just keep updating
+     currentTime to play a video forwards or backwards or at any
+     speed, we cannot practically do that, due to browser
+     limitations.  */
+
+  /* NOTE: Old versions of Firefox do not support the `seekable' and
+     `playbackRate' properties on a video element.  */
+
+  /* NOTE: It's important that we can seek through the video with
+     sub-second precision.  Thus, we set `currentTime' rather than use
+     `fastSeek()'. */
+  this.backBuf.currentTime = Dates.curDate / 25;
+  return this.render();
+};
+
+EquiGrayVidCanvSSHLayer.render = EquiGraySSHLayer.render;
 
 /********************************************************************/
 

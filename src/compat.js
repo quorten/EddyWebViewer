@@ -257,7 +257,7 @@ var crossReleaseCapture = function() {
   if (!window.requestAnimationFrame)
     window.requestAnimationFrame = function(callback) {
       // Just use a constant timeout.
-      return setTimeout(callback, 20);
+      return window.setTimeout(callback, 20);
     };
 
   /* The following is an alternative more complicated optimizing
@@ -279,7 +279,9 @@ var crossReleaseCapture = function() {
   }
 })();
 
-/* The following functions help maintain smooth animation in Firefox.  */
+/* The following functions help maintain smooth animation in Firefox.
+   The new code architecture does not need them anymore, though: the
+   cothreading architecture has subsumed their functionality.  */
 
 /**
  * Try to allocate a new render job.  This will either preempt an

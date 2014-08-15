@@ -1,11 +1,13 @@
+import "../src/oevns";
 import "../src/cothread";
 
 /**
- * Compute the sum of squares from zero up to N^2.
+ * Cothreaded function to compute the sum of squares from zero up to
+ * N^2.
  *
  * Parameters:
  *
- * "n" (args[0]) -- The maximum number squared to sum.
+ * "n" (args[0]) -- The maximum number to square and to sum.
  *
  * Return value: the sum of squares from zero to N^2.
  */
@@ -20,6 +22,10 @@ var computeSumOfSquares = (function() {
 
     this.sum = 0;
     this.i = 1;
+
+    this.status.returnType = CothreadStatus.PREEMPTED;
+    this.status.preemptCode = 0;
+    this.status.percent = 0;
   }
 
   function contExec() {
@@ -27,11 +33,15 @@ var computeSumOfSquares = (function() {
     var lpMult = this.lpMult;
     var sum = this.sum;
     var i = this.i;
-    var lDate_now = Date.now;
+    var ctnow = Cothread.now;
 
-    var startTime = lDate_now();
+    var startTime = ctnow();
     var timeout = this.timeout;
-    while (lDate_now() - startTime < timeout && i <= n) {
+    /* NOTE: In real code, you should avoid calling Cothread.now() in
+       tight and fast loop iterations.  Otherwise, the function call
+       overhead will subtract a significant amount of computational
+       time from the loop body.  */
+    while (ctnow() - startTime < timeout && i <= n) {
       sum += i * i;
       i++;
     }
@@ -50,20 +60,25 @@ var computeSumOfSquares = (function() {
   return new Cothread(startExec, contExec);
 })();
 
+OEV.computeSumOfSquares = computeSumOfSquares;
+
+// We need to close the OEV namespace.
+import "../src/oevnsend";
+
 // Test the cothreaded computation unit.
 
 /* Play around with different values for the timeouts and the constant
    `N' and see how your browser responds.  */
 
 function execTime() {
-  var status = computeSumOfSquares.continueCT();
+  var status = OEV.computeSumOfSquares.continueCT();
   document.getElementById("progElmt").innerHTML =
-    (status.percent * 100 / CothreadStatus.MAX_PERCENT).toFixed(2) + "%";
+    (status.percent * 100 / OEV.CothreadStatus.MAX_PERCENT).toFixed(2) + "%";
 
-  if (status.returnType == CothreadStatus.FINISHED) {
+  if (status.returnType == OEV.CothreadStatus.FINISHED) {
     var resultElmt = document.createElement("p");
     resultElmt.id = "resultElmt";
-    resultElmt.innerHTML = "Result: " + computeSumOfSquares.retVal;
+    resultElmt.innerHTML = "Result: " + OEV.computeSumOfSquares.retVal;
     document.documentElement.children[1].appendChild(resultElmt);
     return;
   }
@@ -72,11 +87,11 @@ function execTime() {
 
 function browserTime() {
   /* Note: If a cothread should use all available processing time yet
-     still let the browser stay responsive, this timeout should be set
-     to zero.  Otherwise, any value larger than zero can be used to
-     throttle a task to use only a fraction of available processing
-     time.  */
-  return setTimeout(execTime, 80);
+     still let the browser stay responsive,
+     `window.requestAnimationFrame()' should be used instead.
+     Otherwise, any value larger than zero can be used to throttle a
+     task to use only a fraction of available processing time.  */
+  return window.setTimeout(execTime, 80);
 }
 
 function setup() {
@@ -88,8 +103,8 @@ function setup() {
   progElmt.innerHTML = "Please wait...";
   document.documentElement.children[1].appendChild(progElmt);
 
-  computeSumOfSquares.timeout = 20;
-  computeSumOfSquares.args.push(65536 * 20); // N
-  computeSumOfSquares.start();
+  OEV.computeSumOfSquares.timeout = 15;
+  OEV.computeSumOfSquares.args.push(65536 * 20); // N
+  OEV.computeSumOfSquares.start();
   return browserTime();
 }

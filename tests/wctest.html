@@ -90,8 +90,6 @@ system can greatly help improve performance, though, perhaps to the
 point that these minimum requirements may not be applicable to users
 this Microsoft Windows XP.
 
-Generate a SVG circle as a path:
-
 Use an array of strings, 1000 each.
 
 Parse to the beginning of the track using fast inline code.  Then walk
@@ -114,17 +112,6 @@ Moral of the story: You have to test /everything/.  From now on,
 accept this mantra hard and fast: test /everything/.
 
 */
-
-function genCircle(cx, cy, r) {
-  return [ 'M', cx + r, cy,
-    'A', r, r, 0, /* rx, ry, x-axis-rotation */
-    0, 0, /* large-arc-flag, sweep-flag */
-    cx - r, cy, /* x, y */
-    r, r, 0, /* rx, ry, x-axis-rotation */
-    0, 0, /* large-arc-flag, sweep-flag */
-    cx + r, cy, /* x, y */
-    'z' ].join(' ');
-}
 
 /*
 
@@ -172,6 +159,18 @@ multiple times.
 xhrlopen
 
 */
+
+// Render a circle as an SVG path.
+function genCircle(cx, cy, r) {
+  return [ 'M', cx + r, cy,
+    'A', r, r, 0, /* rx, ry, x-axis-rotation */
+    0, 0, /* large-arc-flag, sweep-flag */
+    cx - r, cy, /* x, y */
+    r, r, 0, /* rx, ry, x-axis-rotation */
+    0, 0, /* large-arc-flag, sweep-flag */
+    cx + r, cy, /* x, y */
+    'z' ].join(' ');
+}
 
 // Display an object as text for diagnostics.
 function dispDiag(diagText) {

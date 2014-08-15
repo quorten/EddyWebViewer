@@ -11,8 +11,9 @@ mathematical construct for transforming a 2D point to a latitude and a
 longitude on a generic globe.  However, practical application of a
 projection typically requires more than just this pure definition.
 
-1. Convert a screen coordinate to normalized 2D coordinates.  The
-projections only work with normalized 2D coordinates.
+1. Convert a screen coordinate to normalized 2D coordinates,
+performing any needed 2D shift and scale operations.  The projections
+only work with normalized 2D coordinates.
 
 2. Run the projection on the normalized 2D coordinate.  You'll get a
 latitude and a longitude on a generic globe.
@@ -213,9 +214,9 @@ MollweideProjector.unproject = function(mapToPol) {
 };
 
 /**
- * 3D map projectors.  This class is designed simply so that common
- * code between the orthographic and perspective projectors can be
- * contained in the same functions.
+ * 3D map projectors, with optimized tilt transformations embedded.
+ * This class is designed so that common code between the orthographic
+ * and perspective projectors can be contained in the same functions.
  *
  * Base class: {@linkcode Projector}
  * @constructor
@@ -306,9 +307,9 @@ OEV.OrthoProjector = OrthoProjector;
 OrthoProjector.project = function(polToMap) {
   if (polToMap[0] < -90 || polToMap[0] > 90)
     { polToMap[0] = NaN; polToMap[1] = NaN; return; }
-  var latitude = DEG2RAD * mapToPol[1];
-  mapToPol[1] = Math.sin(latitude);
-  mapToPol[0] = Math.sin(DEG2RAD * mapToPol[0]) * Math.cos(latitude);
+  var latitude = DEG2RAD * polToMap[1];
+  polToMap[1] = Math.sin(latitude);
+  polToMap[0] = Math.sin(DEG2RAD * polToMap[0]) * Math.cos(latitude);
 };
 
 OrthoProjector.unproject = function(mapToPol) {
@@ -332,13 +333,14 @@ PerspProjector.project = function(polToMap) {
   var d = ViewParams.perspAltitude / 6371; // altitude in kilometers
   // focal length in units of the screen dimensions
   var f = 1 / Math.tan(DEG2RAD * ViewParams.perspFOV / 2);
-  var latitude = DEG2RAD * mapToPol[1];
-  var x_pix = Math.sin(DEG2RAD * mapToPol[0]) * Math.cos(latitude);
+  var latitude = DEG2RAD * polToMap[1];
+  var cos_latitude = Math.cos(latitude);
+  var x_pix = Math.sin(DEG2RAD * polToMap[0]) * cos_latitude;
   var y_pix = Math.sin(latitude);
-  var r3src_z = Math.cos(DEG2RAD * mapToPol[0]) * Math.cos(latitude);
+  var r3src_z = Math.cos(DEG2RAD * polToMap[0]) * cos_latitude;
 
-  polToMap[0] = x_pix / f * (-r3src_z + (r + d)) /* / r */;
-  polToMap[1] = y_pix / f * (-r3src_z + (r + d)) /* / r */;
+  polToMap[0] = x_pix * f / (-r3src_z + (r + d)) /* * r */;
+  polToMap[1] = y_pix * f / (-r3src_z + (r + d)) /* * r */;
 };
 
 PerspProjector.unproject = function(mapToPol) {

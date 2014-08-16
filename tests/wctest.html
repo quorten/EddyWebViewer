@@ -452,8 +452,8 @@ function kdPVS(curDate, vbox) {
 	(vbox_latsz > 0 && kdvbox[0] > vbox[0] && kdvbox[2] < vbox[2]) &&
 	((vbox_lonsz > 0 && kdvbox[1] > vbox[1] && kdvbox[3] < vbox[3]) ||
 	 (vbox_lonsz < 0 &&
-	  (kdvbox[1] < vbox[3] && kdvbox[3] < vbox[3]) ||
-	  (kdvbox[1] > vbox[1] && kdvbox[3] > vbox[1])));
+	  (kdvbox[1] < vbox[3] && kdvbox[3] < vbox[3] ||
+	   kdvbox[1] > vbox[1] && kdvbox[3] > vbox[1])));
 
       /* Make box splitting mandatory if a box has a huge number of
 	 points within it.  */
@@ -479,7 +479,7 @@ function kdPVS(curDate, vbox) {
 
 	 Tighter or wider widths/heights than this seem to result in a
 	 sub-optimal division algorithm.  */
-      var oversized = !hugeNum && // Short-circuit evaluation
+      var oversized =
 	(vbox_latsz > 0 &&
 	 (vbox[0] - kdvbox[0] > vbox_latsz * 1 ||
 	  kdvbox[2] - vbox[2] > vbox_latsz * 1)) ||

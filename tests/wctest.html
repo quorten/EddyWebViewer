@@ -486,9 +486,10 @@ function kdPVS(curDate, vbox) {
 	(vbox_lonsz > 0 &&
 	 (vbox[1] - kdvbox[1] > vbox_lonsz * 1 ||
 	  kdvbox[3] - vbox[3] > vbox_lonsz * 1)) ||
-	(vbox_lonsz < 0 && kdvbox[3] - kdvbox[1] > vbox_lonsz * 1 ||
-	 (vbox[1] - kdvbox[1] < /* 360 + */ vbox_lonsz * 1 ||
-	  kdvbox[3] - vbox[3] < vbox_lonsz * 1));
+	(vbox_lonsz < 0 &&
+	 (kdvbox[3] - kdvbox[1] > vbox_lonsz * 1 ||
+	  vbox[1] - kdvbox[1] < /* 360 + */ vbox_lonsz * 1 ||
+	  kdvbox[3] - vbox[3] < /* 360 + */ vbox_lonsz * 1));
 
       if (splitOkay && !invbox && (hugeNum || oversized)) {
         // Include the median if it is within the viewport box.

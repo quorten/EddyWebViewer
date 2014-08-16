@@ -203,7 +203,9 @@ function dispArray(array) {
   daCntr.appendChild(wrapper);
 }
 
-/* Compute the byte range to download for the given date index.  */
+/* Compute the byte range to download for the given date index.  This
+   function is currently not used as it is currently not practical to
+   initiate partial tracks downloads.  */
 function getDate(outRange, index) {
   var eddyIndex = dateChunkStarts[index];
   var numNls = 0|(eddyIndex / 32);
@@ -264,32 +266,6 @@ function clipVbox(vbox) {
 
 /*
 
-(y - y0) = m(x - x0)
-(y - y0) = (y1 - y0)(x - x0) / (x1 - x0)
-(x1 - x0)(y - y0) - (y1 - y0)(x - x0) = 0
-(y0 - y1)x + (x1 - x0)y - y0(x1 - x0) + x0(y1 - y0) = 0
-
-ax + by + c = 0
-
-a = (y0 - y1)
-b = (x1 - x0)
-c = x0y1 - y0x1
-
-(1, 5) (3, 2)
-
-m = (5 - 2) / (1 - 3) = 3 / -2 = -3/2
-y = -3/2*x + b
-5 = -3/2 + b
-b = 5 + 3/2 = 13/2
-y = -3/2*x + 13/2
-
-a = 5 - 2 = 3
-b = 3 - 1 = 2
-c = 1*2 - 5*3 = 2 - 15 = -13
-3x + 2y - 13 = 0
-2y = -3x + 13
-3x + 2y - 13 = 0
-
 When the vbox fits entirely in the left or right halves, keep
 down traversing as normal.
 
@@ -303,6 +279,10 @@ If the length is too short, you must stop dividing.
 Interesting...
 
 http://earth.usc.edu/~stott/Catalina/Oceans.html
+
+Great, this will really help with performance:
+
+http://en.wikipedia.org/wiki/Emscripten
 
 */
 
@@ -344,86 +324,54 @@ another will be enabled based off of the user's browser capabilities.
 // track.  Don't redraw other tracks unless there are bounding
 // box intersections.
 
-// Check if a line is contained within a bounding box.  Note that for
-// this algorithm, we exclude lines that only touch the outside of the
-// box, but don't go through it.
+// -------------------------------------------------------------------
 
-// line and vbox must be [ minLat, minLon, maxLat, maxLon ]
-function lineIntersect(line, vbox) {
-  var vbox_min_x = vbox[1], vbox_min_y = vbox[0];
-  var vbox_max_x = vbox[3], vbox_max_y = vbox[2];
-  var p1_x = line[1], p1_y = line[0];
-  var p2_x = line[3], p2_y = line[2];
-
-  // Check if either of the line's points are entirely within the
-  // bounding box.  We will know for sure the line is visible.
-
-  if ((vbox_min_x < p1_x && p1_x < vbox_max_x &&
-       vbox_min_y < p1_y && p1_y < vbox_max_y) ||
-      (vbox_min_x < p2_x && p2_x < vbox_max_x &&
-       vbox_min_y < p2_y && p2_y < vbox_max_y))
-    return true;
-
-  // ax + by + c = 0
-  var a = p1_y - p2_y;
-  var b = p2_x - p1_x;
-  var c = p1_x * p2_y - p1_y * p2_x;
-
-  // y = -(ax + c) / b
-  // x = -(by + c) / a
-
-  // Compute the intersections.
-  var vbox_min_y_ict = (a != 0) ? (-(b * vbox_min_y) / a) : vbox_max_x * 2;
-  var vbox_max_y_ict = (a != 0) ? (-(b * vbox_max_y) / a) : vbox_max_x * 2;
-  var vbox_min_x_ict = (b != 0) ? (-(a * vbox_min_x) / b) : vbox_max_y * 2;
-  var vbox_max_x_ict = (b != 0) ? (-(a * vbox_max_x) / b) : vbox_max_y * 2;
-  if ((vbox_min_x < vbox_min_y_ict && vbox_min_y_ict < vbox_max_x) ||
-      (vbox_min_x < vbox_max_y_ict && vbox_max_y_ict < vbox_max_x) ||
-      (vbox_min_y < vbox_min_x_ict && vbox_min_x_ict < vbox_max_y) ||
-      (vbox_min_y < vbox_max_x_ict && vbox_max_x_ict < vbox_max_y))
-    return true;
-  return false;
-}
-
-/* Kd-tree potential visibility traversal.  This function traverses
-   the kd-tree at the current date to determine the smallest kd-tree
-   cell that entirely contains the viewport bounding box.
-
-   Sometimes the viewport box will cross upper level kd-tree divisions
-   that would cause it to have to include an excessively large PVS
-   boundary.  For these cases, the bounding box can be subdivided up
-   to 4 times to avoid worst cases of this scenario.
-
-   curDate: Current date index
-   vbox: [ minLat, minLon, maxLat, maxLon ]
-   Units are degrees.
-
-   FIXME:
-   Better code organization.
-   Separate definitely visible and possibly visible results pushing.
-
-   Build a complement array of non-prioritized regions.
-
-   To build: Simply put, during traversal, put paths not taken as
-   ranges in this tree.
-
-   Return an array of three arrays in the following order:
-
-   [ definitely_visible, possibly_visible, not_visible ]
-
-   Referring to the eddies in the current date, not the visibility of
-   the tracks.
-
-*/
+/**
+ * Kd-tree potential visibility traversal.  This function traverses
+ * the kd-tree at the current date to determine a series of
+ * small-sized kd-tree cells that entirely contains the viewport
+ * bounding box.
+ *
+ * Sometimes the viewport box will cross upper level kd-tree divisions
+ * that would cause it to have to include an excessively large PVS
+ * boundary.  For these cases, the bounding box can be subdivided up
+ * to 4 times to avoid worst cases of this scenario.
+ *
+ * Boxes can wrap around the longitudinal bounds of the map from one
+ * side to the other by having a max edge that is less than a min edge
+ * in value.
+ *
+ * @param curDate - The date index that contains the kd-tree to be
+ * traversed.  The returned ranges will refer to the eddies in this
+ * date index.
+ * @param {Array} vbox - The viewport bounding box, which must have
+ * been clipped via {@linkcode clipVBox}() before this call.  It must
+ * be of the form [ minLat, minLon, maxLat, maxLon ].  Units are
+ * degrees.
+ * @returns {Array} An array of classification ranges.  Each element
+ * of the array is another array with the following information: [
+ * type, start, length ].  `type` is one of the following values:
+ * * 0: Not visible
+ * * 1: Possibly visible
+ * * 2: Definitely visible
+ */
 function kdPVS(curDate, vbox) {
   var curEddy = new Array(5);
+
+  // Pre-separated results
+  /* var notVis = []; // Not visible
+  var posVis = []; // Possibly visible
+  var defVis = []; // Definitely visible */
 
   var stack = [];
   var results = [];
   var numSplits = 0;
   var numTrims = 0;
 
-  var kdVbox = [ -90, -180, 90, 180 ];
+  var maxSplits = 25;
+  var maxDepth = 0|(Math.log(maxSplits) / Math.log(2));
+
+  var kdvbox = [ -90, -180, 90, 180 ];
   var start = dateChunkStarts[curDate];
   var length = dateChunkStarts[curDate+1] - dateChunkStarts[curDate];
   var depth = 0;
@@ -437,110 +385,148 @@ function kdPVS(curDate, vbox) {
     var medianVal = curEddy[1+curdim];
     var vbox_min = vbox[curdim];
     var vbox_max = vbox[2+curdim];
+    // Is the max edge less than the min edge?
     var vbox_order = vbox_max - vbox_min;
-    if (length > 1 &&
-        ((vbox_order > 0 &&
-          vbox_min < medianVal && vbox_max < medianVal) ||
-         (vbox_order < 0 &&
-          kdVbox[2+curdim] < vbox_min &&
-          medianVal > vbox_max))) {
+    // These serve both as size and order metrics.
+    var vbox_latsz = vbox[2] - vbox[0];
+    var vbox_lonsz = vbox[3] - vbox[1];
+
+    if (length <= 1) {
+      /* Cannot split a partition of minimum size.  Traversal will
+	 continue by popping from the stack.  */
+      if (length == 1) {
+	// Check if this eddy is within the box.
+	var isLatIn =
+	  (vbox_latsz > 0 &&
+	   vbox[0] < curEddy[1] && curEddy[1] < vbox[2]) ||
+	  (vbox_latsz < 0 &&
+	   (vbox[0] < curEddy[1] || curEddy[1] < vbox[2]));
+	var isLonIn =
+	  (vbox_lonsz > 0 &&
+	   vbox[1] < curEddy[2] && curEddy[2] < vbox[3]) ||
+	  (vbox_lonsz < 0 &&
+	   (vbox[1] < curEddy[2] || curEddy[2] < vbox[3]));
+	if (isLatIn && isLonIn)
+	  // defVis.push([ median, 1 ]);
+	  results.push([ 2, median, 1 ]); // Definitely visible
+	else
+	  // notVis.push([ median, 1 ]);
+	  results.push([ 0, median, 1 ]); // Not visible
+      }
+      length = 0; // Force popping from the stack.
+    }
+    else if ((vbox_order > 0 &&
+	      vbox_min < medianVal && vbox_max < medianVal) ||
+	     (vbox_order < 0 &&
+	      kdvbox[2+curdim] < vbox_min && medianVal > vbox_max)) {
       // Choose the less-than side.
-      kdVbox[2+curdim] = medianVal;
+      kdvbox[2+curdim] = medianVal;
+      // notVis.push([ median, end - median ]);
+      results.push([ 0, median, end - median ]); // Not visible
       /* start = start; */ length = median - start; depth++;
       numTrims++;
-    } else if (length > 1 &&
-               ((vbox_order > 0 &&
-                 vbox_min > medianVal && vbox_max > medianVal) ||
-                (vbox_order < 0 &&
-                 kdVbox[curdim] > vbox_max &&
-                 medianVal < vbox_min))) {
+    }
+    else if ((vbox_order > 0 &&
+	      vbox_min > medianVal && vbox_max > medianVal) ||
+	     (vbox_order < 0 &&
+	      kdvbox[curdim] > vbox_max && medianVal < vbox_min)) {
       // Choose the greater-than side.
-      kdVbox[curdim] = medianVal;
+      kdvbox[curdim] = medianVal;
+      // notVis.push([ start, (median + 1) - start ]);
+      results.push([ 0, start, (median + 1) - start ]); // Not visible
       start = median + 1; length = end - start; depth++;
       numTrims++;
-    } else {
-      /* Split the traversal box into two boxes if the traversal box
-         does not fit entirely within the viewport box.  */
+    }
+    else {
+      /* Split the traversal box into two boxes since neither of the
+	 boxes entirely contain the viewport box.  */
 
-      // If the traversal box's edges exceed the edges of the viewport box
-      // by one width or there are too many points within the traversal
-      // box (thus potentially outside the viewport box), definitely
-      // consider splitting it.
+      /* To keep the traversal algorithm fast, there is an upper limit
+	 on the number of splits that can be performed.  */
+      var splitOkay =
+	numSplits < maxSplits && stack.length <= maxDepth;
 
-      // Split this into two boxes if the dimensions are oversized
-      // by a factor of 4, and the maximum number of splits has
-      // not been exceeded.
-      // Note: numSplits was 3 and stack.length was 1
+      /* Do not split this box if it lies entirely within the viewport
+	 bounding box.  */
+      var invbox =
+	(vbox_latsz > 0 && kdvbox[0] > vbox[0] && kdvbox[2] < vbox[2]) &&
+	((vbox_lonsz > 0 && kdvbox[1] > vbox[1] && kdvbox[3] < vbox[3]) ||
+	 (vbox_lonsz < 0 &&
+	  (kdvbox[1] < vbox[3] && kdvbox[3] < vbox[3]) ||
+	  (kdvbox[1] > vbox[1] && kdvbox[3] > vbox[1])));
 
-      var vbox_latsz = vbox[2] - vbox[0];
-      var vbox_lonsz = vbox[3] - vbox[1];
+      /* Make box splitting mandatory if a box has a huge number of
+	 points within it.  */
+      var hugeNum = length > 128;
 
-      // Guarantee at least 80 times faster. C * lg n.
+      /* Only split this box if it is sufficiently wide/tall.
 
-      // If this isn't fast enough, then the speed can be increased
-      // even further by using 12 and 3 instead.  3 and 1 is too
-      // small to be very useful.
+	The old rule: Do not split if the width/height of the current
+	`kdvbox' is less than the width/height of the viewport
+	bounding box.
 
-      if (length > 1 &&
-          (numSplits < 25 && stack.length <= 4) &&
-          ((vbox[3] - vbox[1] > 0 && (length > 128 ||
-           (vbox[0] - kdVbox[0] > vbox_latsz * 1 ||
-            kdVbox[2] - vbox[2] > vbox_latsz * 1 ||
-            vbox[1] - kdVbox[1] > vbox_lonsz * 1 ||
-            kdVbox[3] - vbox[3] > vbox_lonsz * 1))) ||
-           ((vbox[3] - vbox[1] < 0 && (length > 128 ||
-            vbox[0] - kdVbox[0] > vbox_latsz * 1 ||
-            kdVbox[2] - vbox[2] > vbox_latsz * 1 ||
-            kdVbox[3] - vbox[3] < 360 + vbox_lonsz * 1 ||
-            vbox[1] - kdVbox[1] < 360 + vbox_lonsz * 1 )))
-           ) &&
-          /* (kdVbox[2] - kdVbox[0] > (vbox[2] - vbox[0]) * 1 ||
-           kdVbox[3] - kdVbox[1] > (vbox[3] - vbox[1]) * 1) && */
-          !(vbox_order > 0 &&
-            kdVbox[0] > vbox[0] && kdVbox[2] < vbox[2] &&
-            kdVbox[1] > vbox[1] && kdVbox[3] < vbox[3]) &&
-          !(vbox[3] - vbox[1] < 0 &&
-            ((kdVbox[1] < vbox[3] && kdVbox[3] < vbox[3]) ||
-             (kdVbox[1] > vbox[1] && kdVbox[3] > vbox[1])) &&
-            kdVbox[0] > vbox[0] && kdVbox[2] < vbox[2])) {
+	Disadvantage: Doing this will allow boxes that deviate quite
+	far from the viewport center to be kept, simply because their
+	widths/heights are within the suitable range.  */
+      /* var oversized =
+	   (kdvbox[2] - kdvbox[0] > (vbox[2] - vbox[0]) * 1 ||
+	    kdvbox[3] - kdvbox[1] > (vbox[3] - vbox[1]) * 1); */
 
+      /* The current rule: Split the box if its furthest edge is
+	 further from the edges of the `vbox' than the width/height of
+	 the vbox.  If the box is reverse ordered, then split it if it
+	 is too wide.
+
+	 Tighter or wider widths/heights than this seem to result in a
+	 sub-optimal division algorithm.  */
+      var oversized = !hugeNum && // Short-circuit evaluation
+	(vbox_latsz > 0 &&
+	 (vbox[0] - kdvbox[0] > vbox_latsz * 1 ||
+	  kdvbox[2] - vbox[2] > vbox_latsz * 1)) ||
+	(vbox_lonsz > 0 &&
+	 (vbox[1] - kdvbox[1] > vbox_lonsz * 1 ||
+	  kdvbox[3] - vbox[3] > vbox_lonsz * 1)) ||
+	(vbox_lonsz < 0 && kdvbox[3] - kdvbox[1] > vbox_lonsz * 1 ||
+	 (vbox[1] - kdvbox[1] < /* 360 + */ vbox_lonsz * 1 ||
+	  kdvbox[3] - vbox[3] < vbox_lonsz * 1));
+
+      if (splitOkay && !invbox && (hugeNum || oversized)) {
         // Include the median if it is within the viewport box.
-        if (vbox[3] - vbox[1] > 0 &&
-            vbox[0] < curEddy[1] && curEddy[1] < vbox[2] &&
-            vbox[1] < curEddy[2] && curEddy[2] < vbox[3])
-          results.push([ median, 1 ]); // DEFINITELY VISIBLE
-        if (vbox[3] - vbox[1] < 0 &&
-            (curEddy[2] < vbox[3] || curEddy[2] > vbox[1]) &&
-            vbox[0] < curEddy[1] && curEddy[1] < vbox[2])
-          results.push([ median, 1 ]); // DEFINITELY VISIBLE
+	var isLatIn =
+	  (vbox_latsz > 0 &&
+	   vbox[0] < curEddy[1] && curEddy[1] < vbox[2]) ||
+	  (vbox_latsz < 0 &&
+	   (vbox[0] < curEddy[1] || curEddy[1] < vbox[2]));
+	var isLonIn =
+	  (vbox_lonsz > 0 &&
+	   vbox[1] < curEddy[2] && curEddy[2] < vbox[3]) ||
+	  (vbox_lonsz < 0 &&
+	   (vbox[1] < curEddy[2] || curEddy[2] < vbox[3]));
+	if (isLatIn && isLonIn)
+	  // defVis.push([ median, 1 ]);
+	  results.push([ 2, median, 1 ]); // Definitely visible
+	else
+	  // notVis.push([ median, 1 ]);
+	  results.push([ 0, median, 1 ]); // Not visible
 
         numSplits++; depth++;
         var frame = new Array(4);
-        frame[0] = kdVbox.slice(0);     // kdVbox
+        frame[0] = kdvbox.slice(0);     // kdvbox
         frame[0][2+curdim] = medianVal;
         frame[1] = start;               // start
         frame[2] = median - start;      // length
         frame[3] = depth;               // depth
         stack.push(frame);
 
-        kdVbox[curdim] = medianVal;
+        kdvbox[curdim] = medianVal;
         start = median + 1; length = end - start;
-      } else if (length <= 1) {
-        // Cannot split a partition of minimum size.
-        if (length == 1 &&
-            vbox[0] < curEddy[1] && curEddy[1] < vbox[2] &&
-            vbox[1] < curEddy[2] && curEddy[2] < vbox[3])
-          results.push([ start, length ]); // DEFINITELY VISIBLE
-        if (length == 1 && vbox[3] - vbox[1] < 0 &&
-            (curEddy[2] < vbox[3] || curEddy[2] > vbox[1]) &&
-            vbox[0] < curEddy[1] && curEddy[1] < vbox[2])
-          results.push([ median, 1 ]); // DEFINITELY VISIBLE
-        length = 0; // Force popping from the stack.
       } else {
-        // This box is entirely within the viewport box.
-        // Or, the above check simply pruned the box due to
-        // algorithm runtime and stepping limits.
-        results.push([ start, length ]); // Possibly visible.
+	if (invbox)
+	  // defVis.push([ start, length ]);
+	  results.push([ 2, start, length ]); // Definitely visible
+	else
+	  // posVis.push([ start, length ]);
+	  results.push([ 1, start, length ]); // Possibly visible
         length = 0; // Force popping from the stack.
       }
     }
@@ -548,31 +534,13 @@ function kdPVS(curDate, vbox) {
     // Process any entries remaining on the stack.
     while (length == 0 && stack.length > 0) {
       var frame = stack.pop();
-      kdVbox = frame[0];
+      kdvbox = frame[0];
       start = frame[1]; length = frame[2]; depth = frame[3];
     }
   }
-  // alert('' + numSplits + ' ' + numTrims);
+  // return [ notVis, posVis, defVis ];
   return results;
 }
-
-/*
-
-/Prioritized/ rendering: Sort the definitely visible ranges to the
-front of a range rendering array, then append the remaining ranges
-onto the end.  Process the entire array to render.
-
-Check how many eddies are within a cell.  If there are a lot of eddies
-in a cell AND it is oversized, then try to break it up.  Otherwise,
-leave it.
-
-Need a separate list of ranges definitely within the view, i.e. no
-linear vis testing necessary.
-
-MAKE SURE to match min and max correctly before sending to the
-algorithm!
-
-*/
 
 // Recursively draw a kd-tree's structure.
 function kdRender(curDate, canvas, scale, ranges, maxDepth) {
@@ -581,7 +549,7 @@ function kdRender(curDate, canvas, scale, ranges, maxDepth) {
   ctx.strokeStyle = "#800080";
 
   var stack = [];
-  var kdVbox = [ -90, -180, 90, 180 ];
+  var kdvbox = [ -90, -180, 90, 180 ];
   var start = dateChunkStarts[curDate];
   var length = dateChunkStarts[curDate+1] - dateChunkStarts[curDate];
   var depth = 0;
@@ -594,25 +562,31 @@ function kdRender(curDate, canvas, scale, ranges, maxDepth) {
     getEddy(curEddy, median);
     var medianVal = curEddy[1+curdim];
 
-    if ((!maxDepth || depth < maxDepth)) {
+    if (!maxDepth || depth < maxDepth) {
       if (!ranges)
         ctx.strokeStyle = "#800080";
       else {
-        ctx.strokeStyle = "#000000";
+        ctx.strokeStyle = "#808080";
         for (var i = 0, ranges_length = ranges.length;
              i < ranges_length; i++) {
-          if (median >= ranges[i][0] &&
-              median < ranges[i][0] + ranges[i][1])
-            ctx.strokeStyle = "#800080";
+          if (median >= ranges[i][1] &&
+              median < ranges[i][1] + ranges[i][2]) {
+	    switch (ranges[i][0]) {
+	    case 0: ctx.strokeStyle = "#000000"; break;
+	    case 1: ctx.strokeStyle = "#800080"; break;
+	    case 2: ctx.strokeStyle = "#0000ff"; break;
+	    }
+	    break;
+	  }
         }
       }
       ctx.beginPath();
       if (curdim == 0) {
-        ctx.moveTo((kdVbox[1] + 180) * scale, (-medianVal + 90) * scale);
-        ctx.lineTo((kdVbox[3] + 180) * scale, (-medianVal + 90) * scale);
+        ctx.moveTo((kdvbox[1] + 180) * scale, (-medianVal + 90) * scale);
+        ctx.lineTo((kdvbox[3] + 180) * scale, (-medianVal + 90) * scale);
       } else {
-        ctx.moveTo((medianVal + 180) * scale, (-kdVbox[0] + 90) * scale);
-        ctx.lineTo((medianVal + 180) * scale, (-kdVbox[2] + 90) * scale);
+        ctx.moveTo((medianVal + 180) * scale, (-kdvbox[0] + 90) * scale);
+        ctx.lineTo((medianVal + 180) * scale, (-kdvbox[2] + 90) * scale);
       }
       var xcenter = (curEddy[2] + 180) * scale;
       var ycenter = (-curEddy[1] + 90) * scale;
@@ -623,55 +597,65 @@ function kdRender(curDate, canvas, scale, ranges, maxDepth) {
 
     depth++;
     var frame = new Array(4);
-    frame[0] = kdVbox.slice(0);
+    frame[0] = kdvbox.slice(0);
     frame[0][2+curdim] = medianVal;
     frame[1] = start;               // start
     frame[2] = median - start;      // length
     frame[3] = depth;               // depth
     stack.push(frame);
 
-    kdVbox[curdim] = medianVal;
+    kdvbox[curdim] = medianVal;
     start = median + 1; length = end - start;
 
     while (length == 0 && stack.length > 0) {
       var frame = stack.pop();
-      kdVbox = frame[0];
+      kdvbox = frame[0];
       start = frame[1]; length = frame[2]; depth = frame[3];
     }
   }
 }
 
-function drawVBox(canvas, scale, initVbox) {
-  var vbox = initVbox.slice(0);
-  vbox[0] = (-vbox[0] + 90) * scale;
-  vbox[2] = (-vbox[2] + 90) * scale;
-  vbox[1] = (vbox[1] + 180) * scale;
-  vbox[3] = (vbox[3] + 180) * scale;
+/**
+ * Draw a bounding box on an equirectangular map, that may wrap around
+ * the longitudinal edges.
+ * @param canvas - The HTML Canvas to draw on.
+ * @oaram scale - The scale factor of the canvas.  A scale factor of
+ * one means one pixel per degree.
+ * @param vbox - The bounding box to draw.
+ */
+var drawVBox = function(canvas, scale, vbox) {
+  var drawbox = vbox.slice(0);
+  drawbox[0] = (-drawbox[0] + 90) * scale;
+  drawbox[2] = (-drawbox[2] + 90) * scale;
+  drawbox[1] = (drawbox[1] + 180) * scale;
+  drawbox[3] = (drawbox[3] + 180) * scale;
   var ctx = canvas.getContext("2d");
   ctx.strokeStyle = "#ff0000";
   // ctx.lineWidth = 2;
   ctx.beginPath();
-  if (vbox[1] < vbox[3]) {
-    // NOTE: Some old canvas implementations don't support strokeRect.
-    ctx.moveTo(vbox[1], vbox[0]);
-    ctx.lineTo(vbox[3], vbox[0]);
-    ctx.lineTo(vbox[3], vbox[2]);
-    ctx.lineTo(vbox[1], vbox[2]);
-    ctx.lineTo(vbox[1], vbox[0]);
+  if (drawbox[1] < drawbox[3]) {
+    /* NOTE: Some old canvas implementations don't support
+       `strokeRect()'.  */
+    ctx.moveTo(drawbox[1], drawbox[0]);
+    ctx.lineTo(drawbox[3], drawbox[0]);
+    ctx.lineTo(drawbox[3], drawbox[2]);
+    ctx.lineTo(drawbox[1], drawbox[2]);
+    ctx.closePath();
   } else {
-    ctx.moveTo(0, vbox[0]);
-    ctx.lineTo(vbox[3], vbox[0]);
-    ctx.lineTo(vbox[3], vbox[2]);
-    ctx.lineTo(0, vbox[2]);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(360 * scale, vbox[0]);
-    ctx.lineTo(vbox[1], vbox[0]);
-    ctx.lineTo(vbox[1], vbox[2]);
-    ctx.lineTo(360 * scale, vbox[2]);
+    ctx.moveTo(0, drawbox[0]);
+    ctx.lineTo(drawbox[3], drawbox[0]);
+    ctx.lineTo(drawbox[3], drawbox[2]);
+    ctx.lineTo(0, drawbox[2]);
+    ctx.moveTo(360 * scale, drawbox[0]);
+    ctx.lineTo(drawbox[1], drawbox[0]);
+    ctx.lineTo(drawbox[1], drawbox[2]);
+    ctx.lineTo(360 * scale, drawbox[2]);
   }
   ctx.stroke();
-}
+};
+
+
+// -------------------------------------------------------------------
 
 // Convenience function for in-browser testing.
 function testKdWithParams(scale, vbidx, curDate) {

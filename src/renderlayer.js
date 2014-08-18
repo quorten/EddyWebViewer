@@ -463,9 +463,12 @@ EquiRenderLayer.prototype.render = function() {
 	bottom = fbheight;
       } else srcbottom = bbheight;
 
-      ctx.drawImage(this.backBuf,
-		    srcleft, srctop, srcright - srcleft, srcbottom - srctop,
-		    left, top, right - left, bottom - top);
+      var realWidth = right - left, realHeight = bottom - top;
+      if (realWidth > 0 && realHeight > 0)
+	ctx.drawImage(this.backBuf,
+		      srcleft, srctop,
+		      srcright - srcleft, srcbottom - srctop,
+		      left, top, realWidth, realHeight);
     }
   }
 

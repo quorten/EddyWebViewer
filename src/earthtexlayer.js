@@ -23,6 +23,9 @@ EarthTexData.loadTrans =
 EarthTexData.loadTrans.prontoMode = true;
 EarthTexData.loadColors =
   new ImageLoader("../data/blue_marble/land_shallow_topo_2048.jpg");
+// "../data/blue_marble/land_shallow_topo_2048.jpg";
+// "../data/blue_marble/world.200408.3x5400x2700.jpg";
+// "../data/blue_marble/world.200402.3x5400x2700.jpg";
 EarthTexData.loadColors.prontoMode = true;
 EarthTexData.loadData = new SeriesCTCtl([ EarthTexData.loadTrans,
 					  EarthTexData.loadColors ]);

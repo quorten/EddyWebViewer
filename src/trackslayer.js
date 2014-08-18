@@ -141,8 +141,8 @@ JSONTracksLayer.acLoad.procData = function(httpRequest, responseText) {
 };
 
 /** Cyclonic tracks loader.  */
-// JSONTracksLayer.cLoad = new XHRLoader("../data/tracks/cyc_bu_tracks.json");
-JSONTracksLayer.cLoad = new XHRLoader("../data/tracks/scyc.json");
+JSONTracksLayer.cLoad = new XHRLoader("../data/tracks/cyc_bu_tracks.json");
+// JSONTracksLayer.cLoad = new XHRLoader("../data/tracks/scyc.json");
 
 JSONTracksLayer.cLoad.procData = JSONTracksLayer.acLoad.procData;
 
@@ -212,7 +212,14 @@ JSONTracksLayer.render = (function() {
     var startTime = ctnow();
     var timeout = this.timeout;
 
-    edc.beginPath();
+    /* NOTE: Some versions of Firefox on some computers go wacko when
+       given way too many subpaths to stroke all at once.  Thus, we
+       stroke each individual track separately rather than stroke them
+       all together.  Plus, it appears that doing so doesn't harm
+       performance that much... except in Google Chrome where only
+       performance can be gained by doing so.  We would have to run a
+       benchmark at startup to tell which behavior we should use.  */
+    // edc.beginPath();
     while (true /* i < numTracks */) {
       /* This line is actually supposed to be a goto at the end of the
 	 loop body, but JavaScript doesn't support goto with a clean
@@ -277,7 +284,7 @@ JSONTracksLayer.render = (function() {
 	}
       }
 
-      // edc.beginPath();
+      edc.beginPath();
       var lat = tracksData[i][0][0];
       var lon = tracksData[i][0][1];
       var mapX = (lon + 180) * inv_360 * frontBuf_width;
@@ -327,13 +334,11 @@ JSONTracksLayer.render = (function() {
 	  edc.arc(mapCoord_x, mapCoord_y,
 		  arcRad, 0, 2 * Math.PI, false);
       }
-      /* Stroking this often is not necessary unless different colors
-	 are used for anticyclonic and cyclonic tracks.  */
-      // edc.stroke();
+      edc.stroke();
 
       renderPart++;
     }
-    edc.stroke();
+    // edc.stroke();
 
     this.setExitStatus(i < numTracks);
     this.status.preemptCode = RenderLayer.RENDERING;
@@ -896,6 +901,7 @@ WCTracksLayer.render = (function() {
     var ranges = wctl.ranges;
     var ctx = this.ctx;
     var polToMap = this.polToMap;
+    var mapCoord_x, mapCoord_y;
     var curDate = Dates.curDate;
     var dispAcyc = TracksParams.dispAcyc;
     var dispCyc = TracksParams.dispCyc;
@@ -919,7 +925,14 @@ WCTracksLayer.render = (function() {
     var numRendered = this.numRendered;
     var rlen;
 
-    ctx.beginPath();
+    /* NOTE: Some versions of Firefox on some computers go wacko when
+       given way too many subpaths to stroke all at once.  Thus, we
+       stroke each individual track separately rather than stroke them
+       all together.  Plus, it appears that doing so doesn't harm
+       performance that much... except in Google Chrome where only
+       performance can be gained by doing so.  We would have to run a
+       benchmark at startup to tell which behavior we should use.  */
+    // ctx.beginPath();
     var quitLoop = false;
     while (rc < rLimit) {
       rlen = ranges[rc].length;
@@ -928,6 +941,7 @@ WCTracksLayer.render = (function() {
 	if (j == 0) j = curRange[0];
 	var jend = curRange[0] + curRange[1];
 	while (j < jend) {
+	  ctx.beginPath();
 	  wctl.getEddy(curEddy, j);
 	  var next = curEddy[3], prev = curEddy[4];
 	  /* `lastLon' is used to determine if drawing a line between
@@ -1027,6 +1041,7 @@ WCTracksLayer.render = (function() {
 	    }
 	  }
 	  numRendered++; j++;
+	  ctx.stroke();
 	  if (numRendered % 128 == 0 && ctnow() - startTime >= timeout)
 	    { quitLoop = true; break; }
 	}
@@ -1037,7 +1052,7 @@ WCTracksLayer.render = (function() {
 	{ i = 0; rc++; }
       if (quitLoop) break;
     }
-    ctx.stroke();
+    // ctx.stroke();
 
     this.rc = rc; this.i = i; this.j = j;
     this.numRendered = numRendered;

@@ -6,39 +6,15 @@ import "compat";
 import "oevmath";
 import "projector";
 import "cothread";
+import "dates";
+import "earthtexlayer";
 import "trackslayer";
 import "sshlayer";
-
-// BAD variables that need updating
-
-// longitude rotation
-var lon_rot = 180;
-// globe tilt
-var tilt = 0;
-// orthographic globe scale
-var scale = 1.0;
-// perspective altitude
-var persp_altitude = 35786;
-// perspective field of view
-var persp_fov = 17.5;
 
 var Compositor = {};
 OEV.Compositor = Compositor;
 
 // Important parameters:
-
-// Raytraced orthographic projection to an equirectangular backbuffer.
-Compositor.rayOrtho = 1;
-
-// Raytraced perspective projection to an equirectangular backbuffer.
-Compositor.rayPersp = 2;
-
-/* Projection method.  Must either one of the Projector objects or a
-   raytracer from the compositor module.  */
-Compositor.projector = EquirectProjector;
-
-// Backbuffer scaling factor
-Compositor.backbufScale = 2;
 
 // Density of the graticule lines in degrees per line
 Compositor.gratDensity = 15;
@@ -48,6 +24,30 @@ Compositor.dispLandMasses = true;
 
 // Display the SSH overlay?
 Compositor.dispSSH = true;
+
+/*
+
+Rather than using the above parameters, how about use an array of
+components?  For the functions that operate on all components, they
+will not pickup functions that have been removed from the array.
+
+// Component RenderLayers of this Compositor.
+Compositor.comps = [];
+
+function toggleSSH() {
+  var found = false;
+  for (var i = 0, len = Compositor.comps.length; i < len; i++) {
+    if (Compositor.comps[i] == SSHLayer) {
+      Compositor.comps.splice(i, 1);
+      found = true; break;
+    }
+  }
+  if (!found) {
+    Compositor.comps.push(SSHLayer);
+  }
+}
+
+ */
 
 /* Perform startup initialization for the whole web viewer.  */
 Compositor.init = function() {
@@ -70,166 +70,40 @@ Compositor.init = function() {
   // Initialize the overlays.
   this.projEarthTex.timeout = 15;
   Dates.notifyFunc = makeEventWrapper(Compositor, "finishStartup");
-  SSHLayer.loadData.notifyFunc = makeEventWrapper(Compositor, "finishStartup");
+  EarthTexLayer.loadData.notifyFunc =
+    makeEventWrapper(Compositor, "finishStartup");
+  EarthTexLayer.loadData.timeout = 15;
+  SSHLayer.loadData.notifyFunc =
+    makeEventWrapper(Compositor, "finishStartup");
   SSHLayer.loadData.timeout = 15;
-  SSHLayer.render.timeout = 15;
-  TracksLayer.acLoad.notifyFunc = makeEventWrapper(Compositor, "finishStartup");
-  TracksLayer.cLoad.notifyFunc = makeEventWrapper(Compositor, "finishStartup");
+  SSHLayer.timeout = 15;
+  TracksLayer.loadData.notifyFunc =
+    makeEventWrapper(Compositor, "finishStartup");
   TracksLayer.loadData.timeout = 15;
-  TracksLayer.render.timeout = 15;
+  TracksLayer.timeout = 15;
 
+  Dates.start();
   SSHLayer.loadData.start();
   TracksLayer.loadData.start();
-
-  // Load the land mass background image.
-  this.earthTex = new Image();
-  this.earthTex.onload = function() {
-    Compositor.backbuf.width =
-      Compositor.earthTex.width * Compositor.backbufScale;
-    Compositor.backbuf.height =
-      Compositor.earthTex.height * Compositor.backbufScale;
-
-    // Prepare the Earth texture projection buffer.
-    var tmpCanv = document.createElement("canvas");
-    tmpCanv.width = Compositor.earthTex.width;
-    tmpCanv.height = Compositor.earthTex.height;
-    var ctx = tmpCanv.getContext("2d");
-    ctx.drawImage(Compositor.earthTex, 0, 0);
-
-    Compositor.projEarthTex.earthTex =
-      ctx.getImageData(0, 0, tmpCanv.width, tmpCanv.height);
-    Compositor.earthTex = null; // Don't need this anymore
-    Compositor.projEarthTex.frontBuf.width = tmpCanv.width;
-    Compositor.projEarthTex.frontBuf.height = tmpCanv.height;
-    Compositor.ready = true;
-    return Compositor.finishStartup();
-  };
-  this.earthTex.src = "../data/blue_marble/land_ocean_ice_2048.jpg";
-  // this.earthTex.src = "../data/blue_marble/land_shallow_topo_2048.jpg";
-  // this.earthTex.src = "../data/blue_marble/world.200408.3x5400x2700.jpg";
-  // this.earthTex.src = "../data/blue_marble/world.200402.3x5400x2700.jpg";
 
   return this.finishStartup();
 };
 
-// Change projection in a safe way for all RenderLayers.
-Compositor.setProjector = function(projector) {
-  if (projector == Compositor.rayOrtho || projector == Compositor.rayPersp) {
-    this.projector = projector;
-    projector = EquirectProjector;
-  } else
-    this.projector = projector;
-
-  if (!Compositor.ready)
-    return;
-  // Update projected land masses.
-  this.projEarthTex.start();
-  var width = 1440; height = 721;
-  SSHLayer.setViewport(null, width, height, width / height, projector);
-  SSHLayer.render.start();
-  width = Compositor.backbuf.width;
-  height = Compositor.backbuf.height;
-  TracksLayer.setViewport(null, width, height, width / height, projector);
-  TracksLayer.render.start();
+// Change the viewport in a safe way for all RenderLayers.
+Compositor.setViewport = function(width, height) {
+  ViewParams.viewport[0] = width;
+  ViewParams.viewport[1] = height;
+  EarthTexLayer.setViewport(width, height);
+  SSHLayer.setViewport(width, height);
+  TracksLayer.setViewport(width, height);
 };
 
-// Start rendering for all RenderLayers at once.
+/* Reset all RenderLayers to their start condition at once.  Actual
+   rendering should be finished via `finishRenderJobs()'.  */
 Compositor.startRender = function() {
-  SSHLayer.render.start();
-  TracksLayer.render.start();
-};
-
-// Pre-project the Earth texture for faster composing.
-Compositor.projEarthTex = new Cothread();
-
-// ... non-ideal
-Compositor.projEarthTex.frontBuf = document.createElement("canvas");
-
-Compositor.projEarthTex.initCtx = function() {
-  this.ctx = this.frontBuf.getContext("2d");
-  // TODO: This should be carried around in a cache-like manner.
-  this.destImg = this.ctx.createImageData(this.frontBuf.width,
-					  this.frontBuf.height);
-  this.destIdx = 0;
-  this.aspectXY = this.frontBuf.width / this.frontBuf.height;
-  this.x = 0;
-  this.y = 0;
-
-  this.status.returnType = CothreadStatus.PREEMPTED;
-  this.status.preemptCode = 0;
-  this.status.percent = 0;
-};
-
-Compositor.projEarthTex.contExec = function() {
-  var ctx = this.ctx;
-  var destImg = this.destImg;
-  var destIdx = this.destIdx;
-  var x = this.x;
-  var y = this.y;
-  var oldY = y;
-
-  var frontBuf_width = destImg.width;
-  var frontBuf_height = destImg.height;
-  var earthTex = this.earthTex;
-  var srcWidth = earthTex.width;
-  var srcHeight = earthTex.height;
-  var aspectXY = this.aspectXY;
-  var inv_aspectXY = 1 / aspectXY;
-  var projector_unproject;
-  if (Compositor.projector == Compositor.rayOrtho ||
-      Compositor.projector == Compositor.rayPersp)
-    projector_unproject = EquirectProjector.unproject;
-  else
-    projector_unproject = Compositor.projector.unproject;
-
-  var ctnow = Cothread.now;
-
-  var startTime = ctnow();
-  var timeout = this.timeout;
-
-  while (y < frontBuf_height) {
-    while (x < frontBuf_width) {
-      var mapCoord = { x: (x / frontBuf_width) * 2 - 1,
-		       y: ((y / frontBuf_height) * 2 - 1) * inv_aspectXY };
-      // NOTE: Object creation is slow.  Newer versions must avoid this.
-      var polCoord = projector_unproject(mapCoord);
-      if (!isNaN(polCoord.lat) && !isNaN(polCoord.lon) &&
-	  polCoord.lat > -90 && polCoord.lat < 90 &&
-	  polCoord.lon > -180 && polCoord.lon < 180)
-	;
-      else {
-	destIdx += 4;
-	x++;
-	continue;
-      }
-      var latIdx = 0|((polCoord.lat + 90) / 180 * srcHeight);
-      var lonIdx = 0|((polCoord.lon + 180) / 360 * srcWidth);
-      var index = (latIdx * srcWidth + lonIdx) * 4;
-
-      destImg.data[destIdx++] = earthTex.data[index++];
-      destImg.data[destIdx++] = earthTex.data[index++];
-      destImg.data[destIdx++] = earthTex.data[index++];
-      destImg.data[destIdx++] = earthTex.data[index++];
-
-      x++;
-    }
-    if (x >= frontBuf_width) {
-      x = 0;
-      y++;
-    }
-    if (y % 32 == 0 && ctnow() - startTime >= timeout)
-      break;
-  }
-
-  this.setExitStatus(y < frontBuf_height);
-  ctx.putImageData(destImg, 0, 0, 0, oldY, frontBuf_width, y - oldY);
-  this.status.preemptCode = RenderLayer.FRAME_AVAIL;
-  this.status.percent = y * CothreadStatus.MAX_PERCENT / frontBuf_height;
-
-  this.destIdx = destIdx;
-  this.x = x;
-  this.y = y;
-  return this.status;
+  EarthTexLayer.initCtx();
+  SSHLayer.initCtx();
+  TracksLayer.initCtx();
 };
 
 Compositor.finishStartup = function() {
@@ -247,7 +121,8 @@ Compositor.finishStartup = function() {
   if (!Compositor.ready)
     return;
   Compositor.noDouble = true;
-  SSHLayer.loadData.notifyFunc = makeEventWrapper(Compositor, "finishRenderJobs");
+  SSHLayer.loadData.notifyFunc =
+    makeEventWrapper(Compositor, "finishRenderJobs");
 
   /* If dates finished loading, then initialize curDate.  */
 
@@ -289,9 +164,6 @@ Compositor.finishStartup = function() {
 };
 
 Compositor.renderInProg = false;
-
-Compositor.finishRenderJobs = function() {
-};
 
 /* Finish any render jobs that may be pending from TracksLayer or
    SSHLayer.  If the parameter "fast" is provided and set to true,

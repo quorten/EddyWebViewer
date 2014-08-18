@@ -487,3 +487,72 @@ it is known that they can be created safely.
 The code is meant to be nearly identical to C/C++ syntax.
 
 Minimize getContext() calls.
+
+----------------------------------------
+
+So, with the new architecture, how do you go setting up the
+environment and loading?
+
+1. Preload the Dates.
+2. Preload the EarthTexData.
+3. Preload the TracksData.
+4. Preload the SSH data.
+5. Dispatch the rendering loop.
+
+Other architecture:
+
+* Keep the functions to simultaneously change all viewports at once.
+  Don't need to do this for projection anymore, though.
+
+* View-related parameters are now all changed via the global
+  ViewParams object.
+
+* Move mouse event handling code to slim_gui.
+
+* Move GUI updating into slim_gui.
+
+* Modify the render loop to exit every 15 ms, then come back and start
+  the next task.
+
+* Modify the render loop to first render at the screen resolution,
+  then if there is any spare time, render again at a global resolution
+  so that the map can be panned and still remain visible.
+
+* Special global-resolution maps are used for accelerated orthographic
+  and perspective projection rendering.
+
+* Technically, the compositor no longer needs a backBuf now.  The
+  renderlayers can be placed directly in the document and stacked on
+  top of each other.
+
+TODO later:
+
+* Create a graticule RenderLayer.
+
+To stack up the RenderLayers:
+
+* Append each element to the drawingContainer.
+
+* Set each element's style to
+  "position: absolute; left: 0px; top: 0px".
+
+* Set the viewport for each RenderLayer.
+
+* Whenever updates need to be performed, simply call the RenderLayer
+  directly, not the render() function.
+
+* Loading at startup is now simply just preloading: the data would
+  have been loaded anyways without the explicit control signal.
+
+* Most parameters can be changed directly, followed simply by a
+  rerender of each RenderLayer.
+
+* Rendering cannot proceed until the Dates object has been loaded.
+
+* Change various RenderLayers to change their viewing without
+  rerendering.  How about using caching as an internal optimization.
+  But then we need to keep track of the old ViewParams state...
+
+A lot of the existing structure looks good.  What needs to be major
+updated?  RenderLayer stacking.  For now, disable special 3-D modes
+and treat them just like any other projection.

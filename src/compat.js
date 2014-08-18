@@ -15,8 +15,10 @@
  * No parameters are passed to the method.
  *
  * @param {Object} callObj - the object on which to call the method.
- * @param {String} handler - a quoted string specifying the name of the
- * function to call.
+ * @param {String} handler - a quoted string specifying the name of
+ * the function to call.  Two parameters are passed to this method.
+ * The first one is the original value of `this` within the wrapper
+ * function, and the second one is the event object.
  */
 var makeEventWrapper = function(callObj, handler) {
   return function(event) { return callObj[handler](this, event); };
@@ -300,7 +302,7 @@ var allocRenderJob = function(rendQFunc) {
   renderInProg = true;
   requestAnimationFrame(freeRenderJob);
   return true;
-}
+};
 
 /**
  * Free a render job from the queue.  This function should only be
@@ -314,7 +316,7 @@ var freeRenderJob = function() {
     renderQueue = null;
     return rendQFunc();
   }
-}
+};
 
 /********************************************************************/
 /* Global Variables */

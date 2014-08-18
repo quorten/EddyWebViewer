@@ -47,6 +47,12 @@ function toggleSSH() {
   }
 }
 
+What to do with fitCanvasToCntr and the buffer?  No longer used like
+they were previously.
+
+For now, concentrate on adding how ever many switches and controls it
+takes to get it to work.  Then clean it up later.
+
  */
 
 /* Perform startup initialization for the whole web viewer.  */
@@ -66,6 +72,8 @@ Compositor.init = function() {
 
   this.noDouble = false;
   this.ready = false;
+
+  // Preload the data.
 
   // Initialize the overlays.
   this.projEarthTex.timeout = 15;

@@ -422,7 +422,8 @@ EquiRenderLayer.prototype.render = function() {
        coordinate space of the destination canvas.  */
     var fbwidth = this.frontBuf.width;
     var fbheight = this.frontBuf.height;
-    var x = (ViewParams.mapCenter[0] + 1) / 2 * fbwidth;
+    var x = ((ViewParams.mapCenter[0] + 1) / 2 +
+	     -ViewParams.polCenter[0] * ViewParams.scale / 180) * fbwidth;
     var y = (-ViewParams.mapCenter[1] + 1) / 2 * fbheight;
 
     /* Find the coordinates on the destination canvas where the left,
@@ -566,7 +567,8 @@ EquiCSSRenderLayer.prototype.render = function() {
      coordinate space of the destination canvas.  */
   var fbwidth = ViewParams.viewport[0];
   var fbheight = ViewParams.viewport[1];
-  var x = (ViewParams.mapCenter[0] + 1) / 2 * fbwidth;
+  var x = ((ViewParams.mapCenter[0] + 1) / 2 +
+	   -ViewParams.polCenter[0] * ViewParams.scale / 180) * fbwidth;
   var y = (-ViewParams.mapCenter[1] + 1) / 2 * fbheight;
 
   /* Find the coordinates on the destination canvas where the left,

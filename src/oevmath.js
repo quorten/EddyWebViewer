@@ -369,7 +369,8 @@ Point3D.prototype.toYPolarPoint = function() {
 var modPolShiftOrigin = function(polarPt, fwd) {
   var objPolarPt = new PolarPoint(polarPt[1], polarPt[0]);
   var r3src = objPolarPt.degToRad().yppToPoint3D();
-  var r3dest = r3src.rotateX(fwd * DEG2RAD * ViewParams.polCenter[1]);
+  // ??? Why does using fwd cause incorrect results?
+  var r3dest = r3src.rotateX(/* fwd * */ -DEG2RAD * ViewParams.polCenter[1]);
   var polDest = r3dest.toYPolarPoint().radToDeg();
   polDest.lon += -fwd * ViewParams.polCenter[0];
   polDest.degNormalize();
@@ -390,6 +391,8 @@ var polShiftOrigin = function(polarPt, fwd) {
   var polCenter = ViewParams.polCenter;
   if (isNaN(polarPt[0]))
     return;
+  if (fwd > 0)
+    polarPt[0] += 180 - polCenter[0];
   if (polCenter[1] != 0) {
     /* 1. Get the 3D rectangular coordinate of the given polar
        coordinate.  The camera is looking down the negative z
@@ -404,7 +407,8 @@ var polShiftOrigin = function(polarPt, fwd) {
 
     /* 2. Rotate this coordinate around the x axis by the current
        globe tilt.  */
-    var tilt = fwd * DEG2RAD * polCenter[1];
+    // ??? Why does using fwd cause incorrect results?
+    var tilt = /* fwd * */ -DEG2RAD * polCenter[1];
     var cos_tilt = Math.cos(tilt); var sin_tilt = Math.sin(tilt);
     var r3dest_x, r3dest_y, r3dest_z;
     r3dest_x = r3src_x;
@@ -418,13 +422,16 @@ var polShiftOrigin = function(polarPt, fwd) {
     /* 4. Shift by the longitudinal rotation around the pole.  For the
        sake of the normalization calculation below, move the prime
        meridian to 180 degrees.  */
-    longitude += 180 - fwd * polCenter[0];
+    if (fwd < 0)
+      longitude += 180 + polCenter[0];
   } else {
     /* Only perform the longitude shift computations.  For the sake of
        the normalization calculation below, move the prime meridian to
        180 degrees.  */
     latitude = polarPt[1];
-    longitude = polarPt[0] + 180 - fwd * polCenter[0];
+    if (fwd < 0)
+      longitude = polarPt[0] + 180 + polCenter[0];
+    else longitude = polarPt[0];
   }
 
   /* 5. Verify that the coordinates are in bounds.  */
@@ -499,21 +506,23 @@ OEV.lineInVBox = lineInVBox;
 var boxInVBox = function(box1, vbox) {
   var vbox_min_x = vbox[0], vbox_min_y = vbox[1];
   var vbox_max_x = vbox[2], vbox_max_y = vbox[3];
-  var p1_x = line[0], p1_y = line[1];
-  var p2_x = line[2], p2_y = line[3];
-  var box1_min_x = vbox[0], box1_min_y = vbox[1];
-  var box1_max_x = vbox[2], box1_max_y = vbox[3];
+  var box1_min_x = box1[0], box1_min_y = box1[1];
+  var box1_max_x = box1[2], box1_max_y = box1[3];
+  var vbox_yorder = vbox_max_y - vbox_min_y;
 
   /* Check if any of the first box's points are within the bounding
      box.  */
-  if ((vbox_min_x < box1_min_x && box1_min_x < vbox_max_x &&
-       vbox_min_y < box1_min_y && box1_min_y < vbox_max_y) ||
-      (vbox_min_x < box1_max_x && box1_max_x < vbox_max_x &&
-       vbox_min_y < box1_max_y && box1_max_y < vbox_max_y) ||
-      (vbox_min_x < box1_min_x && box1_min_x < vbox_max_x &&
-       vbox_min_y < box1_max_y && box1_max_y < vbox_max_y) ||
-      (vbox_min_x < box1_max_x && box1_max_x < vbox_max_x &&
-       vbox_min_y < box1_min_y && box1_min_y < vbox_max_y))
+  var xrange_contained =
+    (vbox_min_x < box1_min_x && box1_min_x < vbox_max_x) ||
+    (vbox_min_x < box1_max_x && box1_max_x < vbox_max_x);
+  var yrange_contained =
+    (vbox_min_y < box1_min_y && box1_min_y < vbox_max_y) ||
+    (vbox_min_y < box1_max_y && box1_max_y < vbox_max_y) ||
+    (vbox_yorder < 0 && // min and max are swapped
+     (box1_min_y > vbox_max_y || box1_max_y > vbox_max_y ||
+      box1_min_y < vbox_min_y || box1_max_y < vbox_min_y));
+
+  if (xrange_contained && yrange_contained)
     return true;
   return false;
 };
@@ -524,16 +533,21 @@ OEV.boxInVBox = boxInVBox;
  * Check if a point is contained within a bounding box.  Note that for
  * this algorithm, points that only touch the edge of the box, but are
  * not contained within it, are excluded.
- * @param {Array} point [ x, y ]
+ * @param {Number} pt_x - x coordinate
+ * @param {Number} pt_y - y coordinate
  * @param {Array} vbox [ minX, minY, maxX, maxY ]
  * @returns `true` if contained, `false` otherwise
  */
-var ptInVBox = function(point, vbox) {
+var ptInVBox = function(pt_x, pt_y, vbox) {
   var vbox_min_x = vbox[0], vbox_min_y = vbox[1];
   var vbox_max_x = vbox[2], vbox_max_y = vbox[3];
-  var pt_x = point[0], pt_y = point[1];
+  var vbox_yorder = vbox_max_y - vbox_min_y;
   if (vbox_min_x < pt_x && pt_x < vbox_max_x &&
       vbox_min_y < pt_y && pt_y < vbox_max_y)
+    return true;
+  if (vbox_yorder < 0 && // min and max are swapped
+      (pt_y > vbox_max_y || pt_y < vbox_min_y) &&
+      vbox_min_x < pt_x && pt_x < vbox_max_x)
     return true;
   return false;
 };
@@ -560,11 +574,13 @@ var clipVBox = function(vbox) {
      or bottom of the map.  (The user is looking at the polar
      regions.)  */
   else if (vbox[0] < -90) {
-    vbox[2] = -180 - vbox[0]; vbox[0] = -90;
+    var newEdge = -180 - vbox[0]; vbox[0] = -90;
+    if (newEdge > vbox[2]) vbox[2] = newEdge;
     vbox[1] = -180; vbox[3] = 180 /* - EPSILON */;
     return;
   } else if (vbox[2] > 90) {
-    vbox[0] = 180 - vbox[2]; vbox[2] = 90;
+    var newEdge = 180 - vbox[2]; vbox[2] = 90;
+    if (newEdge < vbox[0]) vbox[0] = newEdge;
     vbox[1] = -180; vbox[3] = 180 /* - EPSILON */;
     return;
   }
@@ -573,7 +589,8 @@ var clipVBox = function(vbox) {
      bounds of the map, then adjust the min and max longitudes to
      cover the entire longitudinal range.  */
   if (vbox[1] < -360 || vbox[3] >= 360 ||
-      (vbox[1] < -180 && vbox[3] >= 180))
+      (vbox[1] < -180 && vbox[3] >= 180) ||
+      vbox[3] - vbox[1] >= 360)
     { vbox[1] = -180; vbox[3] = 180 /* - EPSILON */; }
 
   /* Otherwise, if the min or max longitudes only partially exceed the

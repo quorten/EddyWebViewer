@@ -187,7 +187,6 @@ JSONTracksLayer.render = (function() {
        eddy: [ latitude, longitude, date_index, eddy_index ]
        Date indexes start from one, not zero.
      */
-    var backbufScale = /* Compositor.backbufScale */ 1;
     var curDate = Dates.curDate;
     var acTracksData = JSONTracksLayer.acTracksData;
     var acTracksData_length = acTracksData.length;
@@ -206,6 +205,7 @@ JSONTracksLayer.render = (function() {
     var frontBuf_height = JSONTracksLayer.frontBuf.height;
     var aspectXY = ViewParams.aspectXY;
     var projector_project = ViewParams.projector.project;
+    var arcRad = 2 * frontBuf_height / 720 * ViewParams.scale;
 
     var ctnow = Cothread.now;
 
@@ -301,7 +301,7 @@ JSONTracksLayer.render = (function() {
       edc.moveTo(mapCoord_x, mapCoord_y);
       if (tracksData[i][0][2] - 1 == Dates.curDate)
 	edc.arc(mapCoord_x, mapCoord_y,
-		2 * backbufScale, 0, 2 * Math.PI, false);
+		arcRad, 0, 2 * Math.PI, false);
       for (var j = 1; j < tracksData[i].length; j++) {
 	lat = tracksData[i][j][0];
 	lon = tracksData[i][j][1];
@@ -325,7 +325,7 @@ JSONTracksLayer.render = (function() {
 	edc.lineTo(mapCoord_x, mapCoord_y);
 	if (tracksData[i][j][2] - 1 == Dates.curDate)
 	  edc.arc(mapCoord_x, mapCoord_y,
-		  2 * backbufScale, 0, 2 * Math.PI, false);
+		  arcRad, 0, 2 * Math.PI, false);
       }
       /* Stroking this often is not necessary unless different colors
 	 are used for anticyclonic and cyclonic tracks.  */
@@ -616,12 +616,11 @@ WCTracksLayer.getEddyXRange = function(outEddy, index) {
  * of times the viewport bounding box can be split.  Currently, this
  * must be set to a number taking the form 2^n - 1, n being an
  * integer, in order for the traversal to be balanced.
- * @returns {Array} An array of classification ranges.  Each element
- * of the array is another array with the following information: [
- * type, start, length ].  `type` is one of the following values:
- * * 0: Not visible
- * * 1: Possibly visible
- * * 2: Definitely visible
+ * @returns {Array} An array [ defVis, posVis, notVis, totVis ].  The
+ * first three elements are classification arrays containing multiple
+ * elements, each indicating a range of elements as follows: [ start,
+ * length ].  The fourth element indicates the total number of
+ * potentially visible eddies.
  */
 WCTracksLayer.kdPVS = function(curDate, vbox, maxSplits) {
   var maxDepth = (0|(Math.log(maxSplits) / Math.log(2))) - 1;
@@ -631,6 +630,7 @@ WCTracksLayer.kdPVS = function(curDate, vbox, maxSplits) {
   var notVis = []; // Not visible
   var posVis = []; // Possibly visible
   var defVis = []; // Definitely visible
+  var totPVS = 0; // Total number of potentially visible eddies
 
   // var results = [];
   var stack = [];
@@ -673,12 +673,14 @@ WCTracksLayer.kdPVS = function(curDate, vbox, maxSplits) {
 	   vbox[1] < curEddy[2] && curEddy[2] < vbox[3]) ||
 	  (vbox_lonsz < 0 &&
 	   (vbox[1] < curEddy[2] || curEddy[2] < vbox[3]));
-	if (isLatIn && isLonIn)
+	if (isLatIn && isLonIn) {
 	  defVis.push([ median, 1 ]);
 	  // results.push([ 0, median, 1 ]); // Definitely visible
-	else
+	  totPVS++;
+	} else {
 	  notVis.push([ median, 1 ]);
 	  // results.push([ 2, median, 1 ]); // Not visible
+	}
       }
       length = 0; // Force popping from the stack.
     }
@@ -773,12 +775,14 @@ WCTracksLayer.kdPVS = function(curDate, vbox, maxSplits) {
 	   vbox[1] < curEddy[2] && curEddy[2] < vbox[3]) ||
 	  (vbox_lonsz < 0 &&
 	   (vbox[1] < curEddy[2] || curEddy[2] < vbox[3]));
-	if (isLatIn && isLonIn)
+	if (isLatIn && isLonIn) {
 	  defVis.push([ median, 1 ]);
 	  // results.push([ 0, median, 1 ]); // Definitely visible
-	else
+	  totPVS++;
+	} else {
 	  notVis.push([ median, 1 ]);
 	  // results.push([ 2, median, 1 ]); // Not visible
+	}
 
         numSplits++; depth++;
 	/* Push the (sometimes) larger right partition onto the stack
@@ -794,12 +798,15 @@ WCTracksLayer.kdPVS = function(curDate, vbox, maxSplits) {
         kdvbox[2+curdim] = medianVal;
         /* start = start; */ length = median - start;
       } else {
-	if (invbox)
+	if (invbox) {
 	  defVis.push([ start, length ]);
 	  // results.push([ 0, start, length ]); // Definitely visible
-	else
+	  totPVS += length;
+	} else {
 	  posVis.push([ start, length ]);
 	  // results.push([ 1, start, length ]); // Possibly visible
+	  totPVS += length;
+	}
         length = 0; // Force popping from the stack.
       }
     }
@@ -811,44 +818,240 @@ WCTracksLayer.kdPVS = function(curDate, vbox, maxSplits) {
       start = frame[1]; length = frame[2]; depth = frame[3];
     }
   }
+
   // Save diagnostics.
   this.kdNumSplits = numSplits; this.kdNumTrims = numTrims;
-  this.ranges = [ defVis, posVis, notVis ];
+
+  this.ranges = [ defVis, posVis, notVis, totPVS ];
   // this.ranges  = results;
   return this.ranges;
+};
+
+/**
+ * Generate a viewport bounding box from the current ViewParams.
+ * @returns {Array} [ minLat, minLon, maxLat, maxLon ]
+ */
+WCTracksLayer.genVBox = function() {
+  var width = 360 / ViewParams.scale;
+  var height = 360 / ViewParams.scale / ViewParams.aspectXY;
+  var x = /* -ViewParams.mapCenter[0] / ViewParams.scale * 180 */ +
+    ViewParams.polCenter[0];
+  var y = -ViewParams.mapCenter[1] / ViewParams.scale * 90;
+  return [ y - height / 2, x - width / 2, y + height / 2, x + width / 2 ];
 };
 
 WCTracksLayer.render = (function() {
   "use strict";
 
   function initCtx() {
+    this.ranges = null;
+    if (!this.curEddy)
+      this.curEddy = new Array(5);
+    if (!this.box1)
+      this.box1 = new Array(4);
+    if (!this.polToMap)
+      this.polToMap = [ NaN, NaN ];
+    /* Render class limit.  If set to 2, then only attempt to render
+       tracks with a potentially visible eddy.  If set to 3, attempt
+       to render all tracks, and also guarantee that definitely
+       visible tracks are rendered before potentially visible
+       ones.  */
+    if (!this.rLimit)
+      this.rLimit = 2;
+
+    var frontBuf = WCTracksLayer.frontBuf;
+    var ctx = frontBuf.getContext("2d");
+    this.ctx = ctx;
+
+    ctx.clearRect(0, 0, frontBuf.width, frontBuf.height);
+    ctx.lineWidth = frontBuf.height / 720 * ViewParams.scale;
+    ctx.strokeStyle = "#800080";
+    ctx.lineJoin = "round";
+
+    this.rc = 0; this.i = 0; this.j = 0;
+    this.numRendered = 0;
+
     this.status.returnType = CothreadStatus.PREEMPTED;
     this.status.preemptCode = 0;
     this.status.percent = 0;
   }
 
   function contExec() {
+    var ctnow = Cothread.now;
+    var startTime = ctnow();
+    var timeout = this.timeout;
 
-    // 1. Kd-tree pvs traversal.
+    /* 1. Perform kd-tree PVS traversal.  This operation should be
+       near instantaneous, but if it isn't, the timer has already been
+       started above so that tracks rendering can be preempted
+       early.  */
+    var wctl = WCTracksLayer;
+    if (!this.ranges) {
+      wctl.vbox = wctl.genVBox(); clipVBox(wctl.vbox);
+      wctl.kdPVS(Dates.curDate, wctl.vbox, 31);
+    }
 
-    // 2. For each eddy on the current date index:
-    // * Draw the marker at the current date index.
-    // Parse backward to get the starting point.
-    // Keep track of the current bounding box.
-    // If the backtrack is fully visible.
-    // Parse forward to draw the line.
+    var box1 = this.box1;
+    var vbox = wctl.vbox;
+    var ranges = wctl.ranges;
+    var ctx = this.ctx;
+    var polToMap = this.polToMap;
+    var curDate = Dates.curDate;
+    var dispAcyc = TracksParams.dispAcyc;
+    var dispCyc = TracksParams.dispCyc;
+    var curEddy = this.curEddy;
+    var INPUT_ZERO_SYM = wctl.INPUT_ZERO_SYM;
 
-    // (optional) Once finished with definitely visible,
-    // move to possibly visible and do bounding box checks for each line.
+    var frontBuf_width = WCTracksLayer.frontBuf.width;
+    var frontBuf_height = WCTracksLayer.frontBuf.height;
+    var aspectXY = ViewParams.aspectXY;
+    var scale = ViewParams.scale;
+    var mcx = ViewParams.mapCenter[0], mcy = ViewParams.mapCenter[1];
+    var projector_project = ViewParams.projector.project;
+    var arcRad = 2 * frontBuf_height / 720 * ViewParams.scale;
 
-    // Need two parts:
-    // * Critical render loop
-    // * Auxiliary render loop
+    /* rc = render class.  Draw all the definitely visible and
+       possibly visible edies and tracks.  Optionally (rc = 2), check
+       if any of the invisible eddies have tracks that should be
+       drawn.  */
+    var rc = this.rc; var rLimit = this.rLimit;
+    var i = this.i; var j = this.j;
+    var numRendered = this.numRendered;
+    var rlen;
 
-    // Single traversal will be way better than double traversal,
-    // since earth.nullschool.net does just fine with it's terribly
-    // inefficient rendering mechanisms.
+    ctx.beginPath();
+    var quitLoop = false;
+    while (rc < rLimit) {
+      rlen = ranges[rc].length;
+      while (i < rlen) {
+	var curRange = ranges[rc][i];
+	if (j == 0) j = curRange[0];
+	var jend = curRange[0] + curRange[1];
+	while (j < jend) {
+	  wctl.getEddy(curEddy, j);
+	  var next = curEddy[3], prev = curEddy[4];
+	  /* `lastLon' is used to determine if drawing a line between
+	     two points would cause it to span more than 180 degrees
+	     longitude, i.e. if the line would not actually be the
+	     shortest distance between two points.  `olastLon' and
+	     `olastLat' ("o" for "original") are used together to clip
+	     lines that are entirely outside of the viewport bounding
+	     box.  */
+	  var lastLon;
+	  var oLastLon, oLastLat;
 
+	  /* Draw the eddy marker.  We should to draw a triangle that
+	     points in the direction of eddy motion, but for now, only
+	     a circle is drawn for simplicity.  */
+	  polToMap[1] = curEddy[1]; polToMap[0] = curEddy[2];
+	  oLastLon = polToMap[0]; oLastLat = polToMap[1];
+	  polShiftOrigin(polToMap, 1);
+	  lastLon = polToMap[0];
+	  projector_project(polToMap);
+	  mapCoord_x = (polToMap[0] * scale + mcx + 1) *
+	    0.5 * frontBuf_width;
+	  mapCoord_y = (-polToMap[1] * scale * aspectXY - mcy + 1) *
+	    0.5 * frontBuf_height;
+	  /* NOTE: We should probably use box clipping rather than
+	     point clipping for the eddy markers, to avoid the effect
+	     of having them haptically disappear when close to the
+	     edge of the screen.  */
+	  if (!isNaN(mapCoord_x) && !isNaN(mapCoord_y) &&
+	      (rc == 0 || ptInVBox(oLastLat, oLastLon, vbox))) {
+	    ctx.moveTo(mapCoord_x + arcRad, mapCoord_y);
+	    ctx.arc(mapCoord_x, mapCoord_y, arcRad, 0, 2 * Math.PI, false);
+	  }
+
+	  /* k = 0: Draw all the tracks after the current date.  */
+	  /* k = 1: Draw all the tracks before the current date.  */
+	  for (var k = 0; k < 2; k++) {
+	    var ti = j; // Track index
+	    if (k > 0) {
+	      wctl.getEddy(curEddy, j);
+	      polToMap[1] = curEddy[1]; polToMap[0] = curEddy[2];
+	      oLastLon = polToMap[0]; oLastLat = polToMap[1];
+	      polShiftOrigin(polToMap, 1);
+	      lastLon = polToMap[0];
+	      projector_project(polToMap);
+	      mapCoord_x = (polToMap[0] * scale + mcx + 1) *
+		0.5 * frontBuf_width;
+	      mapCoord_y = (-polToMap[1] * scale * aspectXY - mcy + 1) *
+		0.5 * frontBuf_height;
+	    }
+	    if (!isNaN(mapCoord_x) && !isNaN(mapCoord_y))
+	      ctx.moveTo(mapCoord_x, mapCoord_y);
+	    /* Set to true when we need to clip a point and reorient the
+	       moveTo... lineTo... logic.  */
+	    var clipped = false;
+	    var disp; // Displacement
+	    disp = curEddy[3+k];
+	    while (disp != INPUT_ZERO_SYM) {
+	      var noLine = false;
+	      if (!k) ti += disp;
+	      else ti -= disp;
+	      wctl.getEddy(curEddy, ti);
+	      disp = curEddy[3+k];
+	      polToMap[1] = curEddy[1]; polToMap[0] = curEddy[2];
+	      if (rc > 0) { // Not definitely visible
+		/* NOTE: Although the mathematically correct way to
+		   peform clipping is to use the `lineInVBox()'
+		   function to check if the line to be drawn lies in
+		   the vbox, for the sake of simplicity, all track
+		   lines are assumed to be short enough such that the
+		   simpler `boxInVBox()' visibility testing function
+		   will be adequate.  */
+		if (oLastLat < polToMap[1])
+		  { box1[0] = oLastLat; box1[2] = polToMap[1]; }
+		else { box1[0] = polToMap[1]; box1[2] = oLastLat; }
+		if (oLastLon < polToMap[0])
+		  { box1[1] = oLastLat; box1[3] = polToMap[0]; }
+		else { box1[1] = polToMap[0]; box1[3] = oLastLon; }
+		if (!boxInVBox(box1, vbox))
+		  noLine = true;
+	      }
+	      oLastLon = polToMap[0]; oLastLat = polToMap[1];
+	      polShiftOrigin(polToMap, 1);
+	      if (Math.abs(polToMap[0] - lastLon) > 180)
+		noLine = true;
+	      lastLon = polToMap[0];
+	      projector_project(polToMap);
+	      mapCoord_x = (polToMap[0] * scale + mcx + 1) *
+		0.5 * frontBuf_width;
+	      mapCoord_y = (-polToMap[1] * scale * aspectXY - mcy + 1) *
+		0.5 * frontBuf_height;
+	      if (!isNaN(mapCoord_x) && !isNaN(mapCoord_y)) {
+		if (clipped || noLine)
+		  { ctx.moveTo(mapCoord_x, mapCoord_y); clipped = false; }
+		else ctx.lineTo(mapCoord_x, mapCoord_y);
+	      } else clipped = true;
+	    }
+	  }
+	  numRendered++; j++;
+	  if (numRendered % 128 == 0 && ctnow() - startTime >= timeout)
+	    { quitLoop = true; break; }
+	}
+	if (j >= jend) { j = 0; i++; }
+	if (quitLoop) break;
+      }
+      if (i >= rlen)
+	{ i = 0; rc++; }
+      if (quitLoop) break;
+    }
+    ctx.stroke();
+
+    this.rc = rc; this.i = i; this.j = j;
+    this.numRendered = numRendered;
+
+    /* NOTE: Although in general, the invisible eddies need to be
+       traversed to see if any parts of their tracks are visible, the
+       current render loop normally skips rendering them completely,
+       unless rLimit is set to 3.  */
+
+    this.setExitStatus(rc < rLimit);
+    this.status.preemptCode = RenderLayer.RENDERING;
+    this.status.percent =
+      numRendered * CothreadStatus.MAX_PERCENT / ranges[3];
+    return this.status;
   }
 
   return new Cothread(initCtx, contExec);
@@ -875,6 +1078,7 @@ WCKdDbgTracksLayer.loadData = WCTracksLayer.loadData;
 WCKdDbgTracksLayer.getEddy = WCTracksLayer.getEddy;
 WCKdDbgTracksLayer.getEddyXRange = WCTracksLayer.getEddyXRange;
 WCKdDbgTracksLayer.kdPVS = WCTracksLayer.kdPVS;
+WCKdDbgTracksLayer.genVBox = WCTracksLayer.genVBox;
 
 WCKdDbgTracksLayer.initCtx = function() {
   if (!this.textBuf) {
@@ -929,18 +1133,6 @@ WCKdDbgTracksLayer.contExec = function() {
   this.vbox = this.genVBox(); clipVBox(this.vbox);
   this.kdPVS(Dates.curDate, this.vbox, 31);
   return this.render();
-};
-
-/**
- * Generate a viewport bounding box from the current ViewParams.
- * @returns {Array} [ minLat, minLon, maxLat, maxLon ]
- */
-WCKdDbgTracksLayer.genVBox = function() {
-  var width = 360 / ViewParams.scale;
-  var height = 360 / ViewParams.scale / ViewParams.aspectXY;
-  var x = -ViewParams.mapCenter[0] * 180;
-  var y = -ViewParams.mapCenter[1] * 90;
-  return [ y - height / 2, x - width / 2, y + height / 2, x + width / 2 ];
 };
 
 /**
@@ -1092,5 +1284,5 @@ WCKdDbgTracksLayer.render = function() {
 /********************************************************************/
 
 /** Pointer to the current TracksLayer implementation.  */
-var TracksLayer = JSONTracksLayer;
+var TracksLayer = WCTracksLayer;
 OEV.TracksLayer = TracksLayer;

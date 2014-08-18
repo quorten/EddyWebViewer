@@ -370,10 +370,12 @@ TDProjector.prototype.unproject = function(mapToPol, projType) {
 };
 
 /**
- * Orthographic map projector with optimized tilt transformation.
+ * Orthographic map projector with optimized tilt transformation
+ * embedded.
  * @type TDProjector
  */
 var OrthoTDProjector = new TDProjector();
+OEV.OrthoTDProjector = OrthoTDProjector;
 
 OrthoTDProjector.project = function(polToMap) {
   return TDProjector.prototype.project(polToMap, 0);
@@ -384,10 +386,12 @@ OrthoTDProjector.unproject = function(mapToPol) {
 };
 
 /**
- * Perspective map projector with optimized tilt transformation.
+ * Perspective map projector with optimized tilt transformation
+ * embedded.
  * @type TDProjector
  */
 var PerspTDProjector = new TDProjector();
+OEV.PerspTDProjector = PerspTDProjector;
 
 PerspTDProjector.project = function(polToMap) {
   return TDProjector.prototype.project(polToMap, 1);

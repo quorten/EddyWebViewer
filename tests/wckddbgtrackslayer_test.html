@@ -26,15 +26,17 @@
       [ -18, 72, 54, 216 ] ];
 
     // Convenience function for using an existing test vbox.
-    var testWithKdBox = function(vbidx) {
+    var testKdBox = function(vbidx) {
       /* NOTE: This code is totally hijacking the render framework,
          for the sake of easily providing a comprehensive test suite
          for the underlying kd-tree algorithms.  */
       var vbox = exampleVBoxes[vbidx];
       OEV.ViewParams.aspectXY = (vbox[3] - vbox[1]) / (vbox[2] - vbox[0]);
-      OEV.ViewParams.mapCenter = [ -(vbox[3] + vbox[1]) / 2 / 180,
-                                   -(vbox[2] + vbox[0]) / 2 / 90 ];
       OEV.ViewParams.scale = 360 / (vbox[3] - vbox[1]);
+      OEV.ViewParams.mapCenter = 
+        [ /* -(vbox[3] + vbox[1]) / 2 * OEV.ViewParams.scale / 180 */ 0,
+          -(vbox[2] + vbox[0]) / 2 * OEV.ViewParams.scale / 90 ];
+      OEV.ViewParams.polCenter[0] = (vbox[3] + vbox[1]) / 2;
       return start();
     };
   </script>

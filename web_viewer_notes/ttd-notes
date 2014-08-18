@@ -483,3 +483,7 @@ Be careful about which Web API calls you make at the root document
 level.  Better yet, wrap all root-level initializers into a special
 startup function.  Maybe actually defer creating global objects until
 it is known that they can be created safely.
+
+The code is meant to be nearly identical to C/C++ syntax.
+
+Minimize getContext() calls.

@@ -1,0 +1,48 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"
+      lang="en" xml:lang="en">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <title>Kd-tree Test Container</title>
+  <script type="text/javascript" src="renderlayer_test.b.js"></script>
+  <script type="text/javascript">
+    var TestLayer = OEV.WCKdDbgTracksLayer;
+
+    var exampleVBoxes = [
+      [ 40, -170, 50, -160 ],
+      [ -40, -170, 50, -160 ],
+      [ 0, -170, 50, -130 ],
+      [ -50, -20, -30, 20 ],
+      [ -50, -20, 0, 20 ],
+      [ 30, 45, 50, 60 ],
+      [ 30, 75, 50, 90 ],
+      [ -50, -140, 0, -100 ],
+      [ -65, -100, -15, -60 ],
+      [ -70, -120, 70, 120 ],
+      [ -70, -70, 70, 70 ],
+      // These boxes wrap around the longitudinal edges.
+      [ -20, 160, 20, 200 ],
+      [ -18, 72, 54, 216 ] ];
+
+    // Convenience function for using an existing test vbox.
+    var testWithKdBox = function(vbidx) {
+      /* NOTE: This code is totally hijacking the render framework,
+         for the sake of easily providing a comprehensive test suite
+         for the underlying kd-tree algorithms.  */
+      var vbox = exampleVBoxes[vbidx];
+      OEV.ViewParams.aspectXY = (vbox[3] - vbox[1]) / (vbox[2] - vbox[0]);
+      OEV.ViewParams.mapCenter = [ -(vbox[3] + vbox[1]) / 2 / 180,
+                                   -(vbox[2] + vbox[0]) / 2 / 90 ];
+      OEV.ViewParams.scale = 360 / (vbox[3] - vbox[1]);
+      return start();
+    };
+  </script>
+</head>
+<body id="topBody" onload="setup()">
+
+<p>This is the HTML container for testing the kd-tree implementation
+for WCTracksLayer.  Good Luck!</p>
+
+</body>
+</html>

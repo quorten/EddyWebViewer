@@ -26,6 +26,14 @@ import "viewparams";
  * * `RenderLayer.RENDERING` -- The `RenderLayer` was preempted during
  *   rendering.
  *
+ * In some implementations that must load all data before rendering
+ * can begin, `CothreadStatus.percent` will indicate the percent
+ * downloaded when the preemptCode indicates that data is being
+ * downloaded or processed, but when the preemptCode indicates
+ * rendering, then the percent is that of the rendering process.
+ * RenderLayers with pipelined loading and rendering do not expose
+ * this quirk.
+ *
  * By convention, most RenderLayer implementations provide two
  * standard methods, `loadData()` and `render()`, which may or may not
  * be cothreaded.  The return value from `loadData()` and its

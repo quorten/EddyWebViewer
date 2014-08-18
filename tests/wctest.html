@@ -44,7 +44,8 @@ var exampleVboxes = [
   [ -65, -100, -15, -60 ],
   [ -70, -120, 70, 120 ],
   [ -70, -70, 70, 70 ],
-  [ -20, 160, 20, -160 ] ];
+  [ -20, 160, 20, -160 ],
+  [ -18, 72, 54, -144 ] ];
 var binDisplay;
 var genSLink;
 
@@ -324,6 +325,18 @@ another will be enabled based off of the user's browser capabilities.
 // track.  Don't redraw other tracks unless there are bounding
 // box intersections.
 
+/* Right, that's all great ideas, but start out simple and just redraw
+   entirely.  You know, it's going to have to be fast enough for video
+   animation.  */
+
+/*
+
+/Prioritized/ rendering: Sort the definitely visible ranges to the
+front of a range rendering array, then append the remaining ranges
+onto the end.  Process the entire array to render.
+
+*/
+
 // -------------------------------------------------------------------
 
 /**
@@ -335,7 +348,7 @@ another will be enabled based off of the user's browser capabilities.
  * Sometimes the viewport box will cross upper level kd-tree divisions
  * that would cause it to have to include an excessively large PVS
  * boundary.  For these cases, the bounding box can be subdivided up
- * to 4 times to avoid worst cases of this scenario.
+ * to `maxSplits` times to avoid worst cases of this scenario.
  *
  * Boxes can wrap around the longitudinal bounds of the map from one
  * side to the other by having a max edge that is less than a min edge
@@ -348,6 +361,10 @@ another will be enabled based off of the user's browser capabilities.
  * been clipped via {@linkcode clipVBox}() before this call.  It must
  * be of the form [ minLat, minLon, maxLat, maxLon ].  Units are
  * degrees.
+ * @param {integer} maxSplits - (optional) The maximum number of times
+ * the viewport bounding box can be split for dual-branched traversal.
+ * If set to zero or undefined, then there is no limit on the number
+ * of times the viewport bounding box can be split.
  * @returns {Array} An array of classification ranges.  Each element
  * of the array is another array with the following information: [
  * type, start, length ].  `type` is one of the following values:
@@ -355,7 +372,8 @@ another will be enabled based off of the user's browser capabilities.
  * * 1: Possibly visible
  * * 2: Definitely visible
  */
-function kdPVS(curDate, vbox) {
+var kdPVS = function(curDate, vbox, maxSplits) {
+  var maxDepth = 0|(Math.log(maxSplits) / Math.log(2));
   var curEddy = new Array(5);
 
   // Pre-separated results
@@ -367,9 +385,6 @@ function kdPVS(curDate, vbox) {
   var results = [];
   var numSplits = 0;
   var numTrims = 0;
-
-  var maxSplits = 25;
-  var maxDepth = 0|(Math.log(maxSplits) / Math.log(2));
 
   var kdvbox = [ -90, -180, 90, 180 ];
   var start = dateChunkStarts[curDate];
@@ -423,8 +438,8 @@ function kdPVS(curDate, vbox) {
       kdvbox[2+curdim] = medianVal;
       // notVis.push([ median, end - median ]);
       results.push([ 0, median, end - median ]); // Not visible
-      /* start = start; */ length = median - start; depth++;
       numTrims++;
+      /* start = start; */ length = median - start; depth++;
     }
     else if ((vbox_order > 0 &&
 	      vbox_min > medianVal && vbox_max > medianVal) ||
@@ -434,8 +449,8 @@ function kdPVS(curDate, vbox) {
       kdvbox[curdim] = medianVal;
       // notVis.push([ start, (median + 1) - start ]);
       results.push([ 0, start, (median + 1) - start ]); // Not visible
-      start = median + 1; length = end - start; depth++;
       numTrims++;
+      start = median + 1; length = end - start; depth++;
     }
     else {
       /* Split the traversal box into two boxes since neither of the
@@ -444,7 +459,7 @@ function kdPVS(curDate, vbox) {
       /* To keep the traversal algorithm fast, there is an upper limit
 	 on the number of splits that can be performed.  */
       var splitOkay =
-	numSplits < maxSplits && stack.length <= maxDepth;
+	!numSplits || (numSplits < maxSplits && stack.length <= maxDepth);
 
       /* Do not split this box if it lies entirely within the viewport
 	 bounding box.  */
@@ -511,16 +526,18 @@ function kdPVS(curDate, vbox) {
 	  results.push([ 0, median, 1 ]); // Not visible
 
         numSplits++; depth++;
+	/* Push the (sometimes) larger right partition onto the stack
+	   first.  */
         var frame = new Array(4);
         frame[0] = kdvbox.slice(0);     // kdvbox
-        frame[0][2+curdim] = medianVal;
-        frame[1] = start;               // start
-        frame[2] = median - start;      // length
+        frame[0][curdim] = medianVal;
+        frame[1] = median + 1;          // start
+        frame[2] = end - (median + 1);  // length
         frame[3] = depth;               // depth
         stack.push(frame);
 
-        kdvbox[curdim] = medianVal;
-        start = median + 1; length = end - start;
+        kdvbox[2+curdim] = medianVal;
+        /* start = start; */ length = median - start;
       } else {
 	if (invbox)
 	  // defVis.push([ start, length ]);
@@ -541,7 +558,7 @@ function kdPVS(curDate, vbox) {
   }
   // return [ notVis, posVis, defVis ];
   return results;
-}
+};
 
 // Recursively draw a kd-tree's structure.
 function kdRender(curDate, canvas, scale, ranges, maxDepth) {
@@ -664,7 +681,7 @@ function testKdWithParams(scale, vbidx, curDate) {
   kdDbg.height = 180 * scale;
   // var ctx = kdDbg.getContext("2d");
   // ctx.clearRect(0, 0, kdDbg.width, kdDbg.height);
-  var pvsResults = kdPVS(curDate, exampleVboxes[vbidx]);
+  var pvsResults = kdPVS(curDate, exampleVboxes[vbidx], 25);
   kdRender(curDate, kdDbg, scale, pvsResults);
   drawVBox(kdDbg, scale, exampleVboxes[vbidx]);
 }
@@ -796,7 +813,7 @@ function processTestFile() {
       }
 
       var vbox = exampleVboxes[10];
-      var pvsResults = kdPVS(0, vbox);
+      var pvsResults = kdPVS(0, vbox, 25);
       /* for (var i = 0, pvsRes_len = pvsResults.length; i < pvsRes_len; i++)
         dispArray(pvsResults[i]); */
       dispArray(pvsResults);
@@ -836,7 +853,7 @@ function processTestFile() {
       dispDiag(textBuf.substr(0, 4096), body);
 
       // console.log("Done processing.");
-      alert("Done processing.");
+      // alert("Done processing.");
 
       // Cleanup
       /* None of these deletes will succeed, though, since all of the

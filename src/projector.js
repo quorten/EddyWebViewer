@@ -214,6 +214,76 @@ MollweideProjector.unproject = function(mapToPol) {
 };
 
 /**
+ * Orthographic map projector.
+ * @type Projector
+ */
+var OrthoProjector =  new Projector();
+OEV.OrthoProjector = OrthoProjector;
+
+OrthoProjector.project = function(polToMap) {
+  if (polToMap[0] < -90 || polToMap[0] > 90)
+    { polToMap[0] = NaN; polToMap[1] = NaN; return; }
+  var latitude = DEG2RAD * polToMap[1];
+  polToMap[1] = Math.sin(latitude);
+  polToMap[0] = Math.sin(DEG2RAD * polToMap[0]) * Math.cos(latitude);
+};
+
+OrthoProjector.unproject = function(mapToPol) {
+  var latitude = Math.asin(mapToPol[1]);
+  mapToPol[1] = RAD2DEG * latitude;
+  mapToPol[0] = RAD2DEG * Math.asin(mapToPol[0] / Math.cos(latitude));
+};
+
+/**
+ * Perspective map projector.
+ * @type Projector
+ */
+var PerspProjector = new Projector();
+OEV.PerspProjector = PerspProjector;
+
+PerspProjector.project = function(polToMap) {
+  if (polToMap[0] < -90 || polToMap[0] > 90)
+    { polToMap[0] = NaN; polToMap[1] = NaN; return; }
+  // r must be one: this simplifies the calculations
+  var r = 1; // 6371; // radius of the earth in kilometers
+  var d = ViewParams.perspAltitude / 6371; // altitude in kilometers
+  // focal length in units of the screen dimensions
+  var f = 1 / Math.tan(DEG2RAD * ViewParams.perspFOV / 2);
+  var latitude = DEG2RAD * polToMap[1];
+  var cos_latitude = Math.cos(latitude);
+  var r3src_x = Math.sin(DEG2RAD * polToMap[0]) * cos_latitude /* * r */;
+  var r3src_y = Math.sin(latitude) /* * r */;
+  var r3src_z = Math.cos(DEG2RAD * polToMap[0]) * cos_latitude /* * r */;
+
+  polToMap[0] = r3src_x * f / (-r3src_z + (r + d));
+  polToMap[1] = r3src_y * f / (-r3src_z + (r + d));
+};
+
+PerspProjector.unproject = function(mapToPol) {
+  var r3src_x, r3src_y, r3src_z;
+
+  // r must be one: this simplifies the calculations
+  var r = 1; // 6371; // radius of the earth in kilometers
+  var d = ViewParams.perspAltitude / 6371; // altitude in kilometers
+  // focal length in units of the screen dimensions
+  var f = 1 / Math.tan(DEG2RAD * ViewParams.perspFOV / 2);
+  var x_pix = mapToPol[0];
+  var y_pix = mapToPol[1];
+
+  var w = (Math.pow(x_pix, 2) + Math.pow(y_pix, 2)) / Math.pow(f, 2);
+
+  var a = 1 + w;
+  var b = -2 * w * (r + d);
+  var c = w * Math.pow(r + d, 2) - 1 /* 1 == Math.pow(r, 2) */;
+
+  r3src_z = (-b + Math.sqrt(Math.pow(b, 2) - 4 * a * c)) / (2 * a);
+  if (isNaN(r3src_z))
+    { mapToPol[0] = NaN; mapToPol[1] = NaN; return; }
+  r3src_x = x_pix / f * (-r3src_z + (r + d));
+  r3src_y = y_pix / f * (-r3src_z + (r + d));
+};
+
+/**
  * 3D map projectors, with optimized tilt transformations embedded.
  * This class is designed so that common code between the orthographic
  * and perspective projectors can be contained in the same functions.
@@ -300,71 +370,29 @@ TDProjector.prototype.unproject = function(mapToPol, projType) {
 };
 
 /**
- * Orthographic map projector.
- * @type Projector
+ * Orthographic map projector with optimized tilt transformation.
+ * @type TDProjector
  */
-var OrthoProjector =  new Projector();
-OEV.OrthoProjector = OrthoProjector;
+var OrthoTDProjector = new TDProjector();
 
-OrthoProjector.project = function(polToMap) {
-  if (polToMap[0] < -90 || polToMap[0] > 90)
-    { polToMap[0] = NaN; polToMap[1] = NaN; return; }
-  var latitude = DEG2RAD * polToMap[1];
-  polToMap[1] = Math.sin(latitude);
-  polToMap[0] = Math.sin(DEG2RAD * polToMap[0]) * Math.cos(latitude);
+OrthoTDProjector.project = function(polToMap) {
+  return TDProjector.prototype.project(polToMap, 0);
 };
 
-OrthoProjector.unproject = function(mapToPol) {
-  var latitude = Math.asin(mapToPol[1]);
-  mapToPol[1] = RAD2DEG * latitude;
-  mapToPol[0] = RAD2DEG * Math.asin(mapToPol[0] / Math.cos(latitude));
+OrthoTDProjector.unproject = function(mapToPol) {
+  return TDProjector.prototype.unproject(mapToPol, 0);
 };
 
 /**
- * Perspective map projector.
- * @type Projector
+ * Perspective map projector with optimized tilt transformation.
+ * @type TDProjector
  */
-var PerspProjector = new Projector();
-OEV.PerspProjector = PerspProjector;
+var PerspTDProjector = new TDProjector();
 
-PerspProjector.project = function(polToMap) {
-  if (polToMap[0] < -90 || polToMap[0] > 90)
-    { polToMap[0] = NaN; polToMap[1] = NaN; return; }
-  // r must be one: this simplifies the calculations
-  var r = 1; // 6371; // radius of the earth in kilometers
-  var d = ViewParams.perspAltitude / 6371; // altitude in kilometers
-  // focal length in units of the screen dimensions
-  var f = 1 / Math.tan(DEG2RAD * ViewParams.perspFOV / 2);
-  var latitude = DEG2RAD * polToMap[1];
-  var cos_latitude = Math.cos(latitude);
-  var r3src_x = Math.sin(DEG2RAD * polToMap[0]) * cos_latitude /* * r */;
-  var r3src_y = Math.sin(latitude) /* * r */;
-  var r3src_z = Math.cos(DEG2RAD * polToMap[0]) * cos_latitude /* * r */;
-
-  polToMap[0] = r3src_x * f / (-r3src_z + (r + d));
-  polToMap[1] = r3src_y * f / (-r3src_z + (r + d));
+PerspTDProjector.project = function(polToMap) {
+  return TDProjector.prototype.project(polToMap, 1);
 };
 
-PerspProjector.unproject = function(mapToPol) {
-  var r3src_x, r3src_y, r3src_z;
-
-  // r must be one: this simplifies the calculations
-  var r = 1; // 6371; // radius of the earth in kilometers
-  var d = ViewParams.perspAltitude / 6371; // altitude in kilometers
-  // focal length in units of the screen dimensions
-  var f = 1 / Math.tan(DEG2RAD * ViewParams.perspFOV / 2);
-  var x_pix = mapToPol[0];
-  var y_pix = mapToPol[1];
-
-  var w = (Math.pow(x_pix, 2) + Math.pow(y_pix, 2)) / Math.pow(f, 2);
-
-  var a = 1 + w;
-  var b = -2 * w * (r + d);
-  var c = w * Math.pow(r + d, 2) - 1 /* 1 == Math.pow(r, 2) */;
-
-  r3src_z = (-b + Math.sqrt(Math.pow(b, 2) - 4 * a * c)) / (2 * a);
-  if (isNaN(r3src_z))
-    { mapToPol[0] = NaN; mapToPol[1] = NaN; return; }
-  r3src_x = x_pix / f * (-r3src_z + (r + d));
-  r3src_y = y_pix / f * (-r3src_z + (r + d));
+PerspTDProjector.unproject = function(mapToPol) {
+  return TDProjector.prototype.unproject(mapToPol, 1);
 };

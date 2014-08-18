@@ -484,6 +484,8 @@ var lineInVBox = function(line, vbox) {
   return false;
 };
 
+OEV.lineInVBox = lineInVBox;
+
 /**
  * Check if a box is partially contained within a bounding box.  Note
  * that for this algorithm, boxes that only touch on the edges, but do
@@ -516,6 +518,8 @@ var boxInVBox = function(box1, vbox) {
   return false;
 };
 
+OEV.boxInVBox = boxInVBox;
+
 /**
  * Check if a point is contained within a bounding box.  Note that for
  * this algorithm, points that only touch the edge of the box, but are
@@ -533,3 +537,52 @@ var ptInVBox = function(point, vbox) {
     return true;
   return false;
 };
+
+OEV.ptInVBox = ptInVBox;
+
+/**
+ * Clip an absolutely oversized viewport bounding box (vbox) to a
+ * reasonable size.  The center of the vbox must be located on a
+ * normalized polar coordinate, i.e. it cannot be way off the edges of
+ * the map.
+ * @param {Array} vbox - The vbox [ minLat, minLon, maxLat, maxLon ]
+ * to clip by modifying in place.
+ */
+var clipVBox = function(vbox) {
+  // var EPSILON = 1 / (1 << 6);
+
+  /* Clip the latitudes if the both exceed the bounds.  */
+  if (vbox[0] < -90 && vbox[2] > 90)
+    { vbox[0] = -90; vbox[2] = 90; }
+
+  /* If the min or max latitude exceeds the top or the bottom of the
+     latitude range, then make the box cover the entire respective top
+     or bottom of the map.  (The user is looking at the polar
+     regions.)  */
+  else if (vbox[0] < -90) {
+    vbox[2] = -180 - vbox[0]; vbox[0] = -90;
+    vbox[1] = -180; vbox[3] = 180 /* - EPSILON */;
+    return;
+  } else if (vbox[2] > 90) {
+    vbox[0] = 180 - vbox[2]; vbox[2] = 90;
+    vbox[1] = -180; vbox[3] = 180 /* - EPSILON */;
+    return;
+  }
+
+  /* If the min or max longitudes greatly exceed the longitudinal
+     bounds of the map, then adjust the min and max longitudes to
+     cover the entire longitudinal range.  */
+  if (vbox[1] < -360 || vbox[3] >= 360 ||
+      (vbox[1] < -180 && vbox[3] >= 180))
+    { vbox[1] = -180; vbox[3] = 180 /* - EPSILON */; }
+
+  /* Otherwise, if the min or max longitudes only partially exceed the
+     bounds, then create a box that wraps around the edges of the
+     map.  */
+  else if (vbox[1] < -180)
+    vbox[1] = 360 + vbox[1];
+  else if (vbox[3] > 180)
+    vbox[3] = -360 + vbox[3];
+};
+
+OEV.clipVBox = clipVBox;

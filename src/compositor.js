@@ -672,7 +672,9 @@ function setMouseDown(event) {
     ctx.fillRect(0, 0, canvas.width, canvas.height);
   } */
   old_lon_rot = ViewParams.polCenter[0];
-  old_tilt = ViewParams.mapCenter[1];
+  if (ViewParams.projector == EquirectProjector)
+    old_tilt = ViewParams.mapCenter[1];
+  else old_tilt = ViewParams.polCenter[1];
 }
 
 function panGlobe(event) {
@@ -708,8 +710,11 @@ function panGlobe(event) {
   }
   ViewParams.polCenter[0] = old_lon_rot + (firstPoint.x - event.clientX) /
     ViewParams.viewport[0] / pan_scale * equirect_x_scale * 180;
-  ViewParams.mapCenter[1] = old_tilt - (-(firstPoint.y - event.clientY)) /
-    ViewParams.viewport[1] / pan_scale * 180 / 90 * ViewParams.scale;
+  if (ViewParams.projector == EquirectProjector)
+    ViewParams.mapCenter[1] = old_tilt - (-(firstPoint.y - event.clientY)) /
+      ViewParams.viewport[1] / pan_scale * 180 / 90 * ViewParams.scale;
+  else ViewParams.polCenter[1] = old_tilt - (firstPoint.y - event.clientY) /
+	 ViewParams.viewport[1] / pan_scale * 180;
 
   /* if (tilt > 90) tilt = 90;
   if (tilt < -90) tilt = -90; */

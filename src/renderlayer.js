@@ -257,11 +257,8 @@ RayTracer.prototype.contExec = function() {
          factors as necessary.  */
       mapToPol[0] = (((x + xj) / destImg_width) * 2 - 1 -
 		     ViewParams.mapCenter[0]) * ViewParams.inv_scale;
-      /* NOTE: We should subtractg mapCenter AFTER inv_aspectXY, but
-         for now, we don't, for conformity with the other buggy
-         code.  */
-      mapToPol[1] = (-(((y + yj) / destImg_height) * 2 - 1) -
-		     ViewParams.mapCenter[1]) * inv_aspectXY *
+      mapToPol[1] = (-(((y + yj) / destImg_height) * 2 - 1) *
+		     inv_aspectXY - ViewParams.mapCenter[1]) *
 	ViewParams.inv_scale;
 
       // Unproject.
@@ -427,7 +424,8 @@ EquiRenderLayer.prototype.render = function() {
     var fbheight = this.frontBuf.height;
     var x = ((ViewParams.mapCenter[0] + 1) / 2 +
 	     -ViewParams.polCenter[0] * ViewParams.scale / 360) * fbwidth;
-    var y = (-ViewParams.mapCenter[1] + 1) / 2 * fbheight;
+    var y = (-ViewParams.mapCenter[1] * ViewParams.aspectXY + 1) / 2 *
+      fbheight;
 
     /* Find the coordinates on the destination canvas where the left,
        top, right, and bottom edges of the image lie.  */
@@ -575,7 +573,8 @@ EquiCSSRenderLayer.prototype.render = function() {
   var fbheight = ViewParams.viewport[1];
   var x = ((ViewParams.mapCenter[0] + 1) / 2 +
 	   -ViewParams.polCenter[0] * ViewParams.scale / 360) * fbwidth;
-  var y = (-ViewParams.mapCenter[1] + 1) / 2 * fbheight;
+  var y = (-ViewParams.mapCenter[1] * ViewParams.aspectXY + 1) / 2 *
+    fbheight;
 
   /* Find the coordinates on the destination canvas where the left,
      top, right, and bottom edges of the image lie.  */

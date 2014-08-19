@@ -205,15 +205,33 @@ Compositor.finishRenderJobs = function(fast, noContinue) {
     }
   }
 
-  if (!this.stopSignal &&
-      earthTexStatus.returnType != CothreadStatus.FINISHED ||
-      sshStatus.returnType != CothreadStatus.FINISHED ||
-      tracksStatus.returnType != CothreadStatus.FINISHED)
-    return requestAnimationFrame(
-	       makeEventWrapper(Compositor, "finishRenderJobs"));
-  else {
+  if (this.stopSignal) {
     this.renderInProg = false;
     this.stopSignal = false;
+  } else if (earthTexStatus.returnType != CothreadStatus.FINISHED ||
+	   sshStatus.returnType != CothreadStatus.FINISHED ||
+	   tracksStatus.returnType != CothreadStatus.FINISHED)
+    return requestAnimationFrame(
+	       makeEventWrapper(Compositor, "finishRenderJobs"));
+  else if (earthTexStatus.returnType == CothreadStatus.FINISHED &&
+	   sshStatus.returnType == CothreadStatus.FINISHED &&
+	   tracksStatus.returnType == CothreadStatus.FINISHED &&
+	   this.playMode) {
+    if (Dates.curDate >= Dates.dateList.length - 1) {
+      this.playMode = false;
+      this.renderInProg = false;
+      return;
+    }
+    Dates.curDate++;
+    var dateStr = OEV.Dates.dateList[OEV.Dates.curDate];
+    document.getElementById('cfg-curDate').value = dateStr;
+    SSHLayer.initCtx();
+    TracksLayer.initCtx();
+    this.renderPart = 0;
+    return requestAnimationFrame(
+	       makeEventWrapper(Compositor, "finishRenderJobs"));
+  } else {
+    this.renderInProg = false;
   }
 };
 
@@ -254,7 +272,8 @@ Compositor.switchRenderLayer = function(absName, impName) {
 /* Analyze the current rendering parameters and for each RenderLayer,
    choose the most optimal implementation.  */
 Compositor.optiRenderImp = function() {
-  if (ViewParams.projector == EquirectProjector) {
+  if (ViewParams.projector == EquirectProjector &&
+      ViewParams.polCenter[1] == 0) {
     this.switchRenderLayer(EarthTexLayer, EquiEarthTexLayer);
     OEV.EarthTexLayer = EarthTexLayer = EquiEarthTexLayer;
     if (SSHParams.shadeStyle == 0 &&
@@ -712,7 +731,7 @@ function panGlobe(event) {
     ViewParams.viewport[0] / pan_scale * equirect_x_scale * 180;
   if (ViewParams.projector == EquirectProjector)
     ViewParams.mapCenter[1] = old_tilt - (-(firstPoint.y - event.clientY)) /
-      ViewParams.viewport[1] / pan_scale * 180 / 90 * ViewParams.scale;
+      ViewParams.viewport[1] / pan_scale * 180 / 180 * ViewParams.scale;
   else ViewParams.polCenter[1] = old_tilt - (firstPoint.y - event.clientY) /
 	 ViewParams.viewport[1] / pan_scale * 180;
 
@@ -723,7 +742,7 @@ function panGlobe(event) {
 
   var cfg_latLon = document.getElementById("cfg-latLon");
   if (cfg_latLon) {
-    var dispLat = -ViewParams.mapCenter[1] * 90 / ViewParams.scale;
+    var dispLat = -ViewParams.mapCenter[1] * 180 / ViewParams.scale;
     var dispLon = ViewParams.polCenter[0];
     if (dispLat < 0)
       dispLat = (-dispLat).toFixed(3) + " S";

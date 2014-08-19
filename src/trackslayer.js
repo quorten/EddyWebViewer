@@ -160,7 +160,7 @@ JSONTracksLayer.render = (function() {
     this.edc = edc;
 
     edc.clearRect(0, 0, frontBuf.width, frontBuf.height);
-    edc.lineWidth = frontBuf.height / 720 * ViewParams.scale;
+    edc.lineWidth = frontBuf.width / 1440 * ViewParams.scale;
     edc.strokeStyle = "#800080";
     edc.lineJoin = "round";
 
@@ -843,7 +843,7 @@ WCTracksLayer.genVBox = function() {
   var height = 360 / ViewParams.scale / ViewParams.aspectXY;
   var x = /* -ViewParams.mapCenter[0] / ViewParams.scale * 180 */ +
     ViewParams.polCenter[0];
-  var y = -ViewParams.mapCenter[1] / ViewParams.scale * 90;
+  var y = -ViewParams.mapCenter[1] / ViewParams.scale * 180;
   return [ y - height / 2, x - width / 2, y + height / 2, x + width / 2 ];
 };
 
@@ -871,7 +871,7 @@ WCTracksLayer.render = (function() {
     this.ctx = ctx;
 
     ctx.clearRect(0, 0, frontBuf.width, frontBuf.height);
-    ctx.lineWidth = frontBuf.height / 720 * ViewParams.scale;
+    ctx.lineWidth = frontBuf.width / 1440 * ViewParams.scale;
     ctx.strokeStyle = "#800080";
     ctx.lineJoin = "round";
 
@@ -916,7 +916,7 @@ WCTracksLayer.render = (function() {
     var scale = ViewParams.scale;
     var mcx = ViewParams.mapCenter[0], mcy = ViewParams.mapCenter[1];
     var projector_project = ViewParams.projector.project;
-    var arcRad = 2 * frontBuf_height / 720 * ViewParams.scale;
+    var arcRad = 2 * frontBuf_width / 1440 * ViewParams.scale;
 
     /* rc = render class.  Draw all the definitely visible and
        possibly visible edies and tracks.  Optionally (rc = 2), check
@@ -977,7 +977,7 @@ WCTracksLayer.render = (function() {
 	  projector_project(polToMap);
 	  mapCoord_x = (polToMap[0] * scale + mcx + 1) *
 	    0.5 * frontBuf_width;
-	  mapCoord_y = (-polToMap[1] * scale * aspectXY - mcy + 1) *
+	  mapCoord_y = ((-polToMap[1] * scale - mcy) * aspectXY + 1) *
 	    0.5 * frontBuf_height;
 	  /* NOTE: We should probably use box clipping rather than
 	     point clipping for the eddy markers, to avoid the effect
@@ -1002,7 +1002,7 @@ WCTracksLayer.render = (function() {
 	      projector_project(polToMap);
 	      mapCoord_x = (polToMap[0] * scale + mcx + 1) *
 		0.5 * frontBuf_width;
-	      mapCoord_y = (-polToMap[1] * scale * aspectXY - mcy + 1) *
+	      mapCoord_y = ((-polToMap[1] * scale - mcy) * aspectXY + 1) *
 		0.5 * frontBuf_height;
 	    }
 	    if (!isNaN(mapCoord_x) && !isNaN(mapCoord_y))
@@ -1044,7 +1044,7 @@ WCTracksLayer.render = (function() {
 	      projector_project(polToMap);
 	      mapCoord_x = (polToMap[0] * scale + mcx + 1) *
 		0.5 * frontBuf_width;
-	      mapCoord_y = (-polToMap[1] * scale * aspectXY - mcy + 1) *
+	      mapCoord_y = ((-polToMap[1] * scale - mcy) * aspectXY + 1) *
 		0.5 * frontBuf_height;
 	      if (!isNaN(mapCoord_x) && !isNaN(mapCoord_y)) {
 		if (clipped || noLine)

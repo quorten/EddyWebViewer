@@ -721,12 +721,17 @@ function onplay(event) {
   this.id = 'btn-pause';
   this.title = 'Pause';
   this.ondblclick = this.onclick = onpause;
+  OEV.Compositor.playMode = true;
+  OEV.SSHLayer.initCtx();
+  OEV.TracksLayer.initCtx();
+  OEV.Compositor.startRenderLoop();
 }
 
 function onpause(event) {
   this.id = 'btn-play';
   this.title = 'Play';
   this.ondblclick = this.onclick = onplay;
+  OEV.Compositor.playMode = false;
 }
 
 function applyCurDate(updateRenderLayers) {
@@ -845,8 +850,10 @@ function initGUIHooks() {
     if (isNaN(parseNum1) || isNaN(parseNum2)) return; // TODO reset value
 
     if (parts[1] == 'S')
-      OEV.ViewParams.mapCenter[1] = -(-parseNum1) / 90;
-    else OEV.ViewParams.mapCenter[1] = (-parseNum1) / 90;
+      OEV.ViewParams.mapCenter[1] = -(-parseNum1) / 180 *
+        OEV.ViewParams.scale;
+    else OEV.ViewParams.mapCenter[1] = (-parseNum1) / 180 *
+           OEV.ViewParams.scale;
     if (parts[3] == 'W')
       OEV.ViewParams.polCenter[0] = -parseNum2;
     else OEV.ViewParams.polCenter[0] = parseNum2;

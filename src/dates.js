@@ -15,6 +15,36 @@ OEV.Dates = Dates;
 /** The current date index selected by the user.  */
 Dates.curDate = 0;
 
+/**
+ * Assign the current date index using a date given as a string.
+ * @returns `true` on successful date change, `false` otherwise.
+ */
+Dates.curDateFromString = function(dateStr) {
+  if (!this.dateList)
+    return;
+  var dateVal = +(new Date(dateStr));
+  if (isNaN(dateVal))
+    return false;
+
+  /* Linear search for the closest match to the user-provided
+     date.  */
+  var numDates = this.dateList.length;
+  var Dates_realTimes = OEV.Dates.realTimes;
+  var realTimes = this.realTimes;
+  for (var i = 0; i < numDates; i++) {
+    if (realTimes[i] > dateVal) {
+      if (i > 0) this.curDate = i - 1;
+      else this.curDate = 0;
+      return true;
+    }
+  }
+
+  /* If the date is greater than all date indexes, then set curDate to
+     the last possible date index.  */
+  this.curDate = numDates - 1;
+  return true;
+};
+
 Dates.procData = function(httpRequest, responseText) {
   var doneProcData = false;
   var procError = false;

@@ -141,8 +141,8 @@ JSONTracksLayer.acLoad.procData = function(httpRequest, responseText) {
 };
 
 /** Cyclonic tracks loader.  */
-JSONTracksLayer.cLoad = new XHRLoader("../data/tracks/cyc_bu_tracks.json");
-// JSONTracksLayer.cLoad = new XHRLoader("../data/tracks/scyc.json");
+// JSONTracksLayer.cLoad = new XHRLoader("../data/tracks/cyc_bu_tracks.json");
+JSONTracksLayer.cLoad = new XHRLoader("../data/tracks/scyc.json");
 
 JSONTracksLayer.cLoad.procData = JSONTracksLayer.acLoad.procData;
 
@@ -221,11 +221,11 @@ JSONTracksLayer.render = (function() {
        benchmark at startup to tell which behavior we should use.  */
     // edc.beginPath();
     while (true /* i < numTracks */) {
-      /* This line is actually supposed to be a goto at the end of the
-	 loop body, but JavaScript doesn't support goto with a clean
-	 syntax.  Rather than make it a goto at the end of the loop
-	 body, move it to the start of the loop body, even though it
-	 doesn't conceptually belong there.  */
+      /* These lines are actually supposed to be a goto at the end of
+	 the loop body, but JavaScript doesn't support goto with a
+	 clean syntax.  Rather than make it a goto at the end of the
+	 loop body, move it to the start of the loop body, even though
+	 it doesn't conceptually belong there.  */
       if (renderPart == 2) { renderPart = 0; i++; }
       if (i >= numTracks) break;
 
@@ -363,6 +363,8 @@ JSONTracksLayer.render = (function() {
  *
  * `this.notifyFunc` is used to wake up the main loop to load more
  * data, if provided.
+ *
+ * NOTE: This renderer is currently unable to filter tracks by length.
  */
 var WCTracksLayer = new RenderLayer();
 OEV.WCTracksLayer = WCTracksLayer;
@@ -941,8 +943,19 @@ WCTracksLayer.render = (function() {
 	if (j == 0) j = curRange[0];
 	var jend = curRange[0] + curRange[1];
 	while (j < jend) {
-	  ctx.beginPath();
 	  wctl.getEddy(curEddy, j);
+
+	  if ((!TracksParams.dispAcyc && curEddy[0] == 0) ||
+	      (!TracksParams.dispCyc && curEddy[0] == 1)) {
+	    /* FIXME: We should not duplicate this code that belongs
+	       at the end of the loop.  */
+	    numRendered++; j++;
+	    if (numRendered % 128 == 0 && ctnow() - startTime >= timeout)
+	      { quitLoop = true; break; }
+	    continue;
+	  }
+
+	  ctx.beginPath();
 	  var next = curEddy[3], prev = curEddy[4];
 	  /* `lastLon' is used to determine if drawing a line between
 	     two points would cause it to span more than 180 degrees
@@ -1299,5 +1312,4 @@ WCKdDbgTracksLayer.render = function() {
 /********************************************************************/
 
 /** Pointer to the current TracksLayer implementation.  */
-var TracksLayer = WCTracksLayer;
-OEV.TracksLayer = TracksLayer;
+var TracksLayer = OEV.TracksLayer = WCTracksLayer;

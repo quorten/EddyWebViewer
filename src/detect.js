@@ -29,6 +29,7 @@ excanvas depends on getElementsByTagName
 new Image()
 
 performance.now
+window.performance.now
 
 window.setTimeout
 

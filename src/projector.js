@@ -281,6 +281,8 @@ PerspProjector.unproject = function(mapToPol) {
     { mapToPol[0] = NaN; mapToPol[1] = NaN; return; }
   r3src_x = x_pix / f * (-r3src_z + (r + d));
   r3src_y = y_pix / f * (-r3src_z + (r + d));
+  mapToPol[1] = RAD2DEG * Math.asin(r3src_y);
+  mapToPol[0] = RAD2DEG * Math.atan2(r3src_x, r3src_z);
 };
 
 /**

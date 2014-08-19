@@ -25,74 +25,42 @@ Compositor.dispLandMasses = true;
 // Display the SSH overlay?
 Compositor.dispSSH = true;
 
-/*
-
-Rather than using the above parameters, how about use an array of
-components?  For the functions that operate on all components, they
-will not pickup functions that have been removed from the array.
-
-// Component RenderLayers of this Compositor.
-Compositor.comps = [];
-
-function toggleSSH() {
-  var found = false;
-  for (var i = 0, len = Compositor.comps.length; i < len; i++) {
-    if (Compositor.comps[i] == SSHLayer) {
-      Compositor.comps.splice(i, 1);
-      found = true; break;
-    }
-  }
-  if (!found) {
-    Compositor.comps.push(SSHLayer);
-  }
-}
-
-What to do with fitCanvasToCntr and the buffer?  No longer used like
-they were previously.
-
-For now, concentrate on adding how ever many switches and controls it
-takes to get it to work.  Then clean it up later.
-
- */
-
 /* Perform startup initialization for the whole web viewer.  */
 Compositor.init = function() {
+  // Add all the RenderLayers to the GUI containment.
   this.drawingContainer = document.getElementById("drawingContainer");
-  this.canvas = document.createElement("canvas"); // Front buffer
-  // TODO: Perform capabilities check here.
-  this.canvas.id = "drawingPad";
-  this.canvas.style.cssText = "display: none";
-  this.drawingContainer.appendChild(this.canvas);
+  EarthTexLayer.frontBuf.className = "renderLayer";
+  this.drawingContainer.appendChild(EarthTexLayer.frontBuf);
+  SSHLayer.frontBuf.className = "renderLayer";
+  this.drawingContainer.appendChild(SSHLayer.frontBuf);
+  TracksLayer.frontBuf.className = "renderLayer";
+  this.drawingContainer.appendChild(TracksLayer.frontBuf);
 
-  this.fitCanvasToCntr();
+  this.fitViewportToCntr();
+  ViewParams.projector = EquirectProjector;
+  this.optiRenderImp();
 
-  // Create a backbuffer to pull pixels from.
-  this.backbuf = document.createElement("canvas");
-  this.backbuf.id = "compositeBackbuf";
+  EarthTexLayer.frontBuf.style.cssText = "display: none";
+  SSHLayer.frontBuf.style.cssText = "display: none";
+  TracksLayer.frontBuf.style.cssText = "display: none";
 
   this.noDouble = false;
   this.ready = false;
 
-  // Preload the data.
-
-  // Initialize the overlays.
-  this.projEarthTex.timeout = 15;
-  Dates.notifyFunc = makeEventWrapper(Compositor, "finishStartup");
-  EarthTexLayer.loadData.notifyFunc =
-    makeEventWrapper(Compositor, "finishStartup");
-  EarthTexLayer.loadData.timeout = 15;
-  SSHLayer.loadData.notifyFunc =
-    makeEventWrapper(Compositor, "finishStartup");
+  /* Preload the required data so that the GUI can indicate these
+     steps are in progress.  */
+  var finishWrapper = makeEventWrapper(Compositor, "finishStartup");
+  Dates.timeout = 15;
+  Dates.notifyFunc = finishWrapper;
   SSHLayer.loadData.timeout = 15;
-  SSHLayer.timeout = 15;
-  TracksLayer.loadData.notifyFunc =
-    makeEventWrapper(Compositor, "finishStartup");
+  SSHLayer.loadData.notifyFunc = finishWrapper;
   TracksLayer.loadData.timeout = 15;
-  TracksLayer.timeout = 15;
+  TracksLayer.loadData.notifyFunc = finishWrapper;
 
-  Dates.start();
-  SSHLayer.loadData.start();
-  TracksLayer.loadData.start();
+  Dates.initCtx();
+  EarthTexData.initLoad(15, finishWrapper);
+  SSHLayer.loadData.initCtx();
+  TracksLayer.loadData.initCtx();
 
   return this.finishStartup();
 };
@@ -101,157 +69,216 @@ Compositor.init = function() {
 Compositor.setViewport = function(width, height) {
   ViewParams.viewport[0] = width;
   ViewParams.viewport[1] = height;
+  ViewParams.aspectXY = width / height;
   EarthTexLayer.setViewport(width, height);
   SSHLayer.setViewport(width, height);
   TracksLayer.setViewport(width, height);
 };
 
-/* Reset all RenderLayers to their start condition at once.  Actual
-   rendering should be finished via `finishRenderJobs()'.  */
+/* Reset all RenderLayers to their start condition at once, and start
+   a render loop if there isn't one already running.  */
 Compositor.startRender = function() {
   EarthTexLayer.initCtx();
   SSHLayer.initCtx();
   TracksLayer.initCtx();
+  if (!this.renderInProg) {
+    this.renderPart = 0;
+    return this.finishRenderJobs();
+  }
+};
+
+/* If there is not a currently running render loop, start one.  */
+Compositor.startRenderLoop = function() {
+  if (!this.renderInProg) {
+    this.renderPart = 0;
+    return this.finishRenderJobs();
+  }
 };
 
 Compositor.finishStartup = function() {
+  var datesStatus = Dates.continueCT();
+  var earthTexStatus = EarthTexData.loadData.continueCT();
   var sshStatus = SSHLayer.loadData.continueCT();
   var tracksStatus = TracksLayer.loadData.continueCT();
-  if (tracksStatus.returnType != CothreadStatus.FINISHED ||
-      sshStatus.returnType != CothreadStatus.FINISHED) {
-    if (tracksStatus.preemptCode == CothreadStatus.IOWAIT ||
-	sshStatus.preemptCode == CothreadStatus.IOWAIT)
+  if (datesStatus.returnType != CothreadStatus.FINISHED ||
+      earthTexStatus.returnType != CothreadStatus.FINISHED ||
+      sshStatus.returnType != CothreadStatus.FINISHED ||
+      tracksStatus.returnType != CothreadStatus.FINISHED) {
+    if (datesStatus.preemptCode == CothreadStatus.IOWAIT ||
+	earthTexStatus.preemptCode == CothreadStatus.IOWAIT ||
+	sshStatus.preemptCode == CothreadStatus.IOWAIT ||
+	tracksStatus.preemptCode == CothreadStatus.IOWAIT)
       return;
-    return setTimeout(makeEventWrapper(Compositor, "finishStartup"), 300);
+    return window.setTimeout(
+	makeEventWrapper(Compositor, "finishStartup"), 300);
   }
+
+  // Prevent final initialization from being run twice.
   if (Compositor.noDouble)
     return;
-  if (!Compositor.ready)
-    return;
+  /* if (!Compositor.ready)
+    return; */
   Compositor.noDouble = true;
-  SSHLayer.loadData.notifyFunc =
-    makeEventWrapper(Compositor, "finishRenderJobs");
 
-  /* If dates finished loading, then initialize curDate.  */
-
-  var width = 1440; var height = 721;
-  var projector;
-  if (this.projector == Compositor.rayOrtho ||
-      this.projector == Compositor.rayPersp)
-    projector = EquirectProjector;
-  else
-    projector = this.projector;
-  SSHLayer.setViewport(null, width, height, width / height,
-		       projector);
-  width = Compositor.backbuf.width;
-  height = Compositor.backbuf.height;
-  TracksLayer.setViewport(null, width, height, width / height,
-			  projector);
-
-  /* Connect the front buffer to the GUI now that loading is
+  /* Connect the front buffers to the GUI now that loading is
      finished.  */
   var loadingScreen = document.getElementById("loadingScreen");
   if (loadingScreen)
     loadingScreen.style.cssText = "display: none";
-  this.canvas.style.cssText = "";
-  this.canvas.onmousedown = setMouseDown;
-  if (!this.canvas.setCapture)
+
+  EarthTexLayer.frontBuf.style.cssText = "";
+  SSHLayer.frontBuf.style.cssText = "";
+  TracksLayer.frontBuf.style.cssText = "";
+
+  this.drawingContainer.onmousedown = setMouseDown;
+  if (!this.drawingContainer.setCapture)
     window.onmousemove = panGlobe;
   else {
-    this.canvas.onmousemove = panGlobe;
-    this.canvas.onmouseup = setMouseUp;
+    this.drawingContainer.onmousemove = panGlobe;
+    this.drawingContainer.onmouseup = setMouseUp;
   }
-  addWheelListener(this.canvas, zoomGlobe);
+  addWheelListener(this.drawingContainer, zoomGlobe);
+
+  /* This should probably go in the GUI setup code... */
+  window.onorientationchange = window.onresize = function() {
+    Compositor.fitViewportToCntr();
+    Compositor.startRender();
+  };
 
   /* Now that all the necessary startup data is loaded, we should
      proceed to rendering the first frame.  */
-  this.projEarthTex.start();
-  SSHLayer.render.start();
-  TracksLayer.render.start();
-  return this.finishRenderJobs();
+  var renderWrapper = makeEventWrapper(Compositor, "finishRenderJobs");
+  EarthTexLayer.timeout = 15;
+  EarthTexLayer.notifyFunc = renderWrapper;
+  SSHLayer.timeout = 15;
+  SSHLayer.notifyFunc = renderWrapper;
+  TracksLayer.timeout = 15;
+  TracksLayer.notifyFunc = renderWrapper;
+  return this.startRender();
 };
 
 Compositor.renderInProg = false;
 
 /* Finish any render jobs that may be pending from TracksLayer or
-   SSHLayer.  If the parameter "fast" is provided and set to true,
-   then only redraw the composite without doing any more computations.
-   If "noContinue" is provided and set to true, then this function
-   will not use setTimeout() to finish the cothreaded rendering
-   jobs.  */
+   SSHLayer.  If the parameter "fast" (deprecated) is provided and set
+   to true, then only redraw the composite without doing any more
+   computations.  If "noContinue" is provided and set to true, then
+   this function will not use window.setTimeout() to finish the
+   cothreaded rendering jobs.  */
 Compositor.finishRenderJobs = function(fast, noContinue) {
-  var petStatus;
-  var sshStatus;
-  var tracksStatus;
-  if (!fast) {
-    if (!noContinue)
-      this.renderInProg = true;
-    petStatus = this.projEarthTex.continueCT();
-    if (this.dispSSH)
-      sshStatus = SSHLayer.render.continueCT();
-    else
-      sshStatus = { returnType: CothreadStatus.FINISHED };
-    tracksStatus = TracksLayer.render.continueCT();
+  var earthTexStatus = EarthTexLayer.status;
+  var sshStatus = SSHLayer.status;
+  var tracksStatus = TracksLayer.status;
+  this.renderInProg = true;
 
-    { // Compose the layers.
-      var backbuf = this.backbuf;
-      var ctx = backbuf.getContext("2d");
-      ctx.clearRect(0, 0, backbuf.width, backbuf.height);
-      if (this.dispLandMasses)
-        ctx.drawImage(this.projEarthTex.frontBuf,
-		      0, 0, backbuf.width, backbuf.height);
-      if (this.dispSSH)
-        ctx.drawImage(SSHLayer.frontBuf,
-		      0, 0, backbuf.width, backbuf.height);
-      ctx.drawImage(TracksLayer.frontBuf,
-		    0, 0, backbuf.width, backbuf.height);
-      /* if (this.projector == Compositor.rayOrtho ||
-	  this.projector == Compositor.rayPersp ||
-	  this.projector == EquirectProjector)
-	this.renderEquiGraticule(); */
+  if (this.fitViewportToCntr()) {
+    if (earthTexStatus.returnType == CothreadStatus.FINISHED)
+      EarthTexLayer.initCtx();
+    if (sshStatus.returnType == CothreadStatus.FINISHED)
+      SSHLayer.initCtx();
+    if (tracksStatus.returnType == CothreadStatus.FINISHED)
+      TracksLayer.initCtx();
+  }
+
+  var ctnow = Cothread.now;
+  var startTime = ctnow();
+  var timeout = 15;
+
+  switch (this.renderPart) {
+  case 0:
+    this.renderPart = 1;
+    if (earthTexStatus.returnType != CothreadStatus.FINISHED) {
+      earthTexStatus = EarthTexLayer.continueCT();
+      if (ctnow() - startTime >= timeout) break;
+    }
+  case 1:
+    this.renderPart = 2;
+    if (sshStatus.returnType != CothreadStatus.FINISHED) {
+      sshStatus = SSHLayer.continueCT();
+      if (ctnow() - startTime >= timeout) break;
+    }
+  case 2:
+    this.renderPart = 0;
+    if (tracksStatus.returnType != CothreadStatus.FINISHED) {
+      tracksStatus = TracksLayer.continueCT();
+      if (ctnow() - startTime >= timeout) break;
     }
   }
 
-  this.fitCanvasToCntr();
-  if (this.projector == Compositor.rayOrtho ||
-      this.projector == Compositor.rayPersp)
-    this.show3dComposite();
-  else this.show2dComposite();
-
-  if (fast || noContinue)
-    return;
-
-  /* var renderMethod;
-  makeEventWrapper(this, "renderMethod"); // ...
-  if (allocRenderJob(renderMethod))
-    renderMethod(); */
-
-  if (petStatus.returnType != CothreadStatus.FINISHED ||
-      tracksStatus.returnType != CothreadStatus.FINISHED ||
-      sshStatus.returnType != CothreadStatus.FINISHED)
-    return setTimeout(makeEventWrapper(Compositor, "finishRenderJobs"), 15);
+  if (!this.stopSignal &&
+      earthTexStatus.returnType != CothreadStatus.FINISHED ||
+      sshStatus.returnType != CothreadStatus.FINISHED ||
+      tracksStatus.returnType != CothreadStatus.FINISHED)
+    return requestAnimationFrame(
+	       makeEventWrapper(Compositor, "finishRenderJobs"));
   else {
     this.renderInProg = false;
-    // console.log("Done rendering.");
+    this.stopSignal = false;
   }
 };
 
-/* Resize the frontbuffer canvas to fit the CSS allocated space.
+/* If a render loop is in progress, force it to halt.  */
+Compositor.halt = function() {
+  this.stopSignal = true;
+};
+
+/* Resize the viewports of the RenderLayers to fit the CSS allocated
+   space.  Returns `true` if the viewport size was changed, `false`
+   otherwise.
 
    NOTE: Because modern browsers do not provide an event that fires if
    the width or height of a CSS element has changed, this function
    must be called every time the screen is updated via one of the
    render() functions.  */
-Compositor.fitCanvasToCntr = function() {
-  // var drawingContainer = document.getElementById("drawingContainer");
+Compositor.fitViewportToCntr = function() {
   // Warning: clientWidth and clientHeight marked as unstable in MDN.
-  if (this.canvas.width == this.drawingContainer.width &&
-      this.canvas.height == this.drawingContainer.height)
-    return;
-  this.canvas.width = this.drawingContainer.clientWidth;
-  this.canvas.height = this.drawingContainer.clientHeight;
+  if (ViewParams.viewport[0] == this.drawingContainer.clientWidth &&
+      ViewParams.viewport[1] == this.drawingContainer.clientHeight)
+    return false;
+  this.setViewport(this.drawingContainer.clientWidth,
+		   this.drawingContainer.clientHeight);
   // window.innerWidth, window.innerHeight
-}
+  return true;
+};
+
+/* Switch which RenderLayer implementation is contained within the
+   GUI.  */
+Compositor.switchRenderLayer = function(absName, impName) {
+  impName.frontBuf.className = "renderLayer";
+  this.drawingContainer.replaceChild(impName.frontBuf, absName.frontBuf);
+  if (ViewParams.viewport[0] != impName.frontBuf.width ||
+      ViewParams.viewport[1] != impName.frontBuf.height)
+    impName.setViewport(ViewParams.viewport[0], ViewParams.viewport[1]);
+};
+
+/* Analyze the current rendering parameters and for each RenderLayer,
+   choose the most optimal implementation.  */
+Compositor.optiRenderImp = function() {
+  if (ViewParams.projector == EquirectProjector) {
+    this.switchRenderLayer(EarthTexLayer, EquiEarthTexLayer);
+    OEV.EarthTexLayer = EarthTexLayer = EquiEarthTexLayer;
+    if (SSHParams.shadeStyle == 0 &&
+	SSHParams.shadeBase == 0 &&
+	SSHParams.shadeScale == 4) {
+      this.switchRenderLayer(SSHLayer, EquiGraySSHLayer);
+      OEV.SSHLayer = SSHLayer = EquiGraySSHLayer;
+      /* For this special case, the land masses must be rendered on
+	 top of the SSHLayer.  */
+      this.drawingContainer.insertBefore(EarthTexLayer.frontBuf,
+					 TracksLayer.frontBuf);
+    } else {
+      this.switchRenderLayer(SSHLayer, GenSSHLayer);
+      OEV.SSHLayer = SSHLayer = GenSSHLayer;
+    }
+  } else {
+    this.switchRenderLayer(EarthTexLayer, GenEarthTexLayer);
+    OEV.EarthTexLayer = EarthTexLayer = GenEarthTexLayer;
+    this.switchRenderLayer(SSHLayer, GenSSHLayer);
+    OEV.SSHLayer = SSHLayer = GenSSHLayer;
+  }
+};
+
+// -------------------------------------------------------------------
 
 // TODO: This function should be a tile-based rendering engine that
 // gets called from a callback to complete the render.  In general,
@@ -613,6 +640,8 @@ function render_ortho_graticule() {
   }
 }
 
+// -------------------------------------------------------------------
+
 var mouseDown = false;
 var buttonDown = 0;
 var firstPoint = {};
@@ -642,8 +671,8 @@ function setMouseDown(event) {
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
   } */
-  old_lon_rot = lon_rot;
-  old_tilt = tilt;
+  old_lon_rot = ViewParams.polCenter[0];
+  old_tilt = ViewParams.mapCenter[1];
 }
 
 function panGlobe(event) {
@@ -651,8 +680,6 @@ function panGlobe(event) {
     return;
   if (ptMSIE <= 6 && ptMSIE > 0)
     event = window.event;
-
-  var ctx = Compositor.canvas.getContext("2d");
 
   /* var disp_rad = Math.min(canvas.height, canvas.width) * scale / 2.0;
   var first_ang_x = Math.asin((firstPoint.x - canvas.width / 2) / disp_rad);
@@ -669,34 +696,36 @@ function panGlobe(event) {
 
   var pan_scale;
   var equirect_x_scale = 1;
-  if (Compositor.projector != Compositor.rayPersp)
-    pan_scale = scale;
+  if (ViewParams.projector != Compositor.rayPersp)
+    pan_scale = ViewParams.scale;
   else
     pan_scale = 1; // TODO: Do more complicated calculation
-  if (Compositor.projector != Compositor.rayOrtho &&
-      Compositor.projector != Compositor.rayPersp) {
-    var disp_rad = Math.min(Compositor.canvas.width, Compositor.canvas.height) * scale / 2.0;
+  if (ViewParams.projector != Compositor.rayOrtho &&
+      ViewParams.projector != Compositor.rayPersp) {
+    var disp_rad = ViewParams.viewport[0] * ViewParams.scale / 2.0;
     var screen_scalfac = disp_rad * 2 * Math.PI;
     equirect_x_scale = 1;
   }
-  lon_rot = old_lon_rot + (firstPoint.x - event.clientX) /
-    Compositor.canvas.width / pan_scale * equirect_x_scale * 180;
-  tilt = old_tilt - (firstPoint.y - event.clientY) /
-    Compositor.canvas.height / pan_scale * 180;
+  ViewParams.polCenter[0] = old_lon_rot + (firstPoint.x - event.clientX) /
+    ViewParams.viewport[0] / pan_scale * equirect_x_scale * 180;
+  ViewParams.mapCenter[1] = old_tilt - (-(firstPoint.y - event.clientY)) /
+    ViewParams.viewport[1] / pan_scale * 180 / 90 * ViewParams.scale;
 
-  if (tilt > 90) tilt = 90;
-  if (tilt < -90) tilt = -90;
-  while (lon_rot < 0) lon_rot += 360;
-  while (lon_rot >= 360) lon_rot -= 360;
+  /* if (tilt > 90) tilt = 90;
+  if (tilt < -90) tilt = -90; */
+  while (ViewParams.polCenter[0] < 0) ViewParams.polCenter[0] += 360;
+  while (ViewParams.polCenter[0] >= 360) ViewParams.polCenter[0] -= 360;
 
   var cfg_latLon = document.getElementById("cfg-latLon");
   if (cfg_latLon) {
-    var dispLat = tilt;
-    var dispLon = lon_rot - 180;
+    var dispLat = -ViewParams.mapCenter[1] * 90 / ViewParams.scale;
+    var dispLon = ViewParams.polCenter[0];
     if (dispLat < 0)
       dispLat = (-dispLat).toFixed(3) + " S";
     else
       dispLat = dispLat.toFixed(3) + " N";
+    if (dispLon >= 180)
+      dispLon -= 360;
     if (dispLon < 0)
       dispLon = (-dispLon).toFixed(3) + " W";
     else
@@ -704,7 +733,7 @@ function panGlobe(event) {
     cfg_latLon.value = dispLat + " " + dispLon;
   }
 
-  Compositor.finishRenderJobs(true);
+  Compositor.startRender();
 
   /* if (ptMSIE <= 6 && ptMSIE > 0)
     event.cancelBubble = true; */
@@ -719,22 +748,22 @@ function setMouseUp(event) {
 }
 
 function zoomGlobe(event) {
-  if (Compositor.projector != Compositor.rayPersp) {
+  if (ViewParams.projector != Compositor.rayPersp) {
     if (event.deltaMode == 0x01) { // DOM_DELTA_LINE
       if (event.deltaY < 0)
-        scale *= (event.deltaY / 3) * -1.1;
+        ViewParams.scale *= (event.deltaY / 3) * -1.1;
       else
-        scale /= (event.deltaY / 3) * 1.1;
+        ViewParams.scale /= (event.deltaY / 3) * 1.1;
     } else if (event.deltaMode == 0x00) { // DOM_DELTA_PIXEL
       /* FIXME: a good factor for this is wildly different across
 	 systems.  */
       if (event.deltaY < 0)
-        scale *= (event.deltaY / 51) * -1.1;
+        ViewParams.scale *= (event.deltaY / 51) * -1.1;
       else
-        scale /= (event.deltaY / 51) * 1.1;
+        ViewParams.scale /= (event.deltaY / 51) * 1.1;
     }
     var cfg_scaleFac = document.getElementById("cfg-scaleFac");
-    if (cfg_scaleFac) cfg_scaleFac.value = scale.toFixed(3);
+    if (cfg_scaleFac) cfg_scaleFac.value = ViewParams.scale.toFixed(3);
   } else {
     if (event.deltaMode == 0x01) { // DOM_DELTA_LINE
       if (event.deltaY < 0)
@@ -750,13 +779,16 @@ function zoomGlobe(event) {
     var cfg_perspFOV = document.getElementById("cfg-perspFOV");
     if (cfg_perspFOV) cfg_perspFOV.value = persp_fov;
   }
+  ViewParams.inv_scale = 1 / ViewParams.scale;
 
   // NOTE: allocRenderJob() messes up what `this' points to.
   // if (allocRenderJob(makeEventWrapper(Compositor, "finishRenderJobs")))
-    Compositor.finishRenderJobs(true);
+  Compositor.startRender();
   event.preventDefault();
   return false;
 }
+
+// -------------------------------------------------------------------
 
 /* Since this is the main JavaScript file, all other dependent
    JavaScripts will be included before this file.  Close the OEV

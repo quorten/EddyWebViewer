@@ -26,7 +26,7 @@ SSHParams.loadPrefix = "../data/";
  * * 1: MATLAB Jet color palette
  * * 2: Contour bands
  */
-SSHParams.shadeStyle = 1;
+SSHParams.shadeStyle = 0;
 
 /**
  * Sea surface height value to consider to be at the center of the
@@ -72,6 +72,14 @@ GenSSHLayer.setViewport = function(width, height) {
 };
 
 GenSSHLayer.initCtx = function() {
+  if (!Dates.dateList) {
+    this.status.returnType = CothreadStatus.FINISHED;
+    this.status.preemptCode = 0;
+    this.status.percent = CothreadStatus.MAX_PERCENT;
+    this.retVal = RenderLayer.LOAD_ERROR;
+    return;
+  }
+
   var loadFrame = Dates.dateList[Dates.curDate].split("-").join("");
   var newUrl;
   if (SSHParams.imgFormat == "dat") {
@@ -335,6 +343,14 @@ EquiGraySSHLayer.loadData = new ImageLoader();
 EquiGraySSHLayer.loadData.prontoMode = true;
 
 EquiGraySSHLayer.initCtx = function() {
+  if (!Dates.dateList) {
+    this.status.returnType = CothreadStatus.FINISHED;
+    this.status.preemptCode = 0;
+    this.status.percent = CothreadStatus.MAX_PERCENT;
+    this.retVal = RenderLayer.LOAD_ERROR;
+    return;
+  }
+
   var loadFrame = Dates.dateList[Dates.curDate].split("-").join("");
   var newUrl = SSHParams.loadPrefix + "jpgssh/ssh_" + loadFrame +
     ".jpg";
@@ -377,6 +393,14 @@ EquiGrayCSSSSHLayer.loadData = new ImageLoader();
 EquiGrayCSSSSHLayer.loadData.prontoMode = true;
 
 EquiGrayCSSSSHLayer.initCtx = function() {
+  if (!Dates.dateList) {
+    this.status.returnType = CothreadStatus.FINISHED;
+    this.status.preemptCode = 0;
+    this.status.percent = CothreadStatus.MAX_PERCENT;
+    this.retVal = RenderLayer.LOAD_ERROR;
+    return;
+  }
+
   var loadFrame = Dates.dateList[Dates.curDate].split("-").join("");
   var newUrl = SSHParams.loadPrefix + "jpgssh/ssh_" + loadFrame +
     ".jpg";
@@ -560,5 +584,4 @@ EquiGrayVidCanvSSHLayer.render = EquiGraySSHLayer.render;
 /********************************************************************/
 
 /** Pointer to the current SSHLayer implementation.  */
-var SSHLayer = GenSSHLayer;
-OEV.SSHLayer = SSHLayer;
+var SSHLayer = OEV.SSHLayer = GenSSHLayer;

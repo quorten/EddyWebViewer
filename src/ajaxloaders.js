@@ -562,6 +562,10 @@ ImageLoader.prototype.alertAbort = function(origThis, event) {
 };
 
 ImageLoader.prototype.initCtx = function() {
+  if (this.image) {
+    this.image.onload = null;
+    // this.image.abort(); // If only it could work...
+  }
   this.image = new Image();
   if (!this.image) {
     // Error: Could not create an HTMLImageElement.

@@ -193,5 +193,4 @@ EquiCSSEarthTexLayer.initCtx = function() {
 /********************************************************************/
 
 /** Pointer to the current EarthTexLayer implementation.  */
-var EarthTexLayer = GenEarthTexLayer;
-OEV.EarthTexLayer = EarthTexLayer;
+var EarthTexLayer = OEV.EarthTexLayer = GenEarthTexLayer;

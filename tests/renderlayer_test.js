@@ -200,6 +200,7 @@ var setup = function() {
   OEV.ViewParams.projector = OEV.EquirectProjector;
 
   // Load the dates.
+  OEV.Dates.timeout = 15;
   OEV.Dates.notifyFunc = finishSetup;
   OEV.Dates.start();
 };

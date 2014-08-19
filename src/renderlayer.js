@@ -122,7 +122,7 @@ RenderLayer.prototype.setViewport = function(width, height) {
  * number of continuous scanlines to raytrace before checking the
  * timeout condition.  Setting this to a larger value can help
  * increase raytracing efficiency by reducing the number of possibly
- * expensive Web API calls per iteration.
+ * expensive Web API calls per iteration.  Default value is 8.
  *
  * @constructor
  *
@@ -139,7 +139,7 @@ var RayTracer = function(backBuf, backBufType, maxOsaPasses) {
   this.backBuf = backBuf;
   this.backBufType = backBufType;
   this.maxOsaPasses = maxOsaPasses;
-  this.blockFactor = 0;
+  this.blockFactor = 8;
 
   this.mapToPol = [ NaN, NaN ];
 };
@@ -257,8 +257,11 @@ RayTracer.prototype.contExec = function() {
          factors as necessary.  */
       mapToPol[0] = (((x + xj) / destImg_width) * 2 - 1 -
 		     ViewParams.mapCenter[0]) * ViewParams.inv_scale;
-      mapToPol[1] = (-(((y + yj) / destImg_height) * 2 - 1) *
-		     inv_aspectXY - ViewParams.mapCenter[1]) *
+      /* NOTE: We should subtractg mapCenter AFTER inv_aspectXY, but
+         for now, we don't, for conformity with the other buggy
+         code.  */
+      mapToPol[1] = (-(((y + yj) / destImg_height) * 2 - 1) -
+		     ViewParams.mapCenter[1]) * inv_aspectXY *
 	ViewParams.inv_scale;
 
       // Unproject.
@@ -423,7 +426,7 @@ EquiRenderLayer.prototype.render = function() {
     var fbwidth = this.frontBuf.width;
     var fbheight = this.frontBuf.height;
     var x = ((ViewParams.mapCenter[0] + 1) / 2 +
-	     -ViewParams.polCenter[0] * ViewParams.scale / 180) * fbwidth;
+	     -ViewParams.polCenter[0] * ViewParams.scale / 360) * fbwidth;
     var y = (-ViewParams.mapCenter[1] + 1) / 2 * fbheight;
 
     /* Find the coordinates on the destination canvas where the left,
@@ -571,7 +574,7 @@ EquiCSSRenderLayer.prototype.render = function() {
   var fbwidth = ViewParams.viewport[0];
   var fbheight = ViewParams.viewport[1];
   var x = ((ViewParams.mapCenter[0] + 1) / 2 +
-	   -ViewParams.polCenter[0] * ViewParams.scale / 180) * fbwidth;
+	   -ViewParams.polCenter[0] * ViewParams.scale / 360) * fbwidth;
   var y = (-ViewParams.mapCenter[1] + 1) / 2 * fbheight;
 
   /* Find the coordinates on the destination canvas where the left,

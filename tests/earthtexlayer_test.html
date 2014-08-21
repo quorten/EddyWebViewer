@@ -7,10 +7,172 @@
   <title>EarthTex Test Container</title>
   <script type="text/javascript" src="renderlayer_test.b.js"></script>
   <script type="text/javascript">
-    var TestLayer = OEV.EquiEarthTexLayer;
+
+
+/* The following functions help maintain smooth animation in Firefox.
+   The new code architecture does not need them anymore, though: the
+   cothreading architecture has subsumed their functionality.  */
+
+/**
+ * Try to allocate a new render job.  This will either preempt an
+ * existing job or deny rendering if preemption is disabled.  Returns
+ * true if the render job can proceed, false if rendering is denied.
+ *
+ * @param {function} rendQFunc - If the render job gets queued
+ * (denied from immediate execution), this is the function that will
+ * be called once the queue is empty.
+ */
+var allocRenderJob = function(rendQFunc) {
+  if (renderInProg) {
+    renderQueue = rendQFunc;
+    return false;
+  }
+  renderInProg = true;
+  requestAnimationFrame(freeRenderJob);
+  return true;
+};
+
+/**
+ * Free a render job from the queue.  This function should only be
+ * called from `allocRenderJob()` and never by any code that uses
+ * `allocRenderJob()`.
+ */
+var freeRenderJob = function() {
+  renderInProg = false;
+  if (renderQueue) {
+    var rendQFunc = renderQueue;
+    renderQueue = null;
+    return rendQFunc();
+  }
+};
+
+// For allocRenderJob() and freeRenderJob()
+var renderInProg = false;
+// A render queue that can store up to one pending job.
+var renderQueue = null;
+
+var mouseDown = false;
+var buttonDown = 0;
+var firstPoint = {};
+var topLeft = { x: 0, y: 0 };
+var ptMSIE = 0; // msieVersion();
+firstPoint.x = 0; firstPoint.y = 0;
+
+var old_lon_rot;
+var old_tilt;
+
+function setMouseDown(event) {
+  /* if (ptMSIE <= 6 && ptMSIE > 0)
+    event = window.event; */
+
+  if (this.setCapture)
+    this.setCapture();
+  else
+    window.onmouseup = setMouseUp;
+
+  mouseDown = true;
+  buttonDown = event.button;
+  firstPoint.x = event.clientX; firstPoint.y = event.clientY;
+  /* if (!topLeft.x) {
+    topLeft.x = firstPoint.x - canvas.width / 2;
+    topLeft.y = firstPoint.y - canvas.height / 2;
+    var ctx = canvas.getContext("2d");
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  } */
+  old_lon_rot = OEV.ViewParams.polCenter[0];
+  if (OEV.ViewParams.projector == OEV.EquirectProjector)
+    old_tilt = OEV.ViewParams.mapCenter[1];
+  else old_tilt = OEV.ViewParams.polCenter[1];
+}
+
+function panGlobe(event) {
+  if (!mouseDown)
+    return;
+  if (ptMSIE <= 6 && ptMSIE > 0)
+    event = window.event;
+
+  /* var disp_rad = Math.min(canvas.height, canvas.width) * scale / 2.0;
+  var first_ang_x = Math.asin((firstPoint.x - canvas.width / 2) / disp_rad);
+  var first_ang_y = Math.asin((firstPoint.y - canvas.width / 2) / disp_rad);
+  var cur_ang_x = Math.asin((event.clientX - canvas.width / 2) / disp_rad);
+  var cur_ang_y = Math.asin((event.clientY - canvas.width / 2) / disp_rad);
+
+  if (isNaN(first_ang_x) || isNaN(first_ang_y) ||
+      isNaN(cur_ang_x) || isNaN(cur_ang_y))
+    return;
+
+  lon_rot = old_lon_rot + first_ang_y - cur_ang_y;
+  tilt = old_tilt - (first_ang_x - cur_ang_x); */
+
+  var pan_scale;
+  var equirect_x_scale = 1;
+  /* if (OEV.ViewParams.projector != Compositor.rayPersp)
+    pan_scale = OEV.ViewParams.scale;
+  else */
+    pan_scale = 1; // TODO: Do more complicated calculation
+  /* if (OEV.ViewParams.projector != Compositor.rayOrtho &&
+      OEV.ViewParams.projector != Compositor.rayPersp) */ {
+    var disp_rad = OEV.ViewParams.viewport[0] * OEV.ViewParams.scale / 2.0;
+    var screen_scalfac = disp_rad * 2 * Math.PI;
+    equirect_x_scale = 1;
+  }
+  OEV.ViewParams.polCenter[0] = old_lon_rot + (firstPoint.x - event.clientX) /
+    OEV.ViewParams.viewport[0] / pan_scale * equirect_x_scale * 180;
+  if (OEV.ViewParams.projector == OEV.EquirectProjector)
+    OEV.ViewParams.mapCenter[1] = old_tilt - (-(firstPoint.y - event.clientY)) /
+      OEV.ViewParams.viewport[1] / pan_scale * 180 / 180 * OEV.ViewParams.scale;
+  else OEV.ViewParams.polCenter[1] = old_tilt - (firstPoint.y - event.clientY) /
+	 OEV.ViewParams.viewport[1] / pan_scale * 180;
+
+  /* if (tilt > 90) tilt = 90;
+  if (tilt < -90) tilt = -90; */
+  while (OEV.ViewParams.polCenter[0] < 0) OEV.ViewParams.polCenter[0] += 360;
+  while (OEV.ViewParams.polCenter[0] >= 360) OEV.ViewParams.polCenter[0] -= 360;
+
+  var cfg_latLon = document.getElementById("cfg-latLon");
+  if (cfg_latLon) {
+    var dispLat = -OEV.ViewParams.mapCenter[1] * 180 / OEV.ViewParams.scale;
+    var dispLon = OEV.ViewParams.polCenter[0];
+    if (dispLat < 0)
+      dispLat = (-dispLat).toFixed(3) + " S";
+    else
+      dispLat = dispLat.toFixed(3) + " N";
+    if (dispLon >= 180)
+      dispLon -= 360;
+    if (dispLon < 0)
+      dispLon = (-dispLon).toFixed(3) + " W";
+    else
+      dispLon = dispLon.toFixed(3) + " E";
+    cfg_latLon.value = dispLat + " " + dispLon;
+  }
+
+  var doit = function() { OEV.TDEarthTexLayer.render.start(); };
+  if (allocRenderJob(doit)) doit();
+
+  /* if (ptMSIE <= 6 && ptMSIE > 0)
+    event.cancelBubble = true; */
+  return false; // Cancel the default, or at least attempt to do so.
+}
+
+function setMouseUp(event) {
+  mouseDown = false;
+  if (allocRenderJob(start)) start();
+  window.onmouseup = null;
+  return false;
+}
+
+    // var TestLayer = OEV.EquiEarthTexLayer;
+    var TestLayer = OEV.TDEarthTexLayer;
+    OEV.TDEarthTexLayer.frontBuf.onmousedown = setMouseDown;
+    if (!OEV.TDEarthTexLayer.frontBuf.setCapture) {
+      OEV.TDEarthTexLayer.frontBuf.onmousemove = panGlobe;
+      OEV.TDEarthTexLayer.frontBuf.onmouseup = setMouseUp;
+    }
+    // addWheelListener(OEV.TDEarthTexLayer.frontBuf, zoomGlobe);
   </script>
 </head>
-<body id="topBody" onload="setup()">
+<body id="topBody" onload="setup(480, 480)">
 
 <p>This is the HTML container for testing the EarthTexLayer loader and
 renderer.  Good Luck!</p>

@@ -197,6 +197,15 @@ XHRLoader.prototype.initCtx = function() {
   if (this.httpRequest)
     this.httpRequest.abort();
 
+  if (!this.url) {
+    this.httpRequest = null;
+    this.retVal = XHRLoader.LOAD_FAILED;
+    this.status.returnType = CothreadStatus.FINISHED;
+    this.status.preemptCode = 0;
+    this.status.percent = CothreadStatus.MAX_PERCENT;
+    return;
+  }
+
   var httpRequest;
   if (window.XMLHttpRequest)
     httpRequest = new XMLHttpRequest();
@@ -566,6 +575,16 @@ ImageLoader.prototype.initCtx = function() {
     this.image.onload = null;
     // this.image.abort(); // If only it could work...
   }
+
+  if (!this.url) {
+    this.image = null;
+    this.retVal = ImageLoader.LOAD_FAILED;
+    this.status.returnType = CothreadStatus.FINISHED;
+    this.status.preemptCode = 0;
+    this.status.percent = CothreadStatus.MAX_PERCENT;
+    return;
+  }
+
   this.image = new Image();
   if (!this.image) {
     // Error: Could not create an HTMLImageElement.

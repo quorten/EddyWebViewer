@@ -35,13 +35,13 @@
       OEV.ViewParams.scale = 360 / (vbox[3] - vbox[1]);
       OEV.ViewParams.mapCenter = 
         [ /* -(vbox[3] + vbox[1]) / 2 * OEV.ViewParams.scale / 180 */ 0,
-          -(vbox[2] + vbox[0]) / 2 * OEV.ViewParams.scale / 90 ];
+          -(vbox[2] + vbox[0]) / 2 * OEV.ViewParams.scale / 180 ];
       OEV.ViewParams.polCenter[0] = (vbox[3] + vbox[1]) / 2;
       return start();
     };
   </script>
 </head>
-<body id="topBody" onload="setup()">
+<body id="topBody" onload="setup(1440, 721)">
 
 <p>This is the HTML container for testing the kd-tree implementation
 for WCTracksLayer.  Good Luck!</p>

@@ -25,6 +25,7 @@ SSHParams.loadPrefix = "../data/";
  * * 0: Grayscale
  * * 1: MATLAB Jet color palette
  * * 2: Contour bands
+ * * 3: Waters
  */
 SSHParams.shadeStyle = 0;
 
@@ -242,6 +243,26 @@ GenSSHLayer.loadImageData.procData = function(image) {
   return this.status;
 };
 
+var makeColorTbl = function(grad) {
+  var colorTbl = [];
+  var numStops = grad.length - 1;
+  for (var i = 0; i < 256; i++) {
+    var value = i / 256 * numStops;
+    var index =  0|value;
+    var ix2 = index + 1;
+    if (ix2 > numStops) ix2 = numStops;
+    var interpol = value % 1;
+    colorTbl.push((1 - interpol) * grad[index][0] +
+		  interpol *  grad[ix2][0]);
+    colorTbl.push((1 - interpol) * grad[index][1] +
+		  interpol *  grad[ix2][1]);
+    colorTbl.push((1 - interpol) * grad[index][2] +
+		  interpol *  grad[ix2][2]);
+    colorTbl.push(255);
+  }
+  return colorTbl;
+};
+
 // MATLAB Jet color table
 GenSSHLayer.render.mlColorTbl = (function() {
   var grad = [ [ 0x00, 0x00, 0x7f ],
@@ -253,23 +274,60 @@ GenSSHLayer.render.mlColorTbl = (function() {
 	       [ 0xff, 0x7f, 0x00 ],
 	       [ 0xff, 0x00, 0x00 ],
 	       [ 0x7f, 0x00, 0x00 ] ];
+  return makeColorTbl(grad);
+})();
 
-  var mlColorTbl = [];
-  for (var i = 0; i < 256; i++) {
-    var value = i / 256 * 8;
-    var index =  0|value;
-    var ix2 = index + 1;
-    if (ix2 > 8) ix2 = 8;
-    var interpol = value % 1;
-    mlColorTbl.push((1 - interpol) * grad[index][0] +
-		  interpol *  grad[ix2][0]);
-    mlColorTbl.push((1 - interpol) * grad[index][1] +
-		  interpol *  grad[ix2][1]);
-    mlColorTbl.push((1 - interpol) * grad[index][2] +
-		  interpol *  grad[ix2][2]);
-    mlColorTbl.push(255);
-  }
-  return mlColorTbl;
+/* First variant of the waters color table.  The colors are designed
+   to be like deep sea colors.  */
+GenSSHLayer.render.dewaColorTbl = (function() {
+  var grad = [ [ 0x00, 0x00, 0x00 ],
+	       [ 0x00, 0x50, 0x30 ],
+	       [ 0x00, 0x90, 0x70 ],
+	       [ 0x00, 0xc0, 0xc0 ],
+	       [ 0x40, 0xc0, 0xff ],
+	       [ 0xc0, 0xc0, 0xff ],
+	       [ 0xff, 0xff, 0xff ] ];
+  return makeColorTbl(grad);
+})();
+
+/* Second variant of the waters color table.  These colors are more of
+   a surface-level sky-reflecting color.  A little bit too deep blue,
+   though.  More cyan would be better.  */
+GenSSHLayer.render.bwaColorTbl = (function() {
+  var grad = [ [ 0x00, 0x00, 0x00 ],
+	       [ 0x00, 0x20, 0x60 ],
+	       [ 0x00, 0x40, 0xc0 ],
+	       [ 0x40, 0x80, 0xc0 ],
+	       [ 0x80, 0x80, 0xff ],
+	       [ 0xc0, 0xc0, 0xff ],
+	       [ 0xff, 0xff, 0xff ] ];
+  return makeColorTbl(grad);
+})();
+
+/* Third variation of the waters color table.  Perfect hue.  Need more
+   saturation, though.  */
+GenSSHLayer.render.hwaColorTbl = (function() {
+  var grad = [ [ 0x00, 0x00, 0x00 ],
+	       [ 0x00, 0x40, 0x40 ],
+	       [ 0x00, 0x80, 0x80 ],
+	       [ 0x00, 0x80, 0xff ],
+	       [ 0x40, 0xc0, 0xff ],
+	       [ 0xc0, 0xc0, 0xff ],
+	       [ 0xff, 0xff, 0xff ] ];
+  return makeColorTbl(grad);
+})();
+
+/* Forth variation of the waters color table.  This one seems to be
+   okay.  */
+GenSSHLayer.render.waColorTbl = (function() {
+  var grad = [ [ 0x00, 0x00, 0x00 ],
+	       [ 0x14, 0x36, 0x36 ],
+	       [ 0x28, 0x6c, 0x6c ],
+	       [ 0x40, 0x80, 0xc0 ],
+	       [ 0x76, 0xb6, 0xd4 ],
+	       [ 0xcb, 0xcb, 0xea ],
+	       [ 0xff, 0xff, 0xff ] ];
+  return makeColorTbl(grad);
 })();
 
 GenSSHLayer.render.pixelPP = function(value, data, destIdx,
@@ -306,6 +364,17 @@ GenSSHLayer.render.pixelPP = function(value, data, destIdx,
     if (value & 0x100) value = ~value;
     value &= 0xff;
     red = green = blue = value;
+    break;
+  case 3: // Waters
+    value = (value - SSHParams.shadeBase) * SSHParams.shadeScale;
+    value /= 128;
+    if (value < -1) value = -1;
+    if (value > 1) value = 1;
+    value = 0|((value + 1) / 2 * 255);
+    value <<= 2;
+    red = this.waColorTbl[value++];
+    green = this.waColorTbl[value++];
+    blue = this.waColorTbl[value++];
     break;
   default: // Grayscale
     value = (value - SSHParams.shadeBase) * SSHParams.shadeScale;

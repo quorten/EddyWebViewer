@@ -149,8 +149,6 @@ JSONTracksLayer.cLoad.procData = JSONTracksLayer.acLoad.procData;
 JSONTracksLayer.loadData = new SeriesCTCtl([ JSONTracksLayer.acLoad,
 					     JSONTracksLayer.cLoad ]);
 
-var inv_180 = 1 / 180,  inv_360 = 1 / 360;
-
 JSONTracksLayer.render = (function() {
   "use strict";
 
@@ -163,6 +161,7 @@ JSONTracksLayer.render = (function() {
     edc.lineWidth = frontBuf.width / 1440 * ViewParams.scale;
     edc.strokeStyle = "#800080";
     edc.lineJoin = "round";
+    edc.lineCap = "round";
 
     this.i = 0;
     this.polToMap = [ NaN, NaN ];
@@ -874,6 +873,7 @@ WCTracksLayer.render = (function() {
     ctx.lineWidth = frontBuf.width / 1440 * ViewParams.scale;
     ctx.strokeStyle = "#800080";
     ctx.lineJoin = "round";
+    ctx.lineCap = "round";
 
     this.rc = 0; this.i = 0; this.j = 0;
     this.numRendered = 0;

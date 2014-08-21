@@ -321,16 +321,18 @@ var freeRenderJob = function() {
 /********************************************************************/
 /* Global Variables */
 
-// Cached getMsieVersion()
-msieVersion = getMsieVersion();
+/** Cached getMsieVersion() */
+var msieVersion = getMsieVersion();
 
-// Mouse Calibration Point
+/** Mouse Calibration Point */
 var calibPt = null;
 
-// Static storage for MousePos_Get()
+/** Static storage for MousePos_Get() */
 var MousePos_getStorage = [];
 
-// For allocRenderJob() and freeRenderJob()
+/** For allocRenderJob() and freeRenderJob(): Whether or not a render
+ * job is in progress.   */
 var renderInProg = false;
-// A render queue that can store up to one pending job.
+/** For allocRenderJob() and freeRenderJob(): A render queue that can
+ * store up to one pending job.  */
 var renderQueue = null;

@@ -11,8 +11,10 @@
    4. Within the webpage, define and set the `TestLayer' variable to
       point to the RenderLayer object that should be tested.
 
-   5. Add the attribute-value pair `onload="setup()' to the body
-      element of your HTML test container.
+   5. Add the attribute-value pair `onload="setup(width, height)' to
+      the body element of your HTML test container, with `width' and
+      `height' replaced with the desired width and height of the
+      canvas.
 
    The idea of this JavaScript file is to provide not only setup
    routines for a test webpage, but also convenient functions for
@@ -30,19 +32,20 @@
      to the given dimensions.
 
    * `play = true', `play = false': Toggle playing a RenderLayer in
-     full-stop animation.
+     full-motion animation, at the maximum possible speed.
 
    * setTestLayer(layer) -- Dynamically switch the layer to be tested
      to the given layer, performing all necessary reconfiguration.
 
 */
 
+import "../src/oevns";
 import "../src/cothread";
 import "../src/compat";
 import "../src/dates";
+import "../src/earthtexlayer";
 import "../src/sshlayer";
 import "../src/trackslayer";
-import "../src/earthtexlayer";
 import "../src/projector";
 import "../src/viewparams";
 
@@ -113,10 +116,6 @@ var execTime = function() {
   }
   if (preemptCode == OEV.CothreadStatus.IOWAIT)
     return;
-  return browserTime();
-};
-
-var browserTime = function() {
   if (stopSignal)
     { stopSignal = false; return; }
   return requestAnimationFrame(execTime);
@@ -133,7 +132,9 @@ var start = function() {
   var status = TestLayer.start();
   if (status.preemptCode == OEV.CothreadStatus.IOWAIT)
     return;
-  return browserTime();
+  if (stopSignal)
+    { stopSignal = false; return; }
+  return requestAnimationFrame(execTime);
 };
 
 var halt = function() {
@@ -164,7 +165,7 @@ var finishSetup = function() {
   }
 };
 
-var setup = function() {
+var setup = function(width, height) {
   // Append a progress counter element to the document body.
   progElmt = document.createElement("p");
   progElmt.id = "progElmt";
@@ -183,8 +184,6 @@ var setup = function() {
 
   TestLayer.timeout = 15;
   TestLayer.notifyFunc = execTime;
-
-  var width = 1440, height = 721;
 
   /* Convenience code to render at a smaller size if the browser
      content area is smaller than the nominal render size. */

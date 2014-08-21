@@ -14,6 +14,11 @@ OEV.DEG2RAD = DEG2RAD;
 var RAD2DEG = 180 / Math.PI;
 OEV.RAD2DEG = RAD2DEG;
 
+/** 1 / 180 */
+var inv_180 = 1 / 180;
+/** 1 / 360 */
+var inv_360 = 1 / 360;
+
 /**
  * Polar coordinate point.  "r" is always 1.
  * @constructor
@@ -369,7 +374,7 @@ Point3D.prototype.toYPolarPoint = function() {
 var modPolShiftOrigin = function(polarPt, fwd) {
   var objPolarPt = new PolarPoint(polarPt[1], polarPt[0]);
   var r3src = objPolarPt.degToRad().yppToPoint3D();
-  // ??? Why does using fwd cause incorrect results?
+  // FIXME: Why does using fwd cause incorrect results?
   var r3dest = r3src.rotateX(/* fwd * */ -DEG2RAD * ViewParams.polCenter[1]);
   var polDest = r3dest.toYPolarPoint().radToDeg();
   polDest.lon += -fwd * ViewParams.polCenter[0];
@@ -407,7 +412,8 @@ var polShiftOrigin = function(polarPt, fwd) {
 
     /* 2. Rotate this coordinate around the x axis by the current
        globe tilt.  */
-    // ??? Why does using fwd cause incorrect results?
+    // FIXME: Why does using fwd cause incorrect results?
+    // Force negative rather than use `fwd'.
     var tilt = /* fwd * */ -DEG2RAD * polCenter[1];
     var cos_tilt = Math.cos(tilt); var sin_tilt = Math.sin(tilt);
     var r3dest_x, r3dest_y, r3dest_z;

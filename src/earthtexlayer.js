@@ -65,6 +65,7 @@ EarthTexData.loadColors.procData = function(image) {
   /* Initialize all the backbuffers of the various
      implementations.  */
   GenEarthTexLayer.render.backBuf = EarthTexData.dataTex;
+  TDEarthTexLayer.render.backBuf = EarthTexData.dataTex;
   EquiEarthTexLayer.backBuf = EarthTexData.canvasTex;
   EquiCSSEarthTexLayer.backBuf = EarthTexData.imageTex;
 
@@ -128,6 +129,23 @@ GenEarthTexLayer.contExec = function() {
 
   // Otherwise, render.
   return this.render.continueCT();
+};
+
+/********************************************************************/
+
+/**
+ * A specialized EarthTexLayer implementation for raytacing a 3D
+ * projection (orthographic or perspective) of the Earth.
+ */
+var TDEarthTexLayer = new RenderLayer();
+OEV.TDEarthTexLayer = TDEarthTexLayer;
+TDEarthTexLayer.loadData = EarthTexData.loadData;
+TDEarthTexLayer.render = new TDRayTracer(null, 0, 1);
+TDEarthTexLayer.frontBuf = TDEarthTexLayer.render.frontBuf;
+TDEarthTexLayer.initCtx = GenEarthTexLayer.initCtx;
+TDEarthTexLayer.contExec = GenEarthTexLayer.contExec;
+TDEarthTexLayer.setViewport = function(width, height) {
+  return this.render.setViewport(width, height);
 };
 
 /********************************************************************/

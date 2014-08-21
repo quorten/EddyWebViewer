@@ -465,6 +465,7 @@ FThostObjects = function() {
       typeof(testEl.style.cssText) != 'string' ||
       !isHostMethod(testEl, 'appendChild') ||
       !isHostMethod(testEl, 'insertBefore') ||
+      !isHostMethod(testEl, 'replaceChild') ||
       !isHostCollection(testEl, 'childNodes'))
     return false;
 
@@ -722,9 +723,7 @@ function onplay(event) {
   this.title = 'Pause';
   this.ondblclick = this.onclick = onpause;
   OEV.Compositor.playMode = true;
-  OEV.SSHLayer.initCtx();
-  OEV.TracksLayer.initCtx();
-  OEV.Compositor.startRenderLoop();
+  OEV.Compositor.startRender([ OEV.SSHLayer, OEV.TracksLayer ]);
 }
 
 function onpause(event) {
@@ -737,12 +736,8 @@ function onpause(event) {
 function applyCurDate(updateRenderLayers) {
   var dateStr = OEV.Dates.dateList[OEV.Dates.curDate];
   document.getElementById('cfg-curDate').value = dateStr;
-  if (updateRenderLayers) {
-    if (OEV.Compositor.dispSSH)
-      OEV.SSHLayer.initCtx();
-    OEV.TracksLayer.initCtx();
-    OEV.Compositor.startRenderLoop();
-  }
+  if (updateRenderLayers)
+    OEV.Compositor.startRender([ OEV.SSHLayer, OEV.TracksLayer ]);
 }
 
 /* This is a delayed initializer for OEV.Dates.curDate that is not
@@ -887,10 +882,8 @@ function initGUIHooks() {
       OEV.TracksParams.dispCyc = true;
     else
       OEV.TracksParams.dispCyc = false;
-    if (event != null) {
-      OEV.TracksLayer.initCtx();
-      OEV.Compositor.startRenderLoop();
-    }
+    if (event != null)
+      OEV.Compositor.startRender([ OEV.TracksLayer ]);
   };
 
   var cfg_showAntiCyc = document.getElementById('cfg-showAntiCyc');
@@ -899,10 +892,8 @@ function initGUIHooks() {
       OEV.TracksParams.dispAcyc = true;
     else
       OEV.TracksParams.dispAcyc = false;
-    if (event != null) {
-      OEV.TracksLayer.initCtx();
-      OEV.Compositor.startRenderLoop();
-    }
+    if (event != null)
+      OEV.Compositor.startRender([ OEV.TracksLayer ]);
   };
 
   var cfg_lenRange = document.getElementById('cfg-lenRange');
@@ -914,10 +905,8 @@ function initGUIHooks() {
       OEV.TracksParams.maxLength = -1;
     else
       OEV.TracksParams.maxLength = +parts[1] * weeksToSecs;
-    if (event != null) {
-      OEV.TracksLayer.initCtx();
-      OEV.Compositor.startRenderLoop();
-    }
+    if (event != null)
+      OEV.Compositor.startRender([ OEV.TracksLayer ]);
   };
 
   var cfg_projMethod = document.getElementById('cfg-projMethod');
@@ -1004,12 +993,13 @@ function initGUIHooks() {
       OEV.SSHParams.shadeStyle = 1;
     else if (choice == 'Contour Bands')
       OEV.SSHParams.shadeStyle = 2;
+    else if (choice == 'Waters')
+      OEV.SSHParams.shadeStyle = 3;
     if (event != null) {
       OEV.Compositor.optiRenderImp();
-      if (OEV.Compositor.dispSSH) {
-        OEV.SSHLayer.initCtx();
-        return OEV.Compositor.startRenderLoop();
-      } else
+      if (OEV.Compositor.dispSSH)
+        return OEV.Compositor.startRender([ OEV.SSHLayer ]);
+      else
         OEV.Compositor.startRenderLoop();
     }
   };

@@ -1,5 +1,13 @@
 /* Composite rendering of 2D RenderLayers, either as a 2D map or
-   through a 3D raytrace renderer.  */
+   through a 3D raytrace renderer.  Also contains main loop and hooks
+   to integrate with the GUI, if available.  */
+
+/* TODO: Write Compositor so that it integrates only within a given
+   container, the drawing container.  Maybe pass messages too instead
+   of put GUI change code directly in here.  Mouse event handling is
+   hooked up to the containment frame.  Compositor should be designed
+   as a RenderLayer.  Maybe.  Either way, the main loop code will
+   still go in here, though.  */
 
 import "oevns";
 import "compat";
@@ -25,7 +33,18 @@ Compositor.dispLandMasses = true;
 // Display the SSH overlay?
 Compositor.dispSSH = true;
 
-/* Perform startup initialization for the whole web viewer.  */
+// Internal fields:
+// FIXME: These are still kind of ad-hoc.
+
+Compositor.drawingContainer = null;
+Compositor.noDouble = null;
+Compositor.ready = null;
+Compositor.renderInProg = null;
+Compositor.renderPart = null;
+Compositor.stopSignal = null;
+Compositor.playMode = null;
+
+/** Perform startup initialization for the whole web viewer.  */
 Compositor.init = function() {
   // Add all the RenderLayers to the GUI containment.
   this.drawingContainer = document.getElementById("drawingContainer");
@@ -65,7 +84,7 @@ Compositor.init = function() {
   return this.finishStartup();
 };
 
-// Change the viewport in a safe way for all RenderLayers.
+/** Change the viewport in a safe way for all RenderLayers.  */
 Compositor.setViewport = function(width, height) {
   ViewParams.viewport[0] = width;
   ViewParams.viewport[1] = height;
@@ -75,19 +94,32 @@ Compositor.setViewport = function(width, height) {
   TracksLayer.setViewport(width, height);
 };
 
-/* Reset all RenderLayers to their start condition at once, and start
-   a render loop if there isn't one already running.  */
-Compositor.startRender = function() {
-  EarthTexLayer.initCtx();
-  SSHLayer.initCtx();
-  TracksLayer.initCtx();
+/**
+ * Reset RenderLayers to their start condition and start a render loop
+ * if there isn't one already running.
+ * @param {Array} layers - (optional) An array of RenderLayers that
+ * indicates which layers should be reset to their start condition.
+ * If this parameter is not given, then all layers are reset to their
+ * start condition.
+ */
+Compositor.startRender = function(layers) {
+  if (!layers) {
+    EarthTexLayer.initCtx();
+    SSHLayer.initCtx();
+    TracksLayer.initCtx();
+  } else {
+    for (var i = 0, len = layers.length; i < len; i++) {
+      // If layer is visible...
+      layers[i].initCtx();
+    }
+  }
   if (!this.renderInProg) {
     this.renderPart = 0;
     return this.finishRenderJobs();
   }
 };
 
-/* If there is not a currently running render loop, start one.  */
+/** If there is not a currently running render loop, start one.  */
 Compositor.startRenderLoop = function() {
   if (!this.renderInProg) {
     this.renderPart = 0;
@@ -159,13 +191,15 @@ Compositor.finishStartup = function() {
 
 Compositor.renderInProg = false;
 
-/* Finish any render jobs that may be pending from TracksLayer or
-   SSHLayer.  If the parameter "fast" (deprecated) is provided and set
-   to true, then only redraw the composite without doing any more
-   computations.  If "noContinue" is provided and set to true, then
-   this function will not use window.setTimeout() to finish the
-   cothreaded rendering jobs.  */
-Compositor.finishRenderJobs = function(fast, noContinue) {
+/**
+ * Finish any render jobs that may be pending from TracksLayer or
+ * SSHLayer.  If the parameter "fast" (deprecated) is provided and set
+ * to true, then only redraw the composite without doing any more
+ * computations.  If "noContinue" is provided and set to true, then
+ * this function will not use window.setTimeout() to finish the
+ * cothreaded rendering jobs.
+ */
+Compositor.finishRenderJobs = function() {
   var earthTexStatus = EarthTexLayer.status;
   var sshStatus = SSHLayer.status;
   var tracksStatus = TracksLayer.status;
@@ -235,19 +269,21 @@ Compositor.finishRenderJobs = function(fast, noContinue) {
   }
 };
 
-/* If a render loop is in progress, force it to halt.  */
+/** If a render loop is in progress, force it to halt.  */
 Compositor.halt = function() {
   this.stopSignal = true;
 };
 
-/* Resize the viewports of the RenderLayers to fit the CSS allocated
-   space.  Returns `true` if the viewport size was changed, `false`
-   otherwise.
-
-   NOTE: Because modern browsers do not provide an event that fires if
-   the width or height of a CSS element has changed, this function
-   must be called every time the screen is updated via one of the
-   render() functions.  */
+/**
+ * Resize the viewports of the RenderLayers to fit the CSS allocated
+ * space.  Returns `true` if the viewport size was changed, `false`
+ * otherwise.
+ *
+ * NOTE: Because modern browsers do not provide an event that fires if
+ * the width or height of a CSS element has changed, this function
+ * must be called every time the screen is updated via one of the
+ * render() functions.
+ */
 Compositor.fitViewportToCntr = function() {
   // Warning: clientWidth and clientHeight marked as unstable in MDN.
   if (ViewParams.viewport[0] == this.drawingContainer.clientWidth &&
@@ -259,41 +295,50 @@ Compositor.fitViewportToCntr = function() {
   return true;
 };
 
-/* Switch which RenderLayer implementation is contained within the
-   GUI.  */
+/**
+ * Switch which RenderLayer implementation is contained within the
+ * GUI.
+ * @param {String} absName - The abstract name of the RenderLayer to
+ * switch, as a string.
+ * @param {String} impName - The name of the new RenderLayer
+ * implementation to use, as a string.
+ */
 Compositor.switchRenderLayer = function(absName, impName) {
-  impName.frontBuf.className = "renderLayer";
-  this.drawingContainer.replaceChild(impName.frontBuf, absName.frontBuf);
-  if (ViewParams.viewport[0] != impName.frontBuf.width ||
-      ViewParams.viewport[1] != impName.frontBuf.height)
-    impName.setViewport(ViewParams.viewport[0], ViewParams.viewport[1]);
+  var absObj = eval(absName);
+  var impObj = eval(impName);
+  impObj.frontBuf.className = "renderLayer";
+  impObj.frontBuf.style.cssText = absObj.frontBuf.style.cssText;
+  this.drawingContainer.replaceChild(impObj.frontBuf, absObj.frontBuf);
+  if (ViewParams.viewport[0] != impObj.frontBuf.width ||
+      ViewParams.viewport[1] != impObj.frontBuf.height)
+    impObj.setViewport(ViewParams.viewport[0], ViewParams.viewport[1]);
+  var setAbsVars =
+    [ "OEV.", absName, " = ", absName, " = ", impName ].join("");
+  eval(setAbsVars);
 };
 
-/* Analyze the current rendering parameters and for each RenderLayer,
-   choose the most optimal implementation.  */
+/**
+ * Analyze the current rendering parameters and for each RenderLayer,
+ * choose the most optimal implementation.
+ */
 Compositor.optiRenderImp = function() {
   if (ViewParams.projector == EquirectProjector &&
       ViewParams.polCenter[1] == 0) {
-    this.switchRenderLayer(EarthTexLayer, EquiEarthTexLayer);
-    OEV.EarthTexLayer = EarthTexLayer = EquiEarthTexLayer;
+    this.switchRenderLayer("EarthTexLayer", "EquiEarthTexLayer");
     if (SSHParams.shadeStyle == 0 &&
 	SSHParams.shadeBase == 0 &&
 	SSHParams.shadeScale == 4) {
-      this.switchRenderLayer(SSHLayer, EquiGraySSHLayer);
-      OEV.SSHLayer = SSHLayer = EquiGraySSHLayer;
+      this.switchRenderLayer("SSHLayer", "EquiGraySSHLayer");
       /* For this special case, the land masses must be rendered on
 	 top of the SSHLayer.  */
       this.drawingContainer.insertBefore(EarthTexLayer.frontBuf,
 					 TracksLayer.frontBuf);
     } else {
-      this.switchRenderLayer(SSHLayer, GenSSHLayer);
-      OEV.SSHLayer = SSHLayer = GenSSHLayer;
+      this.switchRenderLayer("SSHLayer", "GenSSHLayer");
     }
   } else {
-    this.switchRenderLayer(EarthTexLayer, GenEarthTexLayer);
-    OEV.EarthTexLayer = EarthTexLayer = GenEarthTexLayer;
-    this.switchRenderLayer(SSHLayer, GenSSHLayer);
-    OEV.SSHLayer = SSHLayer = GenSSHLayer;
+    this.switchRenderLayer("EarthTexLayer", "GenEarthTexLayer");
+    this.switchRenderLayer("SSHLayer", "GenSSHLayer");
   }
 };
 

@@ -488,6 +488,22 @@ The code is meant to be nearly identical to C/C++ syntax.
 
 Minimize getContext() calls.
 
+Great idea: Since some programmers (like me) will not want to fully
+read the first README before diving into the code, put developer
+documentation backreferences (hyperlinks) throughout the source code
+where each such piece of documentation is applicable.
+
+Put a table of contents at the very beginning of the developer
+documentation (good).
+
+Create dependency graphs, useful for ripple-wave transformation, which
+unfortunately is necessary for maintaining this project.  JavaScript
+is not good enough at optimization to do otherwise.
+
+Make sure all variables that are members of objects are explicitly
+initialized in the initializer function.  This will help with
+compatibility with C.
+
 ----------------------------------------
 
 So, with the new architecture, how do you go setting up the

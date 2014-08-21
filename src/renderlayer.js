@@ -93,9 +93,8 @@ RenderLayer.prototype.setViewport = function(width, height) {
 /**
  * Cothreaded RayTracer base class.  A raytracer is a per-pixel
  * renderer that maps a pixel on the frontbuffer to the backbuffer
- * using a {@linkcode Projector}.
- *
- * Base class: {@linkcode RenderLayer}
+ * using a {@linkcode Projector}.  Render results are sent to the
+ * frontbuffer member object named `frontBuf`.
  *
  * Parameters:
  *
@@ -122,7 +121,8 @@ RenderLayer.prototype.setViewport = function(width, height) {
  * number of continuous scanlines to raytrace before checking the
  * timeout condition.  Setting this to a larger value can help
  * increase raytracing efficiency by reducing the number of possibly
- * expensive Web API calls per iteration.  Default value is 8.
+ * expensive Web API calls per iteration.  If set to -1, then
+ * preemption never occurs during rendering.  Default value is 8.
  *
  * @constructor
  *
@@ -145,7 +145,7 @@ var RayTracer = function(backBuf, backBufType, maxOsaPasses) {
 };
 
 OEV.RayTracer = RayTracer;
-RayTracer.prototype = new RenderLayer();
+RayTracer.prototype = new Cothread();
 RayTracer.prototype.constructor = RayTracer;
 
 /**
@@ -230,7 +230,10 @@ RayTracer.prototype.contExec = function() {
   var destImg_data = destImg.data;
   var aspectXY = ViewParams.aspectXY;
   var inv_aspectXY = 1 / aspectXY;
+  var mcx = ViewParams.mapCenter[0], mcy = ViewParams.mapCenter[1];
+  var inv_scale = ViewParams.inv_scale;
   var projector_unproject = ViewParams.projector.unproject;
+  var clip = ViewParams.clip;
   var mapToPol = this.mapToPol;
   // var fastEqui = this.fastEqui;
   var maxOsaPasses = this.maxOsaPasses;
@@ -255,11 +258,9 @@ RayTracer.prototype.contExec = function() {
 
       /* Compute normalized coordinates, applying 2D shift and scale
          factors as necessary.  */
-      mapToPol[0] = (((x + xj) / destImg_width) * 2 - 1 -
-		     ViewParams.mapCenter[0]) * ViewParams.inv_scale;
+      mapToPol[0] = (((x + xj) / destImg_width) * 2 - 1 - mcx) * inv_scale;
       mapToPol[1] = (-(((y + yj) / destImg_height) * 2 - 1) *
-		     inv_aspectXY - ViewParams.mapCenter[1]) *
-	ViewParams.inv_scale;
+		     inv_aspectXY - mcy) * inv_scale;
 
       // Unproject.
       /* if (fastEqui)
@@ -267,14 +268,15 @@ RayTracer.prototype.contExec = function() {
       else */ projector_unproject(mapToPol);
 
       // Clip to the projection boundaries, if specified.
-      if (ViewParams.clip && (mapToPol[1] < -90 || mapToPol[1] > 90 ||
-			      mapToPol[0] < -180 || mapToPol[0] > 180))
+      if (clip && (mapToPol[1] < -90 || mapToPol[1] > 90 ||
+		   mapToPol[0] < -180 || mapToPol[0] > 180))
 	{ mapToPol[0] = NaN; mapToPol[1] = NaN; }
 
       /* Shift to the given latitude and longitude, and normalize the
          coordinates at the same time.  */
       polShiftOrigin(mapToPol, -1);
 
+      /* Plot the pixel.  */
       if (isNaN(mapToPol[0]) ||
 	  mapToPol[1] < -90 || mapToPol[1] > 90 ||
 	  mapToPol[0] < -180 || mapToPol[0] >= 180) {
@@ -292,7 +294,6 @@ RayTracer.prototype.contExec = function() {
       }
       var latIdx = 0|((-mapToPol[1] + 90) / 180 * (backBuf_height - 1));
       var lonIdx = 0|((mapToPol[0] + 180) / 360 * backBuf_width);
-
       if (backBufType == 1) {
 	var value = backBuf_data[latIdx*backBuf_width+lonIdx];
 	this.pixelPP(value, destImg_data, destIdx, osaFac, inv_osaFac);
@@ -314,8 +315,9 @@ RayTracer.prototype.contExec = function() {
       /* if (ctnow() - startTime >= timeout)
 	 break; */
     }
-    if (x >= destImg_width)
-      { x = 0; y++; }
+    x = 0; y++;
+    /* if (x >= destImg_width)
+      { x = 0; y++; } */
     if (y >= destImg_height) {
       destIdx = 0;
       y = 0;
@@ -324,7 +326,12 @@ RayTracer.prototype.contExec = function() {
       inv_osaFac = 1 - osaFac;
       wrapOver = true;
     }
-    var atBlockPos = (blockFactor > 0) ? (y % blockFactor == 0) : true;
+    var atBlockPos;
+    switch (blockFactor) {
+    case 0: atBlockPos = true; break;
+    case -1: atBlockPos = false; break;
+    default: atBlockPos = (y % blockFactor == 0); break;
+    }
     if (atBlockPos && ctnow() - startTime >= timeout)
       break;
   }
@@ -335,6 +342,246 @@ RayTracer.prototype.contExec = function() {
     ctx.putImageData(destImg, 0, 0, 0, 0, destImg_width, destImg_height);
 
   this.setExitStatus(osaPass <= maxOsaPasses);
+  this.status.preemptCode = RenderLayer.RENDERING;
+  this.status.percent = ((y + destImg_height * (osaPass - 1)) *
+			 CothreadStatus.MAX_PERCENT /
+			 (destImg_height * maxOsaPasses));
+
+  this.destIdx = destIdx;
+  this.x = x;
+  this.y = y;
+  this.osaPass = osaPass;
+  return this.status;
+};
+
+/********************************************************************/
+
+/**
+ * Specialized RayTracer that can only handle TDProjectors, that is,
+ * orthographic and perspective projections.  The relevant projection
+ * code is hand-lined into this RayTracer.  This RayTracer also does
+ * not support processing of non-pixel-based backbuffers.
+ */
+var TDRayTracer = function(backBuf, backBufType, maxOsaPasses) {
+  /* Note: We must be careful to make sure that the base cothread
+     initializations take place.  */
+  Cothread.call(this, this.initCtx, this.contExec);
+
+  this.frontBuf = document.createElement("canvas");
+  this.backBuf = backBuf;
+  this.backBufType = backBufType;
+  this.maxOsaPasses = maxOsaPasses;
+  this.blockFactor = 8;
+
+  // this.mapToPol = [ NaN, NaN ];
+  this.perspProject = false;
+};
+
+OEV.TDRayTracer = TDRayTracer;
+TDRayTracer.prototype = new RayTracer();
+TDRayTracer.prototype.constructor = TDRayTracer;
+
+TDRayTracer.prototype.initCtx = function() {
+  this.ctx = this.frontBuf.getContext("2d");
+  this.destIdx = 0;
+  this.x = 0;
+  this.y = 0;
+  this.osaPass = 1;
+  if (ViewParams.projector == PerspProjector ||
+      ViewParams.projector == PerspTDProjector)
+    this.perspProject = true;
+  else
+    this.perspProject = false;
+
+  this.status.returnType = CothreadStatus.PREEMPTED;
+  this.status.preemptCode = 0;
+  this.status.percent = 0;
+};
+
+TDRayTracer.prototype.contExec = function() {
+  var ctx = this.ctx;
+  // var destImg = this.destImg;
+  var destImg = ctx.createImageData(this.frontBuf.width,
+				    this.frontBuf.height);
+  var destIdx = 0; // this.destIdx;
+  var x = 0; // this.x;
+  var y = 0; // this.y;
+  var oldY = y;
+  var osaPass = this.osaPass;
+
+  var backBuf_width = this.backBuf.width;
+  var backBuf_height = this.backBuf.height;
+  var backBuf_data = this.backBuf.data;
+  var destImg_width = destImg.width;
+  var destImg_height = destImg.height;
+  var destImg_data = destImg.data;
+  var aspectXY = ViewParams.aspectXY;
+  var inv_aspectXY = 1 / aspectXY;
+  var mcx = ViewParams.mapCenter[0], mcy = ViewParams.mapCenter[1];
+  var inv_scale = ViewParams.inv_scale;
+  // var backBuf = this.backBuf;
+  // var destImg = this.destImg;
+  var perspProject = this.perspProject;
+  var latCenter = ViewParams.polCenter[1];
+  var lonCenter = ViewParams.polCenter[0];
+  // var mapToPol = this.mapToPol;
+  var maxOsaPasses = this.maxOsaPasses;
+  // var blockFactor = this.blockFactor;
+
+  var osaFac = 1 / osaPass;
+  var inv_osaFac = 1 - osaFac;
+  var wrapOver = false;
+
+  /* var ctnow = Cothread.now;
+
+  var startTime = ctnow();
+  var timeout = this.timeout; */
+
+  while (y < destImg_height /* osaPass <= maxOsaPasses */) {
+    while (x < destImg_width) {
+      var xj = 0, yj = 0; // X and Y jitter for oversampling
+      if (osaPass > 1) {
+	xj = 0.5 - Math.random();
+	yj = 0.5 - Math.random();
+      }
+
+      /* Compute normalized coordinates, applying 2D shift and scale
+         factors as necessary.  */
+      /* var x_pix = (((x + xj) / destImg_width) * 2 - 1 - mcx) * inv_scale;
+      var y_pix = (-(((y + yj) / destImg_height) * 2 - 1) *
+		   inv_aspectXY - mcy) * inv_scale; */
+      var x_pix = (x + xj) / destImg_width * 2 - 1;
+      var y_pix = (y + yj) / destImg_height * 2 - 1;
+
+      /* Perform embedded unprojection and tilt transformation.  */
+      /* mapToPol[0] = x_pix; mapToPol[1] = y_pix;
+         if (!perspProject) OrthoTDProjector.unproject(mapToPol);
+         else PerspTDProjector.unproject(mapToPol);
+         var latitude = mapToPol[1], longitude = mapToPol[0]; */
+
+      /* 1. Get the 3D rectangular coordinate of the ray intersection
+	 with the sphere.  The camera is looking down the negative
+	 z axis.  */
+      // Point3D r3src { x, y, z } -> exploded ->
+      var r3src_x, r3src_y, r3src_z;
+
+      if (!perspProject) { // Orthographic projection
+	r3src_x = x_pix;
+	r3src_y = y_pix;
+	r3src_z = Math.sin(Math.acos(Math.sqrt(Math.pow(r3src_x, 2) +
+					       Math.pow(r3src_y, 2))));
+	if (isNaN(r3src_z)) {
+	  /* destImg_data[destIdx+0] = 0|(destImg_data[destIdx+0] * inv_osaFac +
+				       0 * osaFac);
+	  destImg_data[destIdx+1] = 0|(destImg_data[destIdx+1] * inv_osaFac +
+				       0 * osaFac);
+	  destImg_data[destIdx+2] = 0|(destImg_data[destIdx+2] * inv_osaFac +
+				       0 * osaFac);
+	  destImg_data[destIdx+3] = 0|(destImg_data[destIdx+3] * inv_osaFac +
+				       0 * osaFac); */
+	  destIdx += 4;
+	  x++;
+	  continue;
+	}
+      } else { // Perspective projection
+	// r must be one: this simplifies the calculations
+	var r = 1; // 6371; // radius of the earth in kilometers
+	var d = ViewParams.perspAltitude / 6371; // altitude in kilometers
+	// focal length in units of the screen dimensions
+	var f = 1 / Math.tan(DEG2RAD * ViewParams.perspFOV / 2);
+	// var x_pix = x_pix;
+	// var y_pix = y_pix;
+
+	var w = (Math.pow(x_pix, 2) + Math.pow(y_pix, 2)) / Math.pow(f, 2);
+
+	var a = 1 + w;
+	var b = -2 * w * (r + d);
+	var c = w * Math.pow(r + d, 2) - 1 /* 1 == Math.pow(r, 2) */;
+
+	r3src_z = (-b + Math.sqrt(Math.pow(b, 2) - 4 * a * c)) / (2 * a);
+	if (isNaN(r3src_z)) {
+	  /* destImg_data[destIdx+0] = 0|(destImg_data[destIdx+0] * inv_osaFac +
+				       0 * osaFac);
+	  destImg_data[destIdx+1] = 0|(destImg_data[destIdx+1] * inv_osaFac +
+				       0 * osaFac);
+	  destImg_data[destIdx+2] = 0|(destImg_data[destIdx+2] * inv_osaFac +
+				       0 * osaFac);
+	  destImg_data[destIdx+3] = 0|(destImg_data[destIdx+3] * inv_osaFac +
+				       0 * osaFac); */
+	  destIdx += 4;
+	  x++;
+	  continue;
+	}
+	r3src_x = x_pix / f * (-r3src_z + (r + d)) /* / r */;
+	r3src_y = y_pix / f * (-r3src_z + (r + d)) /* / r */;
+      }
+
+      /* 2. Inverse rotate this coordinate around the x axis by the
+	 current globe tilt.  */
+      var tilt = DEG2RAD * latCenter;
+      var cos_tilt = Math.cos(tilt); var sin_tilt = Math.sin(tilt);
+      // Point3D r3src { x, y, z } -> exploded ->
+      var r3dest_x, r3dest_y, r3dest_z;
+      r3dest_x = r3src_x;
+      r3dest_y = r3src_y * cos_tilt - r3src_z * sin_tilt;
+      r3dest_z = r3src_y * sin_tilt + r3src_z * cos_tilt;
+
+      /* 3. Measure the latitude and longitude of this coordinate.  */
+      var latitude = RAD2DEG * Math.asin(r3dest_y) + 90;
+      var longitude = RAD2DEG * Math.atan2(r3dest_x, r3dest_z);
+
+      /* 4. Shift by the longitudinal rotation around the pole.  For
+	 the sake of the normalization calculation below, move the
+	 prime meridian to 180 degrees.  */
+      longitude += 180 + lonCenter;
+
+      /* 5. Verify that the coordinates are in bounds.  */
+      if (latitude < 0) latitude = 0;
+      if (latitude > 180) latitude = 180;
+      longitude += (longitude < 0) * 360;
+      longitude = longitude % 360.0;
+
+      /* Plot the pixel.  */
+      var latIdx = 0|(latitude * inv_180 * (backBuf_height - 1));
+      var lonIdx = 0|(longitude * inv_360 * backBuf_width);
+      var backBufIdx = (latIdx * backBuf_width + lonIdx) * 4;
+      destImg_data[destIdx+0] = backBuf_data[backBufIdx++];
+      destImg_data[destIdx+1] = backBuf_data[backBufIdx++];
+      destImg_data[destIdx+2] = backBuf_data[backBufIdx++];
+      destImg_data[destIdx+3] = backBuf_data[backBufIdx++];
+      destIdx += 4;
+      x++;
+      /* if (ctnow() - startTime >= timeout)
+	 break; */
+    }
+    x = 0; y++;
+    /* if (x >= destImg_width)
+      { x = 0; y++; } */
+    /* if (y >= destImg_height) {
+      destIdx = 0;
+      y = 0;
+      osaPass++;
+      osaFac = 1 / osaPass;
+      inv_osaFac = 1 - osaFac;
+      wrapOver = true;
+    } */
+    /* var atBlockPos;
+    switch (blockFactor) {
+    case 0: atBlockPos = true; break;
+    case -1: atBlockPos = false; break;
+    default: atBlockPos = (y % blockFactor == 0); break;
+    }
+    if (atBlockPos && ctnow() - startTime >= timeout)
+      break; */
+  }
+
+  /* if (!wrapOver)
+    ctx.putImageData(destImg, 0, 0, 0, oldY, destImg_width, y - oldY);
+  else */
+    ctx.putImageData(destImg, 0, 0, 0, 0, destImg_width, destImg_height);
+
+  // this.setExitStatus(y < destImg_height /* osaPass <= maxOsaPasses */);
+  this.status.returnType = CothreadStatus.FINISHED;
   this.status.preemptCode = RenderLayer.RENDERING;
   this.status.percent = ((y + destImg_height * (osaPass - 1)) *
 			 CothreadStatus.MAX_PERCENT /

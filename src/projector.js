@@ -251,6 +251,7 @@ PerspProjector.project = function(polToMap) {
   var f = 1 / Math.tan(DEG2RAD * ViewParams.perspFOV / 2);
   var latitude = DEG2RAD * polToMap[1];
   var cos_latitude = Math.cos(latitude);
+  // Point3D r3src { x, y, z } -> exploded ->
   var r3src_x = Math.sin(DEG2RAD * polToMap[0]) * cos_latitude /* * r */;
   var r3src_y = Math.sin(latitude) /* * r */;
   var r3src_z = Math.cos(DEG2RAD * polToMap[0]) * cos_latitude /* * r */;
@@ -260,6 +261,7 @@ PerspProjector.project = function(polToMap) {
 };
 
 PerspProjector.unproject = function(mapToPol) {
+  // Point3D r3src { x, y, z } -> exploded ->
   var r3src_x, r3src_y, r3src_z;
 
   // r must be one: this simplifies the calculations
@@ -300,8 +302,54 @@ OEV.TDProjector = TDProjector;
 TDProjector.prototype = new Projector();
 TDProjector.prototype.constructor = TDProjector;
 
-TDProjector.prototype.project = function(polToMap) {
-  throw_new_Error("Not implemented!");
+/**
+ * @param {Array} polToMap - See base class for details.
+ * @param {integer} type - Projector type.  Zero for orthographic, one
+ * for perspective.
+ */
+TDProjector.prototype.project = function(polToMap, projType) {
+  if (polToMap[0] < -90 || polToMap[0] > 90)
+    { polToMap[0] = NaN; polToMap[1] = NaN; return; }
+
+  /* 1. Get the 3D rectangular coordinate of the point.  */
+  var longitude = polToMap[0] - ViewParams.polCenter[0];
+  var latitude = DEG2RAD * polToMap[1];
+  var cos_latitude = Math.cos(latitude);
+  // Point3D r3src { x, y, z } -> exploded ->
+  var r3src_x = Math.sin(DEG2RAD * longitude) * cos_latitude;
+  var r3src_y = Math.sin(latitude);
+  var r3src_z = Math.cos(DEG2RAD * longitude) * cos_latitude;
+
+  /* 2. Rotate this coordinate around the x axis by the current globe
+     tilt.  */
+  // Point3D r3dest { x, y, z } -> exploded ->
+  var r3dest_x, r3dest_y, r3dest_z;
+  if (ViewParams.polCenter[1] != 0) {
+    /* FIXME: This should theoretically be positive, but from testing,
+       negative is what works correctly.  Probably due to a problem in
+       TracksLayer.  */
+    var tilt = -DEG2RAD * ViewParams.polCenter[1];
+    var cos_tilt = Math.cos(tilt); var sin_tilt = Math.sin(tilt);
+    r3dest_x = r3src_x;
+    r3dest_y = r3src_y * cos_tilt - r3src_z * sin_tilt;
+    r3dest_z = r3src_y * sin_tilt + r3src_z * cos_tilt;
+  } else {
+    r3dest_x = r3src_x; r3dest_y = r3src_y; r3dest_z = r3src_z;
+  }
+
+  /* 3. Read out the x and y pixel positions of this coordinate.  */
+  if (projType == 0) { // Orthographic projection
+    polToMap[0] = r3dest_x;
+    polToMap[1] = r3dest_y;
+  } else { // Perspective projection
+    // r must be one: this simplifies the calculations
+    var r = 1; // 6371; // radius of the earth in kilometers
+    var d = ViewParams.perspAltitude / 6371; // altitude in kilometers
+    // focal length in units of the screen dimensions
+    var f = 1 / Math.tan(DEG2RAD * ViewParams.perspFOV / 2);
+    polToMap[0] = r3dest_x * f / (-r3dest_z + (r + d));
+    polToMap[1] = r3dest_y * f / (-r3dest_z + (r + d));
+  }
 };
 
 /**
@@ -313,11 +361,12 @@ TDProjector.prototype.unproject = function(mapToPol, projType) {
   /* 1. Get the 3D rectangular coordinate of the ray intersection
      with the sphere.  The camera is looking down the negative
      z axis.  */
+  // Point3D r3src { x, y, z } -> exploded ->
   var r3src_x, r3src_y, r3src_z;
 
   if (projType == 0) { // Orthographic projection
-    r3src_y = mapToPol[1];
     r3src_x = mapToPol[0];
+    r3src_y = mapToPol[1];
     r3src_z = Math.sin(Math.acos(Math.sqrt(Math.pow(r3src_x, 2) +
 					   Math.pow(r3src_y, 2))));
     if (isNaN(r3src_z))
@@ -346,8 +395,9 @@ TDProjector.prototype.unproject = function(mapToPol, projType) {
 
   /* 2. Inverse rotate this coordinate around the x axis by the
      current globe tilt.  */
-  var tilt = DEG2RAD * ViewParams.center[1];
+  var tilt = DEG2RAD * ViewParams.polCenter[1];
   var cos_tilt = Math.cos(tilt); var sin_tilt = Math.sin(tilt);
+  // Point3D r3src { x, y, z } -> exploded ->
   var r3dest_x, r3dest_y, r3dest_z;
   r3dest_x = r3src_x;
   r3dest_y = r3src_y * cos_tilt - r3src_z * sin_tilt;
@@ -360,7 +410,7 @@ TDProjector.prototype.unproject = function(mapToPol, projType) {
   /* 4. Shift by the longitudinal rotation around the pole.  For the
      sake of the normalization calculation below, move the prime
      meridian to 180 degrees.  */
-  longitude += 180 + ViewParams.center[0];
+  longitude += 180 + ViewParams.polCenter[0];
 
   /* 5. Verify that the coordinates are in bounds.  */
   if (latitude < -90) latitude = -90;

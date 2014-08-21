@@ -23,7 +23,7 @@ ViewParams.polCenter = [ 0, 0 ];
 ViewParams.projector = null; // EquirectProjector
 /** Clip projected points that exceed +/- 90/180 degrees.  */
 ViewParams.clip = true;
-/** Scale factor for map rendering.  */
+/** 2D scale factor for map rendering.  */
 ViewParams.scale = 1;
 /** 1 / scale, used for improving performance.  */
 ViewParams.inv_scale = 1;

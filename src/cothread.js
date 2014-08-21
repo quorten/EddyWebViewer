@@ -77,7 +77,8 @@ var Cothread = function(initCtx, contExec) {
    * @type CothreadStatus
    * @readonly
    */
-  this.status = new CothreadStatus(CothreadStatus.FINISHED, 0, 1000);
+  this.status = new CothreadStatus(CothreadStatus.FINISHED, 0,
+				   CothreadStatus.MAX_PERCENT);
 
   /** Argument list to pass to cothread function.  */
   this.args = [];
@@ -143,6 +144,8 @@ Cothread.prototype.setExitStatus = function(condition) {
 Cothread.prototype.start = function() {
   "use strict";
   this.initCtx();
+  if (this.status.returnType == CothreadStatus.FINISHED)
+    return this.status;
   return this.contExec();
 };
 
@@ -174,6 +177,8 @@ Cothread.prototype.loop = function() {
   "use strict";
   if (this.status.returnType == CothreadStatus.FINISHED)
     this.initCtx();
+  if (this.status.returnType == CothreadStatus.FINISHED)
+    return this.status;
   return this.contExec();
 };
 

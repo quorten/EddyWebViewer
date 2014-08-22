@@ -504,6 +504,10 @@ Make sure all variables that are members of objects are explicitly
 initialized in the initializer function.  This will help with
 compatibility with C.
 
+Note:
+
+https://www.gnu.org/philosophy/javascript-trap.html
+
 ----------------------------------------
 
 So, with the new architecture, how do you go setting up the

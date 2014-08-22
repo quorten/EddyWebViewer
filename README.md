@@ -1,8 +1,16 @@
 EddyWebViewer
 =============
 
-This is the source code for the eddy webviewer.
-The purpose of this project is to create a fluid and interactive webviewer to replace our existing MATLAB viewer (https://github.com/jfaghm/OceanEddies/tree/master/tracks_viewer)
+This is the source code for the eddy webviewer.  The purpose of this
+project is to create a fluid and interactive webviewer to replace our
+existing MATLAB viewer
+(https://github.com/jfaghm/OceanEddies/tree/master/tracks_viewer)
+
+Ocean Eddies Web Viewer is licensed under the Expat MIT license.  See
+the file COPYING for details.  However, the files `qsorts.c' and
+`qsorts.h', used by tracks optimizer, are covered by the GNU Lesser
+General Public License, version 2.1, or (at your option) any later
+version.
 
 Build the Website from the Sources
 ----------------------------------

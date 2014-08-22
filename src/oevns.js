@@ -1,7 +1,9 @@
 /* Ocean Eddies Web Viewer namespace definition.
 
+@licstart  The following is the entire license notice for the
+JavaScript code in this page.
+
 Copyright (C) 2014 University of Minnesota
-Original author: Andrew Makousky
 
 Permission is hereby granted, free of charge, to any person obtaining
 a copy of this software and associated documentation files (the
@@ -21,6 +23,9 @@ NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
 LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+@licend  The above is the entire license notice for the JavaScript
+code in this page.
 
 */
 

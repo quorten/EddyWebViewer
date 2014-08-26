@@ -215,6 +215,7 @@ var makeMouseHandlers = function(vp, moveFunc, relFunc, zoomFunc) {
   };
 
   var zoomGlobe = function(event) {
+    if (!event) event = window.event;
     var factor = 1;
     if (event.deltaMode == 0x01) { // DOM_DELTA_LINE
       if (event.deltaY < 0)

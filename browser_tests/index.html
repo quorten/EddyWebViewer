@@ -35,57 +35,8 @@ browsers they work on and why they don't work on other browsers.</p>
 <ul>
   <li><a href="btest_template.html">Test Suite Template</a></li>
   <li><a href="css_gui_tests.html">CSS GUI Tests</a></li>
+  <li><a href="keyboard_tests.html">Keyboard Tests</a></li>
 </ul>
 
 </body>
 </html>
-
-<!-- What do I need to test?
-
-* Various forms of CSS box layout and rendering.
-
-* JavaScript event handling.
-
-https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/var
-https://developer.mozilla.org/en-US/Add-ons/Overlay_Extensions/XUL_School/JavaScript_Object_Management
-
-Here's how to setup a namespace:
-
-if (typeof OeViewer == 'undefined') {
-  var OeViewer = {};
-} else {
-  throw namespace already defined error;
-}
-
-http://hint.fm/wind/wind-bundle.js
-
-OeViewer.func1 = function(param1, param2) {
-}
-
-# Just use lat and lon for latitude and longitude in your code.
-
-For class constructors, you can use the following:
-
-Class = function(p1, p2) {
-}
-
-# JavaScript allows you to use `this'.
-
-Make sure you separate event handler links from the actual body
-markup.
-
-How are the tests organized?
-
-Test one feature of CSS at a time.
-
-No, no, no, most tests will be bundled together, but they have to be
-"exploded" so that they are seen as clearly separate modules that
-either pass or fail the specific test at hand.
-
-There is HTML prose before the test that describes how the test should
-behave, possibly an image too that shows exactly how the results
-should look, and then there is the specifically marked test HTML
-below.  Then a developer has to manually go through the test files to
-verify that the browser tests pass or fail.  JavaScript internal code
-tests may be able to be automated, provided that raw lossless data is
-available to verify the results of some of the tests. -->

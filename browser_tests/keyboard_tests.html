@@ -1,0 +1,119 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"
+      lang="en" xml:lang="en">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <title>Keyboard Tests</title>
+  <link rel="stylesheet" type="text/css" href="btest.css" />
+</head>
+<body id="topBody">
+
+<h1>Keyboard Tests</h1>
+
+<h2>Test Listing</h2>
+
+<ul>
+  <li><a href="#defintercept">
+      Default Interception of Key Events Test</a></li>
+</ul>
+
+<hr />
+<!-- ________________________________________ -->
+
+<h2 class="btest-header"><a name="defintercept" id="defintercept">
+    Default Interception of Key Events Test</a></h2>
+
+<p class="btest-description"><strong>Description:</strong> Most
+browsers do not allow most HTML elements to receive direct keyboard
+focus.  Rather than trying to receive keyboard events directly from
+the element where the user's attention is focused, keyboard events can
+be processed only if they are not processed by another element, such
+as a text input field.  Default keyboard processing is done on the
+<code>document</code> object.</p>
+
+<p class="btest-output"><strong>Expected Output:</strong></p>
+
+<ul>
+  <li>Click inside the test zone and start pressing keys.  You should
+  see notification messages appear indicating that they were processed
+  by the default handler.</li>
+  <li>Click inside the text box and start pressing keys.  These keys
+  should result in input and navigation within the text box, but no
+  notification messages should appear.</li>
+</ul>
+
+<p class="failed">If these requirements are not met, then the test
+fails.</p>
+
+<p><strong>Content Zone:</strong></p>
+
+<div id="eventNotifyBox" class="btest-content"
+     style="overflow: auto; max-height: 8cm">
+<form action="">
+  <input type="text" value="" />
+</form>
+Notifications:<br />
+<div id="insertAnchor" style="display: inline"></div>
+&lt;end of messages&gt;
+</div> <!-- END Content Zone -->
+
+<script type="text/javascript">
+<!--//--><![CDATA[//><!--
+var notifyBox = document.getElementById('eventNotifyBox');
+
+var realKeyProc = function(event) {
+  if (!event) event = window.event;
+
+  var msg = '' + event.type + ', keyCode: ' + event.keyCode;
+  if (event.type == 'keypress')
+    msg += ', charCode: ' + event.charCode;
+  var insertAnchor = document.getElementById('insertAnchor').nextSibling;
+  notifyBox.insertBefore(document.createTextNode(msg), insertAnchor);
+  notifyBox.insertBefore(document.createElement('br'), insertAnchor);
+};
+
+var inhibitKey = false;
+var inhibitWKey = false;
+
+document.onkeyup = document.onkeypress = document.onkeydown =
+  function(event) {
+  if (inhibitKey) { inhibitKey = false; inhibitWKey = true; return; }
+  realKeyProc(event); inhibitWKey = true;
+};
+
+/* Some browsers don't support document.onkey****.  Others don't
+   support window.onkey****.  So both cases must be handled
+   gracefully, without keybounce.  */
+window.onkeyup = window.onkeypress = window.onkeydown =
+  function(event) {
+  if (inhibitKey) { inhibitKey = false; return; }
+  if (inhibitWKey) { inhibitWKey = false; return; }
+  realKeyProc(event);
+};
+
+/* Some browers allow keyboard focus on all elements.  This case must
+   be handled too.  Unfortunately, key event bubbling will cause
+   issues with the interior text box, so we must add dummy handlers to
+   that too.  */
+/* notifyBox.onkeyup = notifyBox.onkeypress = notifyBox.onkeydown =
+  function(event) {
+  if (inhibitKey) { inhibitKey = false; inhibitWKey = true; return; }
+  realKeyProc(event); inhibitWKey = true;
+}; */
+
+var topBody = document.getElementById('topBody');
+topBody.onkeyup = topBody.onkeypress = topBody.onkeydown = function(event) {
+  inhibitKey = true;
+};
+
+//--><!]]>
+</script>
+
+<p class="btest-status"><strong>Status:</strong>
+You have to verify this test manually to determine if
+it <span class="passed">passed</span>
+or <span class="failed">failed</span>.</p>
+
+</body>
+</html>

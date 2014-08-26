@@ -48,6 +48,7 @@ install: bundle.js
 	   ../htdocs/index.html
 	cp ../libs/getElementsByClassName-1.0.1.js \
 	  ../htdocs/getElementsByClassName-1.0.1.js
+	mv ../htdocs/alpha_help.html ../htdocs/help.html
 	cp -R ../misc_earth ../htdocs/
 	-chmod go+r ../htdocs/*
 	chmod -R go+r ../htdocs/misc_earth

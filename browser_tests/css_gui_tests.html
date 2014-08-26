@@ -715,7 +715,7 @@ function minimizeActivate(event) {
     minCntr.style.cssText = '';
 
   topLeft.x = pointerTestZone.clientLeft + pointerTestZone.offsetLeft;
-  topLeft.y = pointerTestZone.clientLeft + pointerTestZone.offsetTop;
+  topLeft.y = pointerTestZone.clientTop + pointerTestZone.offsetTop;
 }
 
 function pointerTestInit() {
@@ -732,7 +732,7 @@ function pointerTestInit() {
   document.getElementById('toggleMinimize').onclick = minimizeActivate;
 
   topLeft.x = pointerTestZone.clientLeft + pointerTestZone.offsetLeft;
-  topLeft.y = pointerTestZone.clientLeft + pointerTestZone.offsetTop;
+  topLeft.y = pointerTestZone.clientTop + pointerTestZone.offsetTop;
 
   var ctx = pointerTestZone.getContext('2d');
   /* ctx.font = '12pt Sans';

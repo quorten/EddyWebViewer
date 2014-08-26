@@ -375,9 +375,9 @@ var modPolShiftOrigin = function(polarPt, fwd) {
   var objPolarPt = new PolarPoint(polarPt[1], polarPt[0]);
   var r3src = objPolarPt.degToRad().yppToPoint3D();
   // FIXME: Why does using fwd cause incorrect results?
-  var r3dest = r3src.rotateX(/* fwd * */ -DEG2RAD * ViewParams.polCenter[1]);
+  var r3dest = r3src.rotateX(/* fwd * */ -DEG2RAD * gViewParams.polCenter[1]);
   var polDest = r3dest.toYPolarPoint().radToDeg();
-  polDest.lon += -fwd * ViewParams.polCenter[0];
+  polDest.lon += -fwd * gViewParams.polCenter[0];
   polDest.degNormalize();
   polarPt[0] = polDest.lon;
   polarPt[1] = polDest.lat;
@@ -387,13 +387,13 @@ OEV.modPolShiftOrigin = modPolShiftOrigin;
 
 /**
  * Rotate a point to so that it is on a globe with
- * `ViewParams.polCenter` as the center.
+ * `gViewParams.polCenter` as the center.
  * @param {Array} polarPt - The polar point to transform
  * @param {integer} fwd - +1 if this is for forward transformation, -1
  * if it is for reverse transformation.
  */
 var polShiftOrigin = function(polarPt, fwd) {
-  var polCenter = ViewParams.polCenter;
+  var polCenter = gViewParams.polCenter;
   if (isNaN(polarPt[0]))
     return;
   if (fwd > 0)

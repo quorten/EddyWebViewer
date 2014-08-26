@@ -22,10 +22,10 @@ EarthTexData.loadTrans =
   new ImageLoader("../misc_earth/ocean.png");
 EarthTexData.loadTrans.prontoMode = true;
 EarthTexData.loadColors =
-  new ImageLoader("../data/blue_marble/land_shallow_topo_2048.jpg");
-// "../data/blue_marble/land_shallow_topo_2048.jpg";
-// "../data/blue_marble/world.200408.3x5400x2700.jpg";
-// "../data/blue_marble/world.200402.3x5400x2700.jpg";
+  new ImageLoader("../blue_marble/land_shallow_topo_2048.jpg");
+// "../blue_marble/land_shallow_topo_2048.jpg";
+// "../blue_marble/world.200408.3x5400x2700.jpg";
+// "../blue_marble/world.200402.3x5400x2700.jpg";
 EarthTexData.loadColors.prontoMode = true;
 EarthTexData.loadData = new SeriesCTCtl([ EarthTexData.loadTrans,
 					  EarthTexData.loadColors ]);
@@ -95,6 +95,9 @@ GenEarthTexLayer.frontBuf = GenEarthTexLayer.render.frontBuf;
 GenEarthTexLayer.setViewport = function(width, height) {
   return this.render.setViewport(width, height);
 };
+GenEarthTexLayer.setViewParams = function(vp) {
+  this.vp = vp; return this.render.setViewParams(vp);
+};
 
 GenEarthTexLayer.initCtx = function() {
   if (!this.render.backBuf)
@@ -146,6 +149,9 @@ TDEarthTexLayer.initCtx = GenEarthTexLayer.initCtx;
 TDEarthTexLayer.contExec = GenEarthTexLayer.contExec;
 TDEarthTexLayer.setViewport = function(width, height) {
   return this.render.setViewport(width, height);
+};
+TDEarthTexLayer.setViewParams = function(vp) {
+  this.vp = vp; return this.render.setViewParams(vp);
 };
 
 /********************************************************************/

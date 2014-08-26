@@ -2,17 +2,11 @@
    through a 3D raytrace renderer.  Also contains main loop and hooks
    to integrate with the GUI, if available.  */
 
-/* TODO: Write Compositor so that it integrates only within a given
-   container, the drawing container.  Maybe pass messages too instead
-   of put GUI change code directly in here.  Mouse event handling is
-   hooked up to the containment frame.  Compositor should be designed
-   as a RenderLayer.  Maybe.  Either way, the main loop code will
-   still go in here, though.  */
-
 import "oevns";
 import "compat";
 import "oevmath";
 import "projector";
+import "viewparams";
 import "cothread";
 import "dates";
 import "earthtexlayer";
@@ -24,74 +18,177 @@ OEV.Compositor = Compositor;
 
 // Important parameters:
 
-// Density of the graticule lines in degrees per line
+/** Density of the graticule lines in degrees per line.  */
 Compositor.gratDensity = 15;
 
-// Display the land mass texture?
-Compositor.dispLandMasses = true;
+/** Boolean indicating whether the EarthTexLayer is visible or not.  */
+Compositor.landMassVis = true;
 
-// Display the SSH overlay?
-Compositor.dispSSH = true;
+/** Boolean indicating whether the SSHLayer is visible or not.  */
+Compositor.sshVisible = true;
+
+/** Playback speed in frames per second.  */
+Compositor.playSpeed = 2;
+
+/** Event handler that gets called once the Compositor is fully
+    loaded.  */
+Compositor.onloaded = function() {};
+
+/** Event handler that gets called when the current date is changed
+    during playback.  */
+Compositor.ondatechange = function() {};
+
+/** Event handler that gets called once playback is forced to stop at
+    the end of the data.  */
+Compositor.onstop = function() {};
 
 // Internal fields:
 // FIXME: These are still kind of ad-hoc.
 
 Compositor.drawingContainer = null;
-Compositor.noDouble = null;
-Compositor.ready = null;
-Compositor.renderInProg = null;
-Compositor.renderPart = null;
-Compositor.stopSignal = null;
-Compositor.playMode = null;
+Compositor.noDouble = false;
+Compositor.renderInProg = false;
+Compositor.renderPart = 0;
+Compositor.stopSignal = false;
+Compositor.playMode = false;
+Compositor.frameStart = 0;
+Compositor.renderStart = 0;
+Compositor.datesProg = null;
+Compositor.earthTexProg = null;
+Compositor.sshProg = null;
+Compositor.tracksProg = null;
 
 /** Perform startup initialization for the whole web viewer.  */
 Compositor.init = function() {
   // Add all the RenderLayers to the GUI containment.
+  /* NOTE: EarthTexLayer was originally the bottom-most layer.  Since
+     the SSH and land masses aren't exactly complementary, having the
+     SSHLayer on top guarantees that all SSH samples are visible.  */
   this.drawingContainer = document.getElementById("drawingContainer");
-  EarthTexLayer.frontBuf.className = "renderLayer";
-  this.drawingContainer.appendChild(EarthTexLayer.frontBuf);
   SSHLayer.frontBuf.className = "renderLayer";
   this.drawingContainer.appendChild(SSHLayer.frontBuf);
+  EarthTexLayer.frontBuf.className = "renderLayer";
+  this.drawingContainer.appendChild(EarthTexLayer.frontBuf);
   TracksLayer.frontBuf.className = "renderLayer";
   this.drawingContainer.appendChild(TracksLayer.frontBuf);
 
   this.fitViewportToCntr();
-  ViewParams.projector = EquirectProjector;
+  gViewParams.projector = EquirectProjector;
   this.optiRenderImp();
 
-  EarthTexLayer.frontBuf.style.cssText = "display: none";
-  SSHLayer.frontBuf.style.cssText = "display: none";
-  TracksLayer.frontBuf.style.cssText = "display: none";
+  EarthTexLayer.frontBuf.style.cssText = "visibility: hidden";
+  SSHLayer.frontBuf.style.cssText = "visibility: hidden";
+  TracksLayer.frontBuf.style.cssText = "visibility: hidden";
 
   this.noDouble = false;
-  this.ready = false;
 
   /* Preload the required data so that the GUI can indicate these
      steps are in progress.  */
-  var finishWrapper = makeEventWrapper(Compositor, "finishStartup");
+  /* NOTE: Right now, the loading loop does not use I/O notification
+     since that can be slow.  This is a great place where feature
+     detection would help.  However, such feature detection would be
+     very difficult to assess, perhaps not even practical.  */
+  // var finishWrapper = makeEventWrapper(Compositor, "finishStartup");
   Dates.timeout = 15;
-  Dates.notifyFunc = finishWrapper;
+  // Dates.notifyFunc = finishWrapper;
   SSHLayer.loadData.timeout = 15;
-  SSHLayer.loadData.notifyFunc = finishWrapper;
+  // SSHLayer.loadData.notifyFunc = finishWrapper;
   TracksLayer.loadData.timeout = 15;
-  TracksLayer.loadData.notifyFunc = finishWrapper;
+  // TracksLayer.loadData.notifyFunc = finishWrapper;
+  TracksLayer.loadData.listenOnProgress = true;
+  // TracksLayer.loadData.notifyProgress = true;
 
   Dates.initCtx();
-  EarthTexData.initLoad(15, finishWrapper);
+  EarthTexData.initLoad(15, null /* finishWrapper */);
   SSHLayer.loadData.initCtx();
   TracksLayer.loadData.initCtx();
+
+  /* Setup the loading screen.  */
+  var loadingScreen = document.getElementById("loadingScreen");
+  this.datesProg = document.createTextNode("Date indexes: 0%");
+  loadingScreen.appendChild(this.datesProg);
+  loadingScreen.appendChild(document.createElement("br"));
+  this.earthTexProg = document.createTextNode("Earth texture: 0%");
+  loadingScreen.appendChild(this.earthTexProg);
+  loadingScreen.appendChild(document.createElement("br"));
+  this.sshProg = document.createTextNode("SSH preload data: 0%");
+  loadingScreen.appendChild(this.sshProg);
+  loadingScreen.appendChild(document.createElement("br"));
+  this.tracksProg = document.createTextNode("Tracks data: 0%");
+  loadingScreen.appendChild(this.tracksProg);
+  loadingScreen.appendChild(document.createElement("br"));
 
   return this.finishStartup();
 };
 
-/** Change the viewport in a safe way for all RenderLayers.  */
-Compositor.setViewport = function(width, height) {
-  ViewParams.viewport[0] = width;
-  ViewParams.viewport[1] = height;
-  ViewParams.aspectXY = width / height;
-  EarthTexLayer.setViewport(width, height);
-  SSHLayer.setViewport(width, height);
-  TracksLayer.setViewport(width, height);
+Compositor.finishStartup = function() {
+  var datesStatus = Dates.continueCT();
+  var earthTexStatus = EarthTexData.loadData.continueCT();
+  var sshStatus = SSHLayer.loadData.continueCT();
+  var tracksStatus = TracksLayer.loadData.continueCT();
+
+  this.datesProg.nodeValue = "Date indexes: " +
+    (datesStatus.percent * 100 /
+     CothreadStatus.MAX_PERCENT).toFixed(0) + "%";
+  this.earthTexProg.nodeValue = "Earth texture: " +
+    (earthTexStatus.percent * 100 /
+     CothreadStatus.MAX_PERCENT).toFixed(0) + "%";
+  this.sshProg.nodeValue = "SSH preload data: " +
+    (sshStatus.percent * 100 /
+     CothreadStatus.MAX_PERCENT).toFixed(0) + "%";
+  this.tracksProg.nodeValue = "Tracks data: " +
+    (tracksStatus.percent * 100 /
+     CothreadStatus.MAX_PERCENT).toFixed(0) + "%";
+
+  if (datesStatus.returnType != CothreadStatus.FINISHED ||
+      earthTexStatus.returnType != CothreadStatus.FINISHED ||
+      sshStatus.returnType != CothreadStatus.FINISHED ||
+      tracksStatus.returnType != CothreadStatus.FINISHED) {
+    /* If our progress meters don't send notifications, then we don't
+       return on IOWAIT.  Progress meters that send notifications can
+       be slow.  Then again, using progress meters at all is slower
+       than no progress meters.  */
+    /* if (datesStatus.preemptCode == CothreadStatus.IOWAIT ||
+	earthTexStatus.preemptCode == CothreadStatus.IOWAIT ||
+	sshStatus.preemptCode == CothreadStatus.IOWAIT ||
+	tracksStatus.preemptCode == CothreadStatus.IOWAIT)
+      return; */
+    return window.setTimeout(
+	makeEventWrapper(Compositor, "finishStartup"), 2000);
+  }
+
+  /* Prevent final initialization from being run twice.  (This is now
+     impossible in the current codebase, due to elimination of I/O
+     notification.  The old code was buggy, though: it should have
+     guaranteed that only one loading loop was active.)  */
+  if (Compositor.noDouble)
+    return;
+  Compositor.noDouble = true;
+
+  /* Connect the front buffers to the GUI now that loading is
+     finished.  */
+  var loadingScreen = document.getElementById("loadingScreen");
+  if (loadingScreen)
+    loadingScreen.style.cssText = "visibility: hidden";
+
+  EarthTexLayer.frontBuf.style.cssText = "";
+  SSHLayer.frontBuf.style.cssText = "";
+  TracksLayer.frontBuf.style.cssText = "";
+
+  this.onloaded();
+
+  /* Now that all the necessary startup data is loaded, we should
+     proceed to rendering the first frame.  */
+  /* FIXME: The render loop hasn't been designed to suspend and resume
+     jobs on IOWAIT.  Sorry.  */
+  // var renderWrapper = makeEventWrapper(Compositor, "finishRenderJobs");
+  EarthTexLayer.timeout = 15;
+  // EarthTexLayer.notifyFunc = renderWrapper;
+  SSHLayer.timeout = 15;
+  // SSHLayer.notifyFunc = renderWrapper;
+  TracksLayer.timeout = 15;
+  // TracksLayer.notifyFunc = renderWrapper;
+  return this.startRender();
 };
 
 /**
@@ -104,17 +201,23 @@ Compositor.setViewport = function(width, height) {
  */
 Compositor.startRender = function(layers) {
   if (!layers) {
-    EarthTexLayer.initCtx();
-    SSHLayer.initCtx();
-    TracksLayer.initCtx();
+    // If layer is visible, render it.
+    if (!EarthTexLayer.frontBuf.style.visibility)
+      EarthTexLayer.initCtx();
+    if (!SSHLayer.frontBuf.style.visibility)
+      SSHLayer.initCtx();
+    if (!TracksLayer.frontBuf.style.visibility)
+      TracksLayer.initCtx();
   } else {
     for (var i = 0, len = layers.length; i < len; i++) {
-      // If layer is visible...
-      layers[i].initCtx();
+      // If layer is visible, render it.
+      if (!layers[i].frontBuf.style.visibility)
+	layers[i].initCtx();
     }
   }
   if (!this.renderInProg) {
     this.renderPart = 0;
+    this.renderStart = this.frameStart = Cothread.now();
     return this.finishRenderJobs();
   }
 };
@@ -127,77 +230,20 @@ Compositor.startRenderLoop = function() {
   }
 };
 
-Compositor.finishStartup = function() {
-  var datesStatus = Dates.continueCT();
-  var earthTexStatus = EarthTexData.loadData.continueCT();
-  var sshStatus = SSHLayer.loadData.continueCT();
-  var tracksStatus = TracksLayer.loadData.continueCT();
-  if (datesStatus.returnType != CothreadStatus.FINISHED ||
-      earthTexStatus.returnType != CothreadStatus.FINISHED ||
-      sshStatus.returnType != CothreadStatus.FINISHED ||
-      tracksStatus.returnType != CothreadStatus.FINISHED) {
-    if (datesStatus.preemptCode == CothreadStatus.IOWAIT ||
-	earthTexStatus.preemptCode == CothreadStatus.IOWAIT ||
-	sshStatus.preemptCode == CothreadStatus.IOWAIT ||
-	tracksStatus.preemptCode == CothreadStatus.IOWAIT)
-      return;
-    return window.setTimeout(
-	makeEventWrapper(Compositor, "finishStartup"), 300);
-  }
-
-  // Prevent final initialization from being run twice.
-  if (Compositor.noDouble)
-    return;
-  /* if (!Compositor.ready)
-    return; */
-  Compositor.noDouble = true;
-
-  /* Connect the front buffers to the GUI now that loading is
-     finished.  */
-  var loadingScreen = document.getElementById("loadingScreen");
-  if (loadingScreen)
-    loadingScreen.style.cssText = "display: none";
-
-  EarthTexLayer.frontBuf.style.cssText = "";
-  SSHLayer.frontBuf.style.cssText = "";
-  TracksLayer.frontBuf.style.cssText = "";
-
-  this.drawingContainer.onmousedown = setMouseDown;
-  if (!this.drawingContainer.setCapture)
-    window.onmousemove = panGlobe;
-  else {
-    this.drawingContainer.onmousemove = panGlobe;
-    this.drawingContainer.onmouseup = setMouseUp;
-  }
-  addWheelListener(this.drawingContainer, zoomGlobe);
-
-  /* This should probably go in the GUI setup code... */
-  window.onorientationchange = window.onresize = function() {
-    Compositor.fitViewportToCntr();
-    Compositor.startRender();
-  };
-
-  /* Now that all the necessary startup data is loaded, we should
-     proceed to rendering the first frame.  */
-  var renderWrapper = makeEventWrapper(Compositor, "finishRenderJobs");
-  EarthTexLayer.timeout = 15;
-  EarthTexLayer.notifyFunc = renderWrapper;
-  SSHLayer.timeout = 15;
-  SSHLayer.notifyFunc = renderWrapper;
-  TracksLayer.timeout = 15;
-  TracksLayer.notifyFunc = renderWrapper;
-  return this.startRender();
+/** Wrapper function for starting rendering during animation.  This
+    function is for internal use only.  */
+Compositor.startRenderAnim = function() {
+  this.renderStart = Cothread.now();
+  if (!SSHLayer.frontBuf.style.visibility)
+    SSHLayer.initCtx();
+  if (!TracksLayer.frontBuf.style.visibility)
+    TracksLayer.initCtx();
+  return this.finishRenderJobs();
 };
-
-Compositor.renderInProg = false;
 
 /**
  * Finish any render jobs that may be pending from TracksLayer or
- * SSHLayer.  If the parameter "fast" (deprecated) is provided and set
- * to true, then only redraw the composite without doing any more
- * computations.  If "noContinue" is provided and set to true, then
- * this function will not use window.setTimeout() to finish the
- * cothreaded rendering jobs.
+ * SSHLayer.
  */
 Compositor.finishRenderJobs = function() {
   var earthTexStatus = EarthTexLayer.status;
@@ -206,12 +252,9 @@ Compositor.finishRenderJobs = function() {
   this.renderInProg = true;
 
   if (this.fitViewportToCntr()) {
-    if (earthTexStatus.returnType == CothreadStatus.FINISHED)
-      EarthTexLayer.initCtx();
-    if (sshStatus.returnType == CothreadStatus.FINISHED)
-      SSHLayer.initCtx();
-    if (tracksStatus.returnType == CothreadStatus.FINISHED)
-      TracksLayer.initCtx();
+    EarthTexLayer.initCtx();
+    SSHLayer.initCtx();
+    TracksLayer.initCtx();
   }
 
   var ctnow = Cothread.now;
@@ -242,28 +285,54 @@ Compositor.finishRenderJobs = function() {
   if (this.stopSignal) {
     this.renderInProg = false;
     this.stopSignal = false;
+    if (this.playMode) {
+      this.playMode = false;
+      this.onstop();
+    }
   } else if (earthTexStatus.returnType != CothreadStatus.FINISHED ||
-	   sshStatus.returnType != CothreadStatus.FINISHED ||
-	   tracksStatus.returnType != CothreadStatus.FINISHED)
+	     sshStatus.returnType != CothreadStatus.FINISHED ||
+	     tracksStatus.returnType != CothreadStatus.FINISHED)
     return requestAnimationFrame(
-	       makeEventWrapper(Compositor, "finishRenderJobs"));
+		    makeEventWrapper(Compositor, "finishRenderJobs"));
   else if (earthTexStatus.returnType == CothreadStatus.FINISHED &&
 	   sshStatus.returnType == CothreadStatus.FINISHED &&
 	   tracksStatus.returnType == CothreadStatus.FINISHED &&
 	   this.playMode) {
-    if (Dates.curDate >= Dates.dateList.length - 1) {
+    if ((this.playSpeed > 0 && Dates.curDate >= Dates.dateList.length - 1) ||
+	(this.playSpeed < 0 && Dates.curDate <= 0)) {
       this.playMode = false;
       this.renderInProg = false;
+      this.onstop();
       return;
     }
-    Dates.curDate++;
-    var dateStr = OEV.Dates.dateList[OEV.Dates.curDate];
-    document.getElementById('cfg-curDate').value = dateStr;
-    SSHLayer.initCtx();
-    TracksLayer.initCtx();
+
+    // Dates.curDate++; // Simpler, but only runs at one speed.
+
+    var frameElap = 1000 / this.playSpeed;
+    var curTime = ctnow();
+    var nextTime = Math.abs(frameElap) - (curTime - this.renderStart);
+    var numFrames = 0|((curTime - this.frameStart) / 1000 * this.playSpeed);
+    this.frameStart += numFrames * frameElap;
+    Dates.curDate += numFrames;
+    if (Dates.curDate < 0) Dates.curDate = 0;
+    if (Dates.curDate > Dates.dateList.length - 1)
+      Dates.curDate = Dates.dateList.length - 1;
+    this.ondatechange();
+
     this.renderPart = 0;
+    /* if (!SSHLayer.frontBuf.style.visibility)
+      SSHLayer.initCtx();
+    if (!TracksLayer.frontBuf.style.visibility)
+      TracksLayer.initCtx();
     return requestAnimationFrame(
-	       makeEventWrapper(Compositor, "finishRenderJobs"));
+                    makeEventWrapper(Compositor, "finishRenderJobs")); */
+    if (Math.abs(this.playSpeed) >= 30 || nextTime <= 0)
+      return requestAnimationFrame(
+	         makeEventWrapper(Compositor, "startRenderAnim"));
+    else
+      return window.setTimeout(
+                 makeEventWrapper(Compositor, "startRenderAnim"),
+		 nextTime);
   } else {
     this.renderInProg = false;
   }
@@ -272,6 +341,16 @@ Compositor.finishRenderJobs = function() {
 /** If a render loop is in progress, force it to halt.  */
 Compositor.halt = function() {
   this.stopSignal = true;
+};
+
+/** Change the viewport in a safe way for all RenderLayers.  */
+Compositor.setViewport = function(width, height) {
+  gViewParams.viewport[0] = width;
+  gViewParams.viewport[1] = height;
+  gViewParams.aspectXY = width / height;
+  EarthTexLayer.setViewport(width, height);
+  SSHLayer.setViewport(width, height);
+  TracksLayer.setViewport(width, height);
 };
 
 /**
@@ -286,13 +365,43 @@ Compositor.halt = function() {
  */
 Compositor.fitViewportToCntr = function() {
   // Warning: clientWidth and clientHeight marked as unstable in MDN.
-  if (ViewParams.viewport[0] == this.drawingContainer.clientWidth &&
-      ViewParams.viewport[1] == this.drawingContainer.clientHeight)
+  if (gViewParams.viewport[0] == this.drawingContainer.clientWidth &&
+      gViewParams.viewport[1] == this.drawingContainer.clientHeight)
     return false;
   this.setViewport(this.drawingContainer.clientWidth,
 		   this.drawingContainer.clientHeight);
   // window.innerWidth, window.innerHeight
   return true;
+};
+
+/**
+ * Show the SSHLayer if the given parameter is `true`, hide it if it
+ *  is `false`.
+ * @param show
+ */
+Compositor.dispSSH = function(show) {
+  if (show) {
+    this.sshVisible = true;
+    SSHLayer.frontBuf.style.visibility = "";
+  } else {
+    this.sshVisible = false;
+    SSHLayer.frontBuf.style.visibility = "hidden";
+  }
+};
+
+/**
+ * Show the EarthTexLayer if the given parameter is `true`, hide it if
+ *  it is `false`.
+ * @param show
+ */
+Compositor.dispLandMasses = function(show) {
+  if (show) {
+    this.landMassVis = true;
+    EarthTexLayer.frontBuf.style.visibility = "";
+  } else {
+    this.landMassVis = false;
+    EarthTexLayer.frontBuf.style.visibility = "hidden";
+  }
 };
 
 /**
@@ -309,9 +418,9 @@ Compositor.switchRenderLayer = function(absName, impName) {
   impObj.frontBuf.className = "renderLayer";
   impObj.frontBuf.style.cssText = absObj.frontBuf.style.cssText;
   this.drawingContainer.replaceChild(impObj.frontBuf, absObj.frontBuf);
-  if (ViewParams.viewport[0] != impObj.frontBuf.width ||
-      ViewParams.viewport[1] != impObj.frontBuf.height)
-    impObj.setViewport(ViewParams.viewport[0], ViewParams.viewport[1]);
+  if (gViewParams.viewport[0] != impObj.frontBuf.width ||
+      gViewParams.viewport[1] != impObj.frontBuf.height)
+    impObj.setViewport(gViewParams.viewport[0], gViewParams.viewport[1]);
   var setAbsVars =
     [ "OEV.", absName, " = ", absName, " = ", impName ].join("");
   eval(setAbsVars);
@@ -322,17 +431,13 @@ Compositor.switchRenderLayer = function(absName, impName) {
  * choose the most optimal implementation.
  */
 Compositor.optiRenderImp = function() {
-  if (ViewParams.projector == EquirectProjector &&
-      ViewParams.polCenter[1] == 0) {
+  if (gViewParams.projector == EquirectProjector &&
+      gViewParams.polCenter[1] == 0) {
     this.switchRenderLayer("EarthTexLayer", "EquiEarthTexLayer");
     if (SSHParams.shadeStyle == 0 &&
 	SSHParams.shadeBase == 0 &&
 	SSHParams.shadeScale == 4) {
       this.switchRenderLayer("SSHLayer", "EquiGraySSHLayer");
-      /* For this special case, the land masses must be rendered on
-	 top of the SSHLayer.  */
-      this.drawingContainer.insertBefore(EarthTexLayer.frontBuf,
-					 TracksLayer.frontBuf);
     } else {
       this.switchRenderLayer("SSHLayer", "GenSSHLayer");
     }
@@ -340,6 +445,43 @@ Compositor.optiRenderImp = function() {
     this.switchRenderLayer("EarthTexLayer", "GenEarthTexLayer");
     this.switchRenderLayer("SSHLayer", "GenSSHLayer");
   }
+};
+
+/**
+ * Choose between having the EarthTexLayer as the bottom-most layer or
+ * not.
+ * @param {Boolean} bottom - If `true`, then the EarthTexLayer is the
+ * bottom-most layer.  Otherwise, it is set on top of SSHLayer.
+ */
+Compositor.bottomEarthTex = function(bottom) {
+  if (bottom)
+    this.drawingContainer.insertBefore(EarthTexLayer.frontBuf,
+				       SSHLayer.frontBuf);
+  else
+    this.drawingContainer.insertBefore(EarthTexLayer.frontBuf,
+				       TracksLayer.frontBuf);
+};
+
+/**
+ * Assuming the user wants the most optimal equirectangular projection
+ * experience, switch between whether gViewParams.mapCenter[1] or
+ * gViewParams.polCenter[1] is used to position the center of the
+ * screen at the correct latitude.
+ * @param {Projector} newProj - The new projection to use.
+ * `gViewParams.projector` will be set automatically.
+ */
+Compositor.switchYPan = function(newProj) {
+  if (gViewParams.projector != EquirectProjector &&
+      newProj == EquirectProjector) {
+    gViewParams.mapCenter[1] =
+      -gViewParams.polCenter[1] / 180 * gViewParams.scale;
+    gViewParams.polCenter[1] = 0;
+  } else if (gViewParams.projector == EquirectProjector) {
+    gViewParams.polCenter[1] =
+      -gViewParams.mapCenter[1] * 180 / gViewParams.scale;
+    gViewParams.mapCenter[1] = 0;
+  }
+  gViewParams.projector = newProj;
 };
 
 // -------------------------------------------------------------------
@@ -702,159 +844,6 @@ function render_ortho_graticule() {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.stroke();
   }
-}
-
-// -------------------------------------------------------------------
-
-var mouseDown = false;
-var buttonDown = 0;
-var firstPoint = {};
-var topLeft = { x: 0, y: 0 };
-var ptMSIE = 0; // msieVersion();
-firstPoint.x = 0; firstPoint.y = 0;
-
-var old_lon_rot;
-var old_tilt;
-
-function setMouseDown(event) {
-  /* if (ptMSIE <= 6 && ptMSIE > 0)
-    event = window.event; */
-
-  if (this.setCapture)
-    this.setCapture();
-  else
-    window.onmouseup = setMouseUp;
-
-  mouseDown = true;
-  buttonDown = event.button;
-  firstPoint.x = event.clientX; firstPoint.y = event.clientY;
-  /* if (!topLeft.x) {
-    topLeft.x = firstPoint.x - canvas.width / 2;
-    topLeft.y = firstPoint.y - canvas.height / 2;
-    var ctx = canvas.getContext("2d");
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-  } */
-  old_lon_rot = ViewParams.polCenter[0];
-  if (ViewParams.projector == EquirectProjector)
-    old_tilt = ViewParams.mapCenter[1];
-  else old_tilt = ViewParams.polCenter[1];
-}
-
-function panGlobe(event) {
-  if (!mouseDown)
-    return;
-  if (ptMSIE <= 6 && ptMSIE > 0)
-    event = window.event;
-
-  /* var disp_rad = Math.min(canvas.height, canvas.width) * scale / 2.0;
-  var first_ang_x = Math.asin((firstPoint.x - canvas.width / 2) / disp_rad);
-  var first_ang_y = Math.asin((firstPoint.y - canvas.width / 2) / disp_rad);
-  var cur_ang_x = Math.asin((event.clientX - canvas.width / 2) / disp_rad);
-  var cur_ang_y = Math.asin((event.clientY - canvas.width / 2) / disp_rad);
-
-  if (isNaN(first_ang_x) || isNaN(first_ang_y) ||
-      isNaN(cur_ang_x) || isNaN(cur_ang_y))
-    return;
-
-  lon_rot = old_lon_rot + first_ang_y - cur_ang_y;
-  tilt = old_tilt - (first_ang_x - cur_ang_x); */
-
-  var pan_scale;
-  var equirect_x_scale = 1;
-  if (ViewParams.projector != Compositor.rayPersp)
-    pan_scale = ViewParams.scale;
-  else
-    pan_scale = 1; // TODO: Do more complicated calculation
-  if (ViewParams.projector != Compositor.rayOrtho &&
-      ViewParams.projector != Compositor.rayPersp) {
-    var disp_rad = ViewParams.viewport[0] * ViewParams.scale / 2.0;
-    var screen_scalfac = disp_rad * 2 * Math.PI;
-    equirect_x_scale = 1;
-  }
-  ViewParams.polCenter[0] = old_lon_rot + (firstPoint.x - event.clientX) /
-    ViewParams.viewport[0] / pan_scale * equirect_x_scale * 180;
-  if (ViewParams.projector == EquirectProjector)
-    ViewParams.mapCenter[1] = old_tilt - (-(firstPoint.y - event.clientY)) /
-      ViewParams.viewport[1] / pan_scale * 180 / 180 * ViewParams.scale;
-  else ViewParams.polCenter[1] = old_tilt - (firstPoint.y - event.clientY) /
-	 ViewParams.viewport[1] / pan_scale * 180;
-
-  /* if (tilt > 90) tilt = 90;
-  if (tilt < -90) tilt = -90; */
-  while (ViewParams.polCenter[0] < 0) ViewParams.polCenter[0] += 360;
-  while (ViewParams.polCenter[0] >= 360) ViewParams.polCenter[0] -= 360;
-
-  var cfg_latLon = document.getElementById("cfg-latLon");
-  if (cfg_latLon) {
-    var dispLat = -ViewParams.mapCenter[1] * 180 / ViewParams.scale;
-    var dispLon = ViewParams.polCenter[0];
-    if (dispLat < 0)
-      dispLat = (-dispLat).toFixed(3) + " S";
-    else
-      dispLat = dispLat.toFixed(3) + " N";
-    if (dispLon >= 180)
-      dispLon -= 360;
-    if (dispLon < 0)
-      dispLon = (-dispLon).toFixed(3) + " W";
-    else
-      dispLon = dispLon.toFixed(3) + " E";
-    cfg_latLon.value = dispLat + " " + dispLon;
-  }
-
-  Compositor.startRender();
-
-  /* if (ptMSIE <= 6 && ptMSIE > 0)
-    event.cancelBubble = true; */
-  return false; // Cancel the default, or at least attempt to do so.
-}
-
-function setMouseUp(event) {
-  mouseDown = false;
-  Compositor.finishRenderJobs(true);
-  window.onmouseup = null;
-  return false;
-}
-
-function zoomGlobe(event) {
-  if (ViewParams.projector != Compositor.rayPersp) {
-    if (event.deltaMode == 0x01) { // DOM_DELTA_LINE
-      if (event.deltaY < 0)
-        ViewParams.scale *= (event.deltaY / 3) * -1.1;
-      else
-        ViewParams.scale /= (event.deltaY / 3) * 1.1;
-    } else if (event.deltaMode == 0x00) { // DOM_DELTA_PIXEL
-      /* FIXME: a good factor for this is wildly different across
-	 systems.  */
-      if (event.deltaY < 0)
-        ViewParams.scale *= (event.deltaY / 51) * -1.1;
-      else
-        ViewParams.scale /= (event.deltaY / 51) * 1.1;
-    }
-    var cfg_scaleFac = document.getElementById("cfg-scaleFac");
-    if (cfg_scaleFac) cfg_scaleFac.value = ViewParams.scale.toFixed(3);
-  } else {
-    if (event.deltaMode == 0x01) { // DOM_DELTA_LINE
-      if (event.deltaY < 0)
-        persp_fov /= -(event.deltaY / 3) * 1.1;
-      else
-        persp_fov *= (event.deltaY / 3) * 1.1;
-    } else if (event.deltaMode == 0x00) { // DOM_DELTA_PIXEL
-      if (event.deltaY < 0)
-        persp_fov /= -(event.deltaY / 53) * 1.1;
-      else
-        persp_fov *= (event.deltaY / 53) * 1.1;
-    }
-    var cfg_perspFOV = document.getElementById("cfg-perspFOV");
-    if (cfg_perspFOV) cfg_perspFOV.value = persp_fov;
-  }
-  ViewParams.inv_scale = 1 / ViewParams.scale;
-
-  // NOTE: allocRenderJob() messes up what `this' points to.
-  // if (allocRenderJob(makeEventWrapper(Compositor, "finishRenderJobs")))
-  Compositor.startRender();
-  event.preventDefault();
-  return false;
 }
 
 // -------------------------------------------------------------------

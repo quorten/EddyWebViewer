@@ -44,9 +44,16 @@ install: bundle.js
 	cp bundle.js ../htdocs/
 	sed -i -e 's/\.\.\///g' ../htdocs/bundle.js
 	cp ../slim_gui/* ../htdocs/
-	cp ../alpha/index.html ../htdocs/index.html
-	sed -i -e 's/\.\.\/src\///g' ../htdocs/index.html
+	sed -i -e 's/\.\.\/src\///g' -e 's/\.\.\/libs\///g' \
+	   ../htdocs/index.html
+	cp ../libs/getElementsByClassName-1.0.1.js \
+	  ../htdocs/getElementsByClassName-1.0.1.js
+	cp -R ../misc_earth ../htdocs/
 	-chmod go+r ../htdocs/*
+	chmod -R go+r ../htdocs/misc_earth
+	chmod go+x ../htdocs/misc_earth
+	ln -s ../data ../htdocs/data
+	ln -s ../blue_marble ../htdocs/blue_marble
 
 clean::
 	rm -f bundle.js tracksconv

@@ -75,15 +75,17 @@
                 background-color: #c00000; display: none; }
 
     #popupInfo { position: absolute; left: 8px; top: 8px;
-                 max-width: 10cm;
-                 background-color: #202020;
-                 background-color: rgba(0, 0, 0, 0.6);
-                 font-family: sans; font-size: 10pt;
-                 -moz-border-radius:16px; -webkit-border-radius:16px;
-                 border-radius: 16px; padding: 16px; }
-    .ie6 #popupInfo, .ie7 #popupInfo { background: transparent;
+                   max-width: 10cm; }
+    #popupLegend { position: absolute; left: 8px; bottom: 42px;
+                   max-width: 6cm; }
+    .popup { background-color: #202020;
+             background-color: rgba(0, 0, 0, 0.6);
+             font-family: sans; font-size: 10pt;
+             -moz-border-radius:16px; -webkit-border-radius:16px;
+             border-radius: 16px; padding: 16px; }
+    .ie6 .popup, .ie7 .popup { background: transparent;
 filter:progid:DXImageTransform.Microsoft.gradient(startColorstr=#20000000, endColorstr=#20000000); }
-    .ie8 #popupInfo { background: transparent;
+    .ie8 .popup { background: transparent;
 -ms-filter: "progid:DXImageTransform.Microsoft.gradient(startColorstr=#20000000, endColorstr=#20000000)"; }
     /* Although it would be nice to use the multiplication sign in
        place of an SVG X image, the problem withe the multiplication
@@ -99,8 +101,8 @@ filter:progid:DXImageTransform.Microsoft.gradient(startColorstr=#20000000, endCo
                   background-image: url("close.png");
                   /* background-color: red; */ /* Messes up intended effect */ }
     .popupClose:active { background-image: url("close_light.png"); }
-    /* #popupTitle {} */
-    #popupInfo #popupDetail { text-align: right; line-height: 138%; }
+    /* .popupTitle {} */
+    .popup .popupDetail { text-align: right; line-height: 138%; }
 
     #configWrapper { position: absolute; right: 0px; bottom: 0px;
                      width: 7.5cm; height: auto; max-height: 100%;
@@ -158,19 +160,24 @@ filter:progid:DXImageTransform.Microsoft.gradient(startColorstr=#40000000, endCo
     .ie6 .spacer, .ie7 .spacer { display: inline; }
 
     .quickcfg { display: inline-block; height: 32px;
-                     vertical-align: top;
-                     margin: 0px; margin-top: 1px; margin-bottom: 1px;
-                     padding: 0px; }
+                vertical-align: top;
+                margin: 0px; margin-top: 1px; margin-bottom: 1px;
+                padding: 0px; }
     .ie6 .quickcfg, .ie7 .quickcfg { display: inline; }
     .quickcfg input { width: 4em; text-align: center; }
     input#cfg-curDate { width: 7em; }
     input#cfg-latLon { width: 10em; }
     label img { vertical-align: middle; }
+    .textBtns { display: inline; border: solid white 1px;
+                background-color: #111117; }
+    .textBtns:active { background-color: #6a6a96; }
 
     /* Note: Button highlight color is "#6a6a96".  */
 
     #btn-minimize { background-image: url("minimize.png"); }
     #btn-minimize:active { background-image: url("minimize_light.png"); }
+    #btn-legend { background-image: url("legend.png"); }
+    #btn-legend:active { background-image: url("legend_light.png"); }
     #btn-begin { background-image: url("beginning.png"); }
     #btn-begin:active { background-image: url("beginning_light.png"); }
     #btn-rewind { background-image: url("rewind.png"); }
@@ -229,8 +236,8 @@ code in this page.
   </script>
 </head>
 <body id="topBody"
-      style="height: auto; margin-left: 0.5em; margin-right: 0.5em"
-      onload="bodyInit()">
+      style="height: auto; margin-left: 0.5em; margin-right: 0.5em">
+<!--  onload="bodyInit()"> -->
 
 <div id="noscriptJSCtl">
 
@@ -509,7 +516,7 @@ FThostObjects = function() {
 // -------------------------------------------------------------------
 
 if (typeof(FTsaneJSRuntime) != 'undefined' &&
-    FTonerror && FTnativeObjects() && FThostObjects()) {
+    /* FTonerror && */ FTnativeObjects() && FThostObjects()) {
   /* Go ahead and give the rest of the startup routines the okay to go
      signal.  Normal feature tests will be performed in the main
      script body.  */
@@ -543,16 +550,17 @@ if (typeof(FTsaneJSRuntime) != 'undefined' &&
     <strong>Loading</strong><br />
     <br />
     <!-- Loading diagnostics will be dynamically added here. -->
+    Script main body&hellip;
   </p>
 
 </div>
 </div>
 
-<div id="popupInfo">
-<div id="popupClose" class="popupClose noSelect"><!-- &#xd7; --></div>
-  <strong id="popupTitle">Eddy #43859</strong><br />
+<div id="popupInfo" class="popup" style="visibility: hidden">
+<div id="popupInfoClose" class="popupClose noSelect"><!-- &#xd7; --></div>
+  <strong class="popupTitle">Eddy #43859</strong><br />
   <br />
-  <div id="popupDetail">
+  <div class="popupDetail">
     Coordinates: 0 N 0 E<br />
     Amplitude: 1.0 cm<br />
     Area: 483 m^2<br />
@@ -560,19 +568,33 @@ if (typeof(FTsaneJSRuntime) != 'undefined' &&
   </div>
 </div>
 
+<div id="popupLegend" class="popup" style="visibility: hidden">
+<!-- <div id="popupClose" class="popupClose noSelect">
+<\!-- &#xd7; --\></div> -->
+  <b>Legend</b>
+  <ul>
+    <li>Circles mark the center of the eddy at the current date, not
+    the size.</li>
+    <li>Cyclonic eddy tracks are blue.</li>
+    <li>Anticyclonic eddy tracks are red.</li>
+    <li>Sea Surface Height (SSH) ranges from -32 cm to +32 cm in the
+    default scale.</li>
+  </ul>
+</div>
+
 <div id="configWrapper" style="visibility: hidden">
 <form id="configPanel" action="">
-  <fieldset>
+  <!-- <fieldset>
     <legend>Eddy Filters</legend>
     <label for="cfg-showCyc">Cyclonic</label>
     <input id="cfg-showCyc" type="checkbox" checked="checked" /><br />
     <label for="cfg-showAntiCyc">Anticyclonic</label>
     <input id="cfg-showAntiCyc" type="checkbox" checked="checked" /><br />
-    <label for="cfg-lenRange" title="Format: min, max">
+    <label for="cfg-lenRange" title="Format: min-max">
       Length (weeks):</label>
-    <input id="cfg-lenRange" type="text" value="0, max"
-	   class="numinput" title="Format: min, max" />
-  </fieldset><div><br /></div>
+    <input id="cfg-lenRange" type="text" value="0-max"
+	   class="numinput" title="Format: min-max" />
+  </fieldset><div><br /></div> -->
 
   <fieldset>
     <legend>Projection</legend>
@@ -611,12 +633,7 @@ if (typeof(FTsaneJSRuntime) != 'undefined' &&
       <option>MATLAB</option>
       <option>Contour Bands</option>
       <option>Waters</option>
-    </select><br />
-    <div>Render Style During Scrolling:</div>
-    <label for="cfg-wireRender">Wireframe</label>
-    <input id="cfg-wireRender" type="checkbox" /><br />
-    <label for="cfg-landScroll">Landmasses</label>
-    <input id="cfg-landScroll" type="checkbox" />
+    </select>
   </fieldset>
 </form></div>
 
@@ -626,7 +643,9 @@ element in the document (but not after errorBar).  -->
 
    <ul class="iconBtns noSelect">
    <li class="imgbtn" id="btn-minimize" title="Auto-Hide">
-   <span>Auto-Hide</span></li>
+   <span>Auto-Hide</span></li><!--
+--><li class="imgbtn" id="btn-legend" title="Legend">
+   <span>Legend</span></li>
    </ul><!--
 
 --><div class="spacer"></div><!--
@@ -667,27 +686,49 @@ element in the document (but not after errorBar).  -->
 --><div class="spacer"></div><!--
 
 --><div class="quickcfg">
+   <label for="cfg-curDate" title="Current Date">
+     <img src="curdate.png" alt="Date:" />
+   </label>
    <input id="cfg-curDate" type="text" value="N/A"
 	  title="Current Date" />
-   <input id="cfg-latLon" type="text" value="N/A"
+   <label for="cfg-latLon" title="Latitude, Longitude">
+     <img src="latlon.png" alt="Co:" />
+   </label>
+   <input id="cfg-latLon" type="text" value="0 N 0 E"
 	  title="Latitude, Longitude" />
    </div>
 
    <div class="quickcfg">
-   <label for="cfg-scaleFac"
-	  title="Scale Factor">
-     <img src="scale.png" alt="Scale Factor:" />
+   <label for="cfg-scaleFac" title="Scale Factor">
+     <img src="scale.png" alt="S:" />
    </label>
    <input id="cfg-scaleFac" type="text" value="N/A"
 	  title="Scale Factor" />
    </div>
 
-   <div class="quickcfg">
+   <div class="quickcfg" style="display: none">
    <label for="cfg-graticule" title="Graticule (degrees/line)">
-     <img src="graticule.png" alt="Graticule (degrees/line):" />
+     <img src="graticule.png" alt="G:" />
    </label>
    <input id="cfg-graticule" type="text" value="N/A"
 	  title="Graticule (degrees/line)" />
+   </div>
+
+   <div class="quickcfg">
+   <label for="cfg-lenRange"
+	  title="Filter eddies by length in weeks (Format: min-max)">
+     <img src="filter.png" alt="F:" />
+   </label>
+   <input id="cfg-lenRange" type="text" value="0-max"
+	  title="Filter eddies by length in weeks (Format: min-max)" />
+   <div id="cfg-showCyc"
+	class="textBtns noSelect" style="background-color: #6a6a96"
+	title="Show/hide cyclonic eddies">
+     &nbsp;C&nbsp;</div>
+   <div id="cfg-showAntiCyc"
+	class="textBtns noSelect" style="background-color: #6a6a96"
+	title="Show/hide anticyclonic eddies">
+     &nbsp;A&nbsp;</div>
    </div>
 
 </form></div>
@@ -726,17 +767,19 @@ element in the document (but not after errorBar).  -->
 
 </div> <!-- END scriptWrapper -->
 
+<!-- <script type="text/javascript"
+	src="../libs/getElementsByClassName-1.0.1.js"></script> -->
 <script type="text/javascript">
 <!--//--><![CDATA[//><!--
 /* GUI Event Handling and Management */
 
 // Preload the button images.
 function loadImages() {
-  var files = [ 'minimize_light.png', 'beginning_light.png',
-    'rewind_light.png', 'step_back_light.png', 'pause.png',
-    'pause_light.png', 'play_light.png', 'step_fwd_light.png',
-    'fast_forward_light.png', 'end_light.png', 'config_light.png',
-    'help_light.png', 'close_light.png' ];
+  var files = [ 'minimize_light.png', 'legend_light.png',
+    'beginning_light.png', 'rewind_light.png', 'step_back_light.png',
+    'pause.png', 'pause_light.png', 'play_light.png',
+    'step_fwd_light.png', 'fast_forward_light.png', 'end_light.png',
+    'config_light.png', 'help_light.png', 'close_light.png' ];
 
   var i = 0;
   for (i = 0; i < files.length; i++) {
@@ -765,6 +808,7 @@ function onpause(event) {
   this.title = 'Play';
   this.ondblclick = this.onclick = onplay;
   OEV.Compositor.playMode = false;
+  OEV.Compositor.playSpeed = 2;
 }
 
 function applyCurDate(updateRenderLayers) {
@@ -774,11 +818,31 @@ function applyCurDate(updateRenderLayers) {
     OEV.Compositor.startRender([ OEV.SSHLayer, OEV.TracksLayer ]);
 }
 
-/* This is a delayed initializer for OEV.Dates.curDate that is not
-   called until after the list of dates is loaded.  */
-function initCurDate() {
-  return document.getElementById('cfg-curDate').onchange(null);
+/* Set the value of the latitude-longitude display from the global
+   ViewParams, computing the correct string as necessary.  */
+function dispLatLon() {
+  var vp = OEV.gViewParams;
+  var lon = vp.polCenter[0];
+  var tilt;
+  if (vp.projector == OEV.EquirectProjector)
+    tilt = -vp.mapCenter[1] * 180 / vp.scale;
+  else tilt = vp.polCenter[1];
+
+  var cfg_latLon = document.getElementById('cfg-latLon');
+  var dispLat = tilt;
+  var dispLon = lon;
+  if (dispLat < 0)
+    dispLat = (-dispLat).toFixed(3) + ' S';
+  else dispLat = dispLat.toFixed(3) + ' N';
+  if (dispLon >= 180)
+    dispLon -= 360;
+  if (dispLon < 0)
+    dispLon = (-dispLon).toFixed(3) + ' W';
+  else dispLon = dispLon.toFixed(3) + ' E';
+  cfg_latLon.value = dispLat + ' ' + dispLon;
 }
+
+var inhibitKey = false;
 
 function initGUIHooks() {
   var btn_minimize = document.getElementById('btn-minimize');
@@ -796,6 +860,18 @@ function initGUIHooks() {
     }
   };
 
+  var btn_legend = document.getElementById('btn-legend');
+  btn_legend.ondblclick = btn_legend.onclick = function(event) {
+    if (this.style.cssText == '') {
+      this.style.cssText = 'background-image: url("legend_light.png")';
+      document.getElementById('popupLegend').style.cssText = '';
+    } else {
+      this.style.cssText = '';
+      document.getElementById('popupLegend').style.cssText =
+        'visibility: hidden';
+    }
+  };
+
   var btn_begin = document.getElementById('btn-begin');
   btn_begin.ondblclick = btn_begin.onclick = function(event) {
     if (OEV.Dates.curDate == 0)
@@ -806,7 +882,15 @@ function initGUIHooks() {
 
   var btn_rewind = document.getElementById('btn-rewind');
   btn_rewind.ondblclick = btn_rewind.onclick = function(event) {
-    alert('Not implemented.');
+    if (!OEV.Compositor.playMode)
+      { btn_play.onclick(event); OEV.Compositor.playSpeed = -2; }
+    var playSpeed = OEV.Compositor.playSpeed;
+    if (playSpeed <= -0.5)
+      OEV.Compositor.playSpeed *= 1.2;
+    else if (playSpeed < 0.5)
+      OEV.Compositor.playSpeed = -0.5;
+    else
+      OEV.Compositor.playSpeed /= 1.2;
   };
 
   var btn_bstep = document.getElementById('btn-bstep');
@@ -829,9 +913,31 @@ function initGUIHooks() {
     return applyCurDate(event != null);
   };
 
+  /* Keyboard handling has not been tested enough.  */
+  /* document.onkeydown = function(event) {
+    if (inhibitKey) { inhibitKey = false; return; }
+    if (event.keyCode == 32) // Space
+      return btn_play.onclick(event);
+    if (event.keyCode == 37) // ArrowLeft
+      return btn_bstep.onclick(event);
+    if (event.keyCode == 39) // ArrowRight
+      return btn_fstep.onclick(event);
+  }; */
+
+  document.getElementById('topBody').onkeydown = function(event) {
+    inhibitKey = true;
+  };
+
   var btn_ffwd = document.getElementById('btn-ffwd');
   btn_ffwd.ondblclick = btn_ffwd.onclick = function(event) {
-    alert('Not implemented.');
+    if (!OEV.Compositor.playMode) btn_play.onclick(event);
+    var playSpeed = OEV.Compositor.playSpeed;
+    if (playSpeed >= 0.5)
+      OEV.Compositor.playSpeed *= 1.2;
+    else if (playSpeed > -0.5)
+      OEV.Compositor.playSpeed = 0.5;
+    else
+      OEV.Compositor.playSpeed /= 1.2;
   };
 
   var btn_end = document.getElementById('btn-end');
@@ -856,11 +962,17 @@ function initGUIHooks() {
     }
   };
 
-  var popupClose = document.getElementById('popupClose');
-  popupClose.ondblclick = popupClose.onclick = function(event) {
-    var popupInfo = document.getElementById('popupInfo');
-    popupInfo.style.cssText = 'visibility: hidden';
+  var closeAction = function(event) {
+    var popup = this.parentNode;
+    popup.style.cssText = 'visibility: hidden';
   };
+
+  /* Requires getElementsByClassName:
+  var closeBtns = document.getElementsByClassName('popupClose');
+  for (var i = 0, len = closeBtns.length; i < len; i++)
+    closeBtns[i].ondblclick = closeBtns[i].onclick = closeAction; */
+
+  document.getElementById('popupInfoClose').onclick = closeAction;
 
   var cfg_curDate = document.getElementById('cfg-curDate');
   cfg_curDate.onchange = function(event) {
@@ -876,16 +988,17 @@ function initGUIHooks() {
   cfg_latLon.onchange = function(event) {
     var parts = this.value.split(' ');
     var parseNum1 = +parts[0]; var parseNum2 = +parts[2];
-    if (isNaN(parseNum1) || isNaN(parseNum2)) return; // TODO reset value
+    if (isNaN(parseNum1) || isNaN(parseNum2))
+      { dispLatLon(OEV.gViewParams); return; }
 
     if (parts[1] == 'S')
-      OEV.ViewParams.mapCenter[1] = -(-parseNum1) / 180 *
-        OEV.ViewParams.scale;
-    else OEV.ViewParams.mapCenter[1] = (-parseNum1) / 180 *
-           OEV.ViewParams.scale;
+      OEV.gViewParams.mapCenter[1] = -(-parseNum1) / 180 *
+        OEV.gViewParams.scale;
+    else OEV.gViewParams.mapCenter[1] = (-parseNum1) / 180 *
+           OEV.gViewParams.scale;
     if (parts[3] == 'W')
-      OEV.ViewParams.polCenter[0] = -parseNum2;
-    else OEV.ViewParams.polCenter[0] = parseNum2;
+      OEV.gViewParams.polCenter[0] = -parseNum2;
+    else OEV.gViewParams.polCenter[0] = parseNum2;
 
     if (event != null)
       OEV.Compositor.startRender();
@@ -895,9 +1008,9 @@ function initGUIHooks() {
   cfg_scaleFac.onchange = function(event) {
     var parseNum = +this.value;
     if (isNaN(parseNum))
-    { this.value = OEV.ViewParams.scale.toFixed(3); return; }
-    OEV.ViewParams.scale = parseNum;
-    OEV.ViewParams.inv_scale = 1 / parseNum;
+    { this.value = OEV.gViewParams.scale.toFixed(3); return; }
+    OEV.gViewParams.scale = parseNum;
+    OEV.gViewParams.inv_scale = 1 / parseNum;
     if (event != null)
       OEV.Compositor.startRender();
   };
@@ -907,38 +1020,58 @@ function initGUIHooks() {
     var parts = this.value.split(', ');
     OEV.Compositor.gratDensity = +parts[0];
     /* if (event != null)
-      OEV.Compositor.finishRenderJobs(false, true); */
+      OEV.Compositor.startRender([ OEV.GratLayer ]); */
   };
 
   var cfg_showCyc = document.getElementById('cfg-showCyc');
   cfg_showCyc.onclick = function(event) {
-    if (this.checked)
+    if (this.style.cssText == '') {
       OEV.TracksParams.dispCyc = true;
-    else
+      this.style.cssText = 'background-color: #6a6a96';
+    } else {
       OEV.TracksParams.dispCyc = false;
+      this.style.cssText = '';
+    }
     if (event != null)
       OEV.Compositor.startRender([ OEV.TracksLayer ]);
   };
 
   var cfg_showAntiCyc = document.getElementById('cfg-showAntiCyc');
   cfg_showAntiCyc.onclick = function(event) {
-    if (this.checked)
+    if (this.style.cssText == '') {
       OEV.TracksParams.dispAcyc = true;
-    else
+      this.style.cssText = 'background-color: #6a6a96';
+    } else {
       OEV.TracksParams.dispAcyc = false;
+      this.style.cssText = '';
+    }
     if (event != null)
       OEV.Compositor.startRender([ OEV.TracksLayer ]);
   };
 
+  var resetLenRange = function(cfg_lenRange) {
+    var min = OEV.TracksParams.minLength;
+    var max = OEV.TracksParams.maxLength;
+    if (max == -1) max = 'max';
+    cfg_lenRange.value = '' + min + '-' + max;
+  };
+
   var cfg_lenRange = document.getElementById('cfg-lenRange');
   cfg_lenRange.onchange = function(event) {
-    var weeksToSecs = 1000 * 60 * 60 * 24 * 7;
-    var parts = this.value.split(', ');
-    OEV.TracksParams.minLength = +parts[0] * weeksToSecs;
+    /* var weeksToMSecs = 1000 * 60 * 60 * 24 * 7; */
+    var parts = this.value.split('-');
+    var minLength = +parts[0] /* * weeksToMSecs */;
+    if (isNaN(minLength))
+      { resetLenRange(this); return; }
+    else OEV.TracksParams.minLength = minLength;
     if (parts[1] == 'max')
       OEV.TracksParams.maxLength = -1;
-    else
-      OEV.TracksParams.maxLength = +parts[1] * weeksToSecs;
+    else {
+      var maxLength = +parts[1] /* * weeksToMSecs */;
+      if (isNaN(maxLength))
+      { resetLenRange(this); return; }
+      else OEV.TracksParams.maxLength = maxLength;
+    }
     if (event != null)
       OEV.Compositor.startRender([ OEV.TracksLayer ]);
   };
@@ -946,8 +1079,9 @@ function initGUIHooks() {
   var cfg_projMethod = document.getElementById('cfg-projMethod');
   cfg_projMethod.onchange = function(event) {
     var choice = this.options[this.selectedIndex].text;
+    var newProj = OEV.gViewParams.projector;
     if (choice == 'Perspective') {
-      OEV.ViewParams.projector = OEV.PerspProjector;
+      newProj = OEV.PerspProjector;
 
       var fovCtl = document.getElementById('cfg-perspFOV');
       fovCtl.setAttribute('disabled', false);
@@ -958,15 +1092,15 @@ function initGUIHooks() {
       altCtl.disabled = false;
 
     } else if (choice == 'Orthographic') {
-      OEV.ViewParams.projector = OEV.OrthoProjector;
+      newProj = OEV.OrthoProjector;
     } else if (choice == 'Equirectangular') {
-      OEV.ViewParams.projector = OEV.EquirectProjector;
+      newProj = OEV.EquirectProjector;
     } else if (choice == 'Robinson') {
-      OEV.ViewParams.projector = OEV.RobinsonProjector;
+      newProj = OEV.RobinsonProjector;
     } else if (choice == 'Sinusoidal') {
-      OEV.ViewParams.projector = OEV.SinProjector;
+      newProj = OEV.SinProjector;
     } else if (choice == 'Mercator') {
-      OEV.ViewParams.projector = MercatorProjector;
+      newProj = OEV.MercatorProjector;
     }
 
     if (choice != 'Perspective') {
@@ -980,46 +1114,49 @@ function initGUIHooks() {
     }
 
     if (event != null) {
+      OEV.Compositor.switchYPan(newProj);
       OEV.Compositor.optiRenderImp();
-      return OEV.Compositor.startRender();
+      OEV.Compositor.startRender(); return;
     }
+    OEV.gViewParams.projector = newProj;
   };
 
   var cfg_perspAltitude = document.getElementById('cfg-perspAltitude');
   cfg_perspAltitude.onchange = function(event) {
-    OEV.ViewParams.perspAltitude = +this.value;
-    if (event != null) return OEV.Compositor.startRender();
+    var parseNum = +this.value;
+    if (isNaN(parseNum))
+    { this.value = OEV.gViewParams.perspAltitude.toString(); return; }
+    OEV.gViewParams.perspAltitude = parseNum;
+    if (event != null) OEV.Compositor.startRender();
   };
 
   var cfg_perspFOV = document.getElementById('cfg-perspFOV');
   cfg_perspFOV.onchange = function(event) {
-    OEV.ViewParams.perspFOV = +this.value;
-    if (event != null) return OEV.Compositor.startRender();
+    var parseNum = +this.value;
+    if (isNaN(parseNum))
+    { this.value = OEV.gViewParams.perspFOV.toFixed(1); return; }
+    OEV.gViewParams.perspFOV = parseNum;
+    if (event != null) OEV.Compositor.startRender();
   };
 
   var cfg_landMass = document.getElementById('cfg-landMass');
   cfg_landMass.onchange = function(event) {
     var choice = this.options[this.selectedIndex].text;
     if (choice == 'Textured')
-      OEV.Compositor.dispLandMasses = true;
-    else
-      OEV.Compositor.dispLandMasses = false;
+      OEV.Compositor.dispLandMasses(true);
+    else OEV.Compositor.dispLandMasses(false);
     if (event != null)
-      OEV.Compositor.finishRenderJobs(false, true);
+      OEV.Compositor.startRender([ OEV.EarthTexLayer ]);
   };
 
   var cfg_sshPal = document.getElementById('cfg-sshPal');
   cfg_sshPal.onchange = function(event) {
     var choice = this.options[this.selectedIndex].text;
-    /* if (choice == 'None')
-      OEV.Compositor.dispSSH = false;
-    else if (!OEV.Compositor.dispSSH) {
-      OEV.Compositor.dispSSH = true;
-      // We'll need to make sure we've loaded the latest frame.
-      var dateStr = OEV.Dates.dateList[OEV.Dates.curDate];
-      SSHLayer.loadFrame = dateStr.replace('-', '').replace('-', '');
-      SSHLayer.loadData.start();
-    } */
+    if (choice == 'None')
+      OEV.Compositor.dispSSH(false);
+    else if (!OEV.Compositor.sshVisible) {
+      OEV.Compositor.dispSSH(true);
+    }
 
     if (choice == 'Grayscale')
       OEV.SSHParams.shadeStyle = 0;
@@ -1031,50 +1168,83 @@ function initGUIHooks() {
       OEV.SSHParams.shadeStyle = 3;
     if (event != null) {
       OEV.Compositor.optiRenderImp();
-      if (OEV.Compositor.dispSSH)
-        return OEV.Compositor.startRender([ OEV.SSHLayer ]);
-      else
-        OEV.Compositor.startRenderLoop();
+      OEV.Compositor.startRender([ OEV.SSHLayer ]);
     }
-  };
-
-  var cfg_wireRender = document.getElementById('cfg-wireRender');
-  cfg_wireRender.onclick = function(event) {
-    if (this.checked)
-      wire_render = true;
-    else
-      wire_render = false;
-    if (event != null) render_globe();
   };
 
   /* Once all the GUI hooks have been initialized, call all of the
      event handlers for the FORM controls so that any settings that
      have been saved by the browser will be picked up by the
      internal code.  */
-  // cfg_curDate.onchange(null); // Uses initCurDate() instead.
-  /* cfg_latLon.onchange(null);
+  // cfg_curDate.onchange(null); // Delayed initialization
+  cfg_latLon.onchange(null);
   cfg_scaleFac.onchange(null);
   cfg_graticule.onchange(null);
-  cfg_showCyc.onclick(null);
-  cfg_showAntiCyc.onclick(null);
+  // cfg_showCyc.onclick(null); // No longer a checkbox
+  // cfg_showAntiCyc.onclick(null); // No longer a checkbox
   cfg_lenRange.onchange(null);
   cfg_projMethod.onchange(null);
   cfg_perspAltitude.onchange(null);
   cfg_perspFOV.onchange(null);
   cfg_landMass.onchange(null);
   cfg_sshPal.onchange(null);
-  cfg_wireRender.onclick(null); */
+
+  /* Setup Compositor event handlers.  */
+  OEV.Compositor.onloaded = function() {
+    /* Connect a mouse to the Compositor.  */
+    var mouseMoveFunc = function(event) {
+      dispLatLon();
+      OEV.Compositor.startRender();
+      return false;
+    };
+
+    var mouseRelFunc = function(event) { return false; };
+
+    var mouseZoomFunc = function(event) {
+      var vp = OEV.gViewParams;
+      if (vp.projector != OEV.PerspProjector) {
+        var cfg_scaleFac = document.getElementById('cfg-scaleFac');
+        if (cfg_scaleFac) cfg_scaleFac.value = vp.scale.toFixed(3);
+      } else {
+        var cfg_perspFOV = document.getElementById('cfg-perspFOV');
+        if (cfg_perspFOV) cfg_perspFOV.value = vp.perspFOV.toFixed(1);
+      }
+      OEV.Compositor.startRender();
+      return false;
+    };
+
+    OEV.connectMouse(OEV.Compositor.drawingContainer, OEV.gViewParams,
+                     mouseMoveFunc, mouseRelFunc, mouseZoomFunc);
+
+    /* Resize the viewport whenever the window size changes.  */
+    window.onorientationchange = window.onresize = function() {
+      OEV.Compositor.fitViewportToCntr();
+      OEV.Compositor.startRender();
+    };
+
+    cfg_curDate.onchange(null);
+    btn_legend.onclick(null);
+  };
+
+  OEV.Compositor.ondatechange = function() {
+    var dateStr = OEV.Dates.dateList[OEV.Dates.curDate];
+    document.getElementById('cfg-curDate').value = dateStr;
+  };
+
+  OEV.Compositor.onstop = function() {
+    btn_play.onclick(null);
+  };
 }
 
 /* This function can be useful to prevent the user from triggering
    more internal errors if an internal error has been caught.  */
 function dehookGUI() {
-  var elmts = [ 'btn-minimize', 'btn-begin', 'btn-rewind',
-    'btn-bstep', 'btn-play', 'btn-fstep', 'btn-ffwd', 'btn-end',
-    'btn-config', 'popupClose', 'cfg-curDate', 'cfg-latLon',
-    'cfg-scaleFac', 'cfg-graticule', 'cfg-showCyc', 'cfg-showAntiCyc',
-    'cfg-lenRange', 'cfg-projMethod', 'cfg-perspAltitude',
-    'cfg-perspFOV', 'cfg-landMass', 'cfg-sshPal', 'cfg-wireRender' ];
+  var elmts = [ 'btn-minimize', 'btn-legend', 'btn-begin',
+    'btn-rewind', 'btn-bstep', 'btn-play', 'btn-fstep', 'btn-ffwd',
+    'btn-end', 'btn-config', 'popupClose', 'cfg-curDate',
+    'cfg-latLon', 'cfg-scaleFac', 'cfg-graticule', 'cfg-showCyc',
+    'cfg-showAntiCyc', 'cfg-lenRange', 'cfg-projMethod',
+    'cfg-perspAltitude', 'cfg-perspFOV', 'cfg-landMass', 'cfg-sshPal' ];
 
   for (var i = 0, elmts_len = elmts.length; i < elmts_len; i++) {
     var elmt = document.getElementById(elmts[i]);
@@ -1092,6 +1262,9 @@ function dehookGUI() {
 }
 
 function bodyInit() {
+  var loadingScreen = document.getElementById('loadingScreen');
+  loadingScreen.appendChild(document.createTextNode(' done'));
+  loadingScreen.appendChild(document.createElement('br'));
   initGUIHooks();
   return OEV.Compositor.init();
 }
@@ -1132,16 +1305,16 @@ function loadScript(src, callback) {
 function downloadJSAtOnload()
 { return loadScript('../src/bundle.js', bodyInit); }
 
-/* if (isHostMethod(window, 'addEventListener'))
+if (isHostMethod(window, 'addEventListener'))
   window.addEventListener("load", downloadJSAtOnload, false);
 else if (isHostMethod(window, 'attachEvent'))
   window.attachEvent("onload", downloadJSAtOnload);
-else window.onload = downloadJSAtOnload; */
+else window.onload = downloadJSAtOnload;
 
 //--><!]]>
 </script>
-<script type="text/javascript"
-	src="../src/bundle.js"></script>
+<!-- <script type="text/javascript"
+	src="../src/bundle.js"></script> -->
 
 </body>
 </html>

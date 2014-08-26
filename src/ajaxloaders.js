@@ -54,6 +54,10 @@ import "cothread";
  * calculates `byteRange` from the given [ min, max ] values in
  * `charRange`.
  *
+ * "wcProg" (this.wcProg) -- (optional) If specified, assume that one
+ * character is two bytes in size for progress meters that read
+ * `httpRequest.responseText.length`.
+ *
  * "listenOnProgress" (this.listenOnProgress) -- (optional) If `true`,
  * listen to `progress` events.  This can provide for a more efficient
  * way to get the download progress than reading
@@ -228,8 +232,8 @@ XHRLoader.prototype.initCtx = function() {
   httpRequest.open("GET", this.url, true);
   if (this.charRange) {
     this.byteRange =
-      [ (this.charRange[0]) ? 2 + this.charRange * 2 : "",
-	(this.charRange[1]) ? 2 + this.charRange * 2 : "" ];
+      [ (this.charRange[0]) ? 2 + this.charRange[0] * 2 : "",
+	(this.charRange[1]) ? 2 + this.charRange[1] * 2 : "" ];
   }
   if (this.byteRange) {
     var min = this.byteRange[0];
@@ -275,6 +279,7 @@ XHRLoader.prototype.contExec = function() {
 	responseText = httpRequest.responseText;
 	this.status.percent = responseText.length *
 	  CothreadStatus.MAX_PERCENT / this.reqLen;
+	if (this.wcProg) this.status.percent *= 2;
       }
     } else
       this.status.percent = 0;

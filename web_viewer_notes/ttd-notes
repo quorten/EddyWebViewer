@@ -576,3 +576,73 @@ To stack up the RenderLayers:
 A lot of the existing structure looks good.  What needs to be major
 updated?  RenderLayer stacking.  For now, disable special 3-D modes
 and treat them just like any other projection.
+
+----------------------------------------
+
+GUI Fixup:
+
+* Graticule
+
+* Latlon
+
+* initCurDate
+
+* UI Safety, invalid inputs
+
+* The closures used to connect events creates circular references and
+  thus reference leaks.
+
+* Make sure the program is independent of the data width and height as
+  much as possible.
+
+* Do additional safety checks in the builder: tracks must be
+  continuous.
+
+Quick Checklist:
+
+* Add proper play controls.  Improve mouse panning in test suite.
+  Bring back fast recolorizer.
+
+* Convert sources to cjs-typed code.  Make all type conversions
+  explicit.
+
+* Finish the feature detection framework.
+
+* Check all isNaN().  Only run isNaN() once on one parameter from
+  projector results.  Make sure all projectors set NaN correctly.
+
+* Add auto-height-fitting function.
+
+* Make Compositor a RenderLayer implementation.
+
+* Make clipping optimal for all projections.
+
+* I need a more formal bug tracker.
+
+* Hash fragment bar processing.
+
+* Make CSSLayers non-selectable.
+
+* Graticule RenderLayer.
+
+* Add height controls into GUI.
+
+* Use vector graphics SVG in GUI when available.
+
+* Filter Eddies and Render as different colors
+
+* Bring legacy RenderLayers up-to-date
+
+* Remove click-selection bug apparent in CSS RenderLayers.
+
+* Design needed additional icons
+
+* Move eddy filter options into the basic configuration bar
+
+* Add keyboard user interface
+
+* Improve legend
+
+* Add dynamic loading screen
+
+* Finish documentation

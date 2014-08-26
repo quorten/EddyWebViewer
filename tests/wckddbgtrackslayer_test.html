@@ -31,17 +31,17 @@
          for the sake of easily providing a comprehensive test suite
          for the underlying kd-tree algorithms.  */
       var vbox = exampleVBoxes[vbidx];
-      OEV.ViewParams.aspectXY = (vbox[3] - vbox[1]) / (vbox[2] - vbox[0]);
-      OEV.ViewParams.scale = 360 / (vbox[3] - vbox[1]);
-      OEV.ViewParams.mapCenter = 
-        [ /* -(vbox[3] + vbox[1]) / 2 * OEV.ViewParams.scale / 180 */ 0,
-          -(vbox[2] + vbox[0]) / 2 * OEV.ViewParams.scale / 180 ];
-      OEV.ViewParams.polCenter[0] = (vbox[3] + vbox[1]) / 2;
+      OEV.gViewParams.aspectXY = (vbox[3] - vbox[1]) / (vbox[2] - vbox[0]);
+      OEV.gViewParams.scale = 360 / (vbox[3] - vbox[1]);
+      OEV.gViewParams.mapCenter = 
+        [ /* -(vbox[3] + vbox[1]) / 2 * OEV.gViewParams.scale / 180 */ 0,
+          -(vbox[2] + vbox[0]) / 2 * OEV.gViewParams.scale / 180 ];
+      OEV.gViewParams.polCenter[0] = (vbox[3] + vbox[1]) / 2;
       return start();
     };
   </script>
 </head>
-<body id="topBody" onload="setup(1440, 721)">
+<body id="topBody" onload="setup(1440, 721, false)">
 
 <p>This is the HTML container for testing the kd-tree implementation
 for WCTracksLayer.  Good Luck!</p>

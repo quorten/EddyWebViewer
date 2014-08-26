@@ -22,13 +22,13 @@ TracksParams.dispAcyc = true;
 TracksParams.dispCyc = true;
 
 /**
- * Minimum track length in seconds.  This is used to determine if a
+ * Minimum track length in weeks.  This is used to determine if a
  * track should be rendered or not.
  */
 TracksParams.minLength = 0;
 
 /**
- * Maximum track length in seconds, -1 for any.  This is used to
+ * Maximum track length in weeks, -1 for any.  This is used to
  * determine if a track should be rendered or not.
  */
 TracksParams.maxLength = -1;
@@ -142,6 +142,8 @@ JSONTracksLayer.acLoad.procData = function(httpRequest, responseText) {
 
 /** Cyclonic tracks loader.  */
 // JSONTracksLayer.cLoad = new XHRLoader("../data/tracks/cyc_bu_tracks.json");
+/* Use a reduced-size file that only contains the first six tracks to
+   prevent memory outages.  */
 JSONTracksLayer.cLoad = new XHRLoader("../data/tracks/scyc.json");
 
 JSONTracksLayer.cLoad.procData = JSONTracksLayer.acLoad.procData;
@@ -158,15 +160,20 @@ JSONTracksLayer.render = (function() {
     this.edc = edc;
 
     edc.clearRect(0, 0, frontBuf.width, frontBuf.height);
-    edc.lineWidth = frontBuf.width / 1440 * ViewParams.scale;
+    edc.lineWidth = frontBuf.width / 1440 * JSONTracksLayer.vp.scale;
+    if (JSONTracksLayer.vp.projector == OrthoProjector ||
+	JSONTracksLayer.vp.projector == PerspProjector)
+      edc.lineWidth *= 2;
+    this.arcRad = edc.lineWidth * 2;
     edc.strokeStyle = "#800080";
     edc.lineJoin = "round";
     edc.lineCap = "round";
 
     this.i = 0;
     this.polToMap = [ NaN, NaN ];
-    if (ViewParams.projector == EquirectProjector &&
-	ViewParams.polCenter[1] == 0 && ViewParams.polCenter[0] == 0)
+    if (JSONTracksLayer.vp.projector == EquirectProjector &&
+	JSONTracksLayer.vp.polCenter[1] == 0 &&
+	JSONTracksLayer.vp.polCenter[0] == 0)
       this.fastEqui = true;
     else this.fastEqui = false;
 
@@ -202,19 +209,21 @@ JSONTracksLayer.render = (function() {
 
     var frontBuf_width = JSONTracksLayer.frontBuf.width;
     var frontBuf_height = JSONTracksLayer.frontBuf.height;
-    var aspectXY = ViewParams.aspectXY;
-    var projector_project = ViewParams.projector.project;
-    var arcRad = 2 * frontBuf_height / 720 * ViewParams.scale;
+    var vp = JSONTracksLayer.vp;
+    var aspectXY = vp.aspectXY;
+    var projector_project = vp.projector.project;
+    var arcRad = this.arcRad;
+    var msecsToWeeks = 1 / (1000 * 60 * 60 * 24 * 7);
 
     var ctnow = Cothread.now;
 
     var startTime = ctnow();
     var timeout = this.timeout;
 
-    /* NOTE: Some versions of Firefox on some computers go wacko when
-       given way too many subpaths to stroke all at once.  Thus, we
-       stroke each individual track separately rather than stroke them
-       all together.  Plus, it appears that doing so doesn't harm
+    /* NOTE: Some versions of Firefox on some computers become slow
+       when given way too many subpaths to stroke all at once.  Thus,
+       we stroke each individual track separately rather than stroke
+       them all together.  Plus, it appears that doing so doesn't harm
        performance that much... except in Google Chrome where only
        performance can be gained by doing so.  We would have to run a
        benchmark at startup to tell which behavior we should use.  */
@@ -258,7 +267,7 @@ JSONTracksLayer.render = (function() {
 	continue;
       }
 
-      // First check if the track is within the time range.
+      // First check if the track passes through the current date.
       if (tracksData[i][0][2] - 1 > curDate ||
 	  tracksData[i][tracksData[i].length-1][2] - 1 < curDate) {
 	renderPart++;
@@ -270,8 +279,8 @@ JSONTracksLayer.render = (function() {
 	var numEddies = tracksData[i].length;
 	var firstDateIdx = tracksData[i][0][2] - 1;
 	var lastDateIdx = tracksData[i][numEddies-1][2] - 1;
-	var trackLen = Dates.realTimes[lastDateIdx] -
-	  Dates.realTimes[firstDateIdx];
+	var trackLen = (Dates.realTimes[lastDateIdx] -
+			Dates.realTimes[firstDateIdx]) * msecsToWeeks;
 	if (trackLen < TracksParams.minLength) {
 	  renderPart++;
 	  continue;
@@ -284,54 +293,73 @@ JSONTracksLayer.render = (function() {
       }
 
       edc.beginPath();
-      var lat = tracksData[i][0][0];
-      var lon = tracksData[i][0][1];
-      var mapX = (lon + 180) * inv_360 * frontBuf_width;
-      var mapY = (90 - lat) * inv_180 * frontBuf_height;
+      /* var lat = tracksData[i][0][0];
+      var lon = tracksData[i][0][1]; */
       var mapCoord_x, mapCoord_y;
+      /* `lastLon' is used to determine if drawing a line between two
+	 points would cause it to span more than 180 degrees
+	 longitude, i.e. if the line would not actually be the
+	 shortest distance between two points.  */
+      var lastLon;
+      /* Set to true when we need to clip a point and reorient the
+	 moveTo... lineTo... logic.  */
+      var clipped = false;
       if (fastEqui) {
-	mapCoord_x = (tracksData[i][0][1] / 180 + 1) *
+	mapCoord_x = (tracksData[i][0][1] / 180 * vp.scale +
+		      1 + vp.mapCenter[0]) *
 	  0.5 * frontBuf_width;
-	mapCoord_y = (-tracksData[i][0][0] / 180 * aspectXY + 1) *
+	mapCoord_y = ((-tracksData[i][0][0] / 180 * vp.scale -
+		       vp.mapCenter[1]) * aspectXY + 1) *
 	  0.5 * frontBuf_height;
       } else {
 	polToMap[1] = tracksData[i][0][0];
 	polToMap[0] = tracksData[i][0][1];
+	polShiftOrigin(polToMap, 1);
+	lastLon = polToMap[0];
 	projector_project(polToMap);
-	mapCoord_x = (polToMap[0] + 1) * 0.5 * frontBuf_width;
-	mapCoord_y = (-polToMap[1] * aspectXY + 1) * 0.5 * frontBuf_height;
+	mapCoord_x = (polToMap[0] * vp.scale +
+		      1 + vp.mapCenter[0]) * 0.5 * frontBuf_width;
+	mapCoord_y = ((-polToMap[1] * vp.scale - vp.mapCenter[1]) *
+		      aspectXY + 1) * 0.5 * frontBuf_height;
       }
-      if (isNaN(mapCoord_x) || isNaN(mapCoord_y))
-	{ renderPart++; continue; }
+      if (!isNaN(mapCoord_x) && !isNaN(mapCoord_y))
+	edc.moveTo(mapCoord_x, mapCoord_y);
+      else clipped = true;
 
-      edc.moveTo(mapCoord_x, mapCoord_y);
-      if (tracksData[i][0][2] - 1 == Dates.curDate)
-	edc.arc(mapCoord_x, mapCoord_y,
-		arcRad, 0, 2 * Math.PI, false);
+      if (!clipped && tracksData[i][0][2] - 1 == Dates.curDate)
+	edc.arc(mapCoord_x, mapCoord_y, arcRad, 0, 2 * Math.PI, false);
       for (var j = 1; j < tracksData[i].length; j++) {
-	lat = tracksData[i][j][0];
-	lon = tracksData[i][j][1];
-	mapX = (lon + 180) * inv_360 * frontBuf_width;
-	mapY = (90 - lat) * inv_180 * frontBuf_height;
+	/* lat = tracksData[i][j][0];
+	lon = tracksData[i][j][1]; */
+	var noLine = false;
 	if (fastEqui) {
-	  mapCoord_x = (tracksData[i][j][1] / 180 + 1) *
+	  mapCoord_x = (tracksData[i][j][1] / 180 * vp.scale +
+			1 + vp.mapCenter[0]) *
 	    0.5 * frontBuf_width;
-	  mapCoord_y = (-tracksData[i][j][0] / 180 * aspectXY + 1) *
+	  mapCoord_y = ((-tracksData[i][j][0] / 180 * vp.scale -
+			 vp.mapCenter[1]) * aspectXY + 1) *
 	    0.5 * frontBuf_height;
 	} else {
 	  polToMap[1] = tracksData[i][j][0];
 	  polToMap[0] = tracksData[i][j][1];
+	  polShiftOrigin(polToMap, 1);
+	  if (Math.abs(polToMap[0] - lastLon) > 180)
+	    noLine = true;
+	  lastLon = polToMap[0];
 	  projector_project(polToMap);
-	  mapCoord_x = (polToMap[0] + 1) * 0.5 * frontBuf_width;
-	  mapCoord_y = (-polToMap[1] * aspectXY + 1) * 0.5 * frontBuf_height;
+	  mapCoord_x = (polToMap[0] * vp.scale +
+			1 + vp.mapCenter[0]) * 0.5 * frontBuf_width;
+	  mapCoord_y = ((-polToMap[1] * vp.scale - vp.mapCenter[1]) *
+			aspectXY + 1) * 0.5 * frontBuf_height;
 	}
 	if (isNaN(mapCoord_x) || isNaN(mapCoord_y))
-	  continue;
+	  { clipped = true; continue; }
 
-	edc.lineTo(mapCoord_x, mapCoord_y);
-	if (tracksData[i][j][2] - 1 == Dates.curDate)
-	  edc.arc(mapCoord_x, mapCoord_y,
-		  arcRad, 0, 2 * Math.PI, false);
+	if (clipped || noLine)
+	  { edc.moveTo(mapCoord_x, mapCoord_y); clipped = false; }
+	else edc.lineTo(mapCoord_x, mapCoord_y);
+	if (!clipped && tracksData[i][j][2] - 1 == Dates.curDate)
+	  edc.arc(mapCoord_x, mapCoord_y, arcRad, 0, 2 * Math.PI, false);
       }
       edc.stroke();
 
@@ -426,6 +454,7 @@ WCTracksLayer.contExec = function() {
 
 WCTracksLayer.loadData = new XHRLoader("../data/tracks.wtxt");
 WCTracksLayer.loadData.overrideMimeType = "text/plain; charset=utf-16le";
+WCTracksLayer.loadData.wcProg = true;
 
 WCTracksLayer.loadData.procData = function(httpRequest, responseText) {
   var doneProcData = false;
@@ -838,11 +867,16 @@ WCTracksLayer.kdPVS = function(curDate, vbox, maxSplits) {
  * @returns {Array} [ minLat, minLon, maxLat, maxLon ]
  */
 WCTracksLayer.genVBox = function() {
-  var width = 360 / ViewParams.scale;
-  var height = 360 / ViewParams.scale / ViewParams.aspectXY;
-  var x = /* -ViewParams.mapCenter[0] / ViewParams.scale * 180 */ +
-    ViewParams.polCenter[0];
-  var y = -ViewParams.mapCenter[1] / ViewParams.scale * 180;
+  var projScale = 360;
+  if (this.vp.projector == OrthoProjector ||
+      this.vp.projector == PerspProjector)
+    projScale = 180;
+  var width = projScale / this.vp.scale;
+  var height = projScale / this.vp.scale / this.vp.aspectXY;
+  var x = /* -this.vp.mapCenter[0] / this.vp.scale * 180 */ +
+    this.vp.polCenter[0];
+  var y = -this.vp.mapCenter[1] / this.vp.scale * 180 +
+    this.vp.polCenter[1];
   return [ y - height / 2, x - width / 2, y + height / 2, x + width / 2 ];
 };
 
@@ -870,7 +904,11 @@ WCTracksLayer.render = (function() {
     this.ctx = ctx;
 
     ctx.clearRect(0, 0, frontBuf.width, frontBuf.height);
-    ctx.lineWidth = frontBuf.width / 1440 * ViewParams.scale;
+    ctx.lineWidth = frontBuf.width / 1440 * WCTracksLayer.vp.scale;
+    if (WCTracksLayer.vp.projector == OrthoProjector ||
+	WCTracksLayer.vp.projector == PerspProjector)
+      ctx.lineWidth *= 2;
+    this.arcRad = ctx.lineWidth * 2;
     ctx.strokeStyle = "#800080";
     ctx.lineJoin = "round";
     ctx.lineCap = "round";
@@ -910,13 +948,16 @@ WCTracksLayer.render = (function() {
     var curEddy = this.curEddy;
     var INPUT_ZERO_SYM = wctl.INPUT_ZERO_SYM;
 
-    var frontBuf_width = WCTracksLayer.frontBuf.width;
-    var frontBuf_height = WCTracksLayer.frontBuf.height;
-    var aspectXY = ViewParams.aspectXY;
-    var scale = ViewParams.scale;
-    var mcx = ViewParams.mapCenter[0], mcy = ViewParams.mapCenter[1];
-    var projector_project = ViewParams.projector.project;
-    var arcRad = 2 * frontBuf_width / 1440 * ViewParams.scale;
+    var frontBuf_width = wctl.frontBuf.width;
+    var frontBuf_height = wctl.frontBuf.height;
+    var aspectXY = wctl.vp.aspectXY;
+    var scale = wctl.vp.scale;
+    var mcx = wctl.vp.mapCenter[0], mcy = wctl.vp.mapCenter[1];
+    var projector_project = wctl.vp.projector.project;
+    var arcRad = this.arcRad;
+
+    var minLength = TracksParams.minLength;
+    var maxLength = TracksParams.maxLength;
 
     /* rc = render class.  Draw all the definitely visible and
        possibly visible edies and tracks.  Optionally (rc = 2), check
@@ -927,10 +968,10 @@ WCTracksLayer.render = (function() {
     var numRendered = this.numRendered;
     var rlen;
 
-    /* NOTE: Some versions of Firefox on some computers go wacko when
-       given way too many subpaths to stroke all at once.  Thus, we
-       stroke each individual track separately rather than stroke them
-       all together.  Plus, it appears that doing so doesn't harm
+    /* NOTE: Some versions of Firefox on some computers become slow
+       when given way too many subpaths to stroke all at once.  Thus,
+       we stroke each individual track separately rather than stroke
+       them all together.  Plus, it appears that doing so doesn't harm
        performance that much... except in Google Chrome where only
        performance can be gained by doing so.  We would have to run a
        benchmark at startup to tell which behavior we should use.  */
@@ -944,11 +985,17 @@ WCTracksLayer.render = (function() {
 	var jend = curRange[0] + curRange[1];
 	while (j < jend) {
 	  wctl.getEddy(curEddy, j);
+	  var trackType = curEddy[0];
+	  var trackLen = 0;
 
-	  if ((!TracksParams.dispAcyc && curEddy[0] == 0) ||
-	      (!TracksParams.dispCyc && curEddy[0] == 1)) {
-	    /* FIXME: We should not duplicate this code that belongs
-	       at the end of the loop.  */
+	  if ((!TracksParams.dispAcyc && trackType == 0) ||
+	      (!TracksParams.dispCyc && trackType == 1)) {
+	    /* NOTE: This code belongs at the end of the loop, but
+	       since JavaScript doesn't support goto with a clean
+	       syntax, it is duplicated here for performance.  (The
+	       other option would be to put it at the start of the
+	       loop, at the expense of one extra check at the very
+	       beginning.)  */
 	    numRendered++; j++;
 	    if (numRendered % 128 == 0 && ctnow() - startTime >= timeout)
 	      { quitLoop = true; break; }
@@ -979,18 +1026,32 @@ WCTracksLayer.render = (function() {
 	    0.5 * frontBuf_width;
 	  mapCoord_y = ((-polToMap[1] * scale - mcy) * aspectXY + 1) *
 	    0.5 * frontBuf_height;
-	  /* NOTE: We should probably use box clipping rather than
-	     point clipping for the eddy markers, to avoid the effect
-	     of having them haptically disappear when close to the
-	     edge of the screen.  */
+	  /* if (!isNaN(mapCoord_x) && !isNaN(mapCoord_y)) {
+	    var visible = false;
+	    if (rc == 0) visible = true;
+	    else if (ptInVBox(oLastLat, oLastLon, vbox))
+	      visible = true;
+	    else {
+	      box1[0] = oLastLat - 0.5; box1[2] = oLastLat + 0.5;
+	      box1[1] = oLastLon - 0.5; box1[3] = oLastLon + 0.5;
+	      if (boxInVBox(box1, vbox)) visible = true;
+	    }
+	    if (visible) {
+	      ctx.moveTo(mapCoord_x + arcRad, mapCoord_y);
+	      ctx.arc(mapCoord_x, mapCoord_y, arcRad, 0, 2 * Math.PI, false);
+	    }
+	  } */
+	  /* This is simpler (faster), though not entirely accurate.
+	     Besides, if the center is invisible, why draw the marker
+	     that indicates the center position?  */
 	  if (!isNaN(mapCoord_x) && !isNaN(mapCoord_y) &&
 	      (rc == 0 || ptInVBox(oLastLat, oLastLon, vbox))) {
 	    ctx.moveTo(mapCoord_x + arcRad, mapCoord_y);
 	    ctx.arc(mapCoord_x, mapCoord_y, arcRad, 0, 2 * Math.PI, false);
 	  }
 
-	  /* k = 0: Draw all the tracks after the current date.  */
-	  /* k = 1: Draw all the tracks before the current date.  */
+	  /* k = 0: Draw the track lines after the current date.  */
+	  /* k = 1: Draw the track lines before the current date.  */
 	  for (var k = 0; k < 2; k++) {
 	    var ti = j; // Track index
 	    if (k > 0) {
@@ -1013,8 +1074,9 @@ WCTracksLayer.render = (function() {
 	    var disp; // Displacement
 	    disp = curEddy[3+k];
 	    while (disp != INPUT_ZERO_SYM) {
+	      trackLen++;
 	      var noLine = false;
-	      if (!k) ti += disp;
+	      if (k == 0) ti += disp;
 	      else ti -= disp;
 	      wctl.getEddy(curEddy, ti);
 	      disp = curEddy[3+k];
@@ -1025,13 +1087,13 @@ WCTracksLayer.render = (function() {
 		   function to check if the line to be drawn lies in
 		   the vbox, for the sake of simplicity, all track
 		   lines are assumed to be short enough such that the
-		   simpler `boxInVBox()' visibility testing function
-		   will be adequate.  */
+		   simpler (and faster) `boxInVBox()' visibility
+		   testing function will be adequate.  */
 		if (oLastLat < polToMap[1])
 		  { box1[0] = oLastLat; box1[2] = polToMap[1]; }
 		else { box1[0] = polToMap[1]; box1[2] = oLastLat; }
 		if (oLastLon < polToMap[0])
-		  { box1[1] = oLastLat; box1[3] = polToMap[0]; }
+		  { box1[1] = oLastLon; box1[3] = polToMap[0]; }
 		else { box1[1] = polToMap[0]; box1[3] = oLastLon; }
 		if (!boxInVBox(box1, vbox))
 		  noLine = true;
@@ -1052,9 +1114,34 @@ WCTracksLayer.render = (function() {
 		else ctx.lineTo(mapCoord_x, mapCoord_y);
 	      } else clipped = true;
 	    }
+	    /* NOTE: Here, we could compute the actual length of the
+	       track by fetching the start and end date indexes, but
+	       we don't do that for performance.  Instead, we assume
+	       that each point on the track is spaced by exactly one
+	       week.
+
+	    var tkStartDate = 0;
+	    var tkEndDate = 0;
+            if (k == 0) wctl.getDateOfEddy();
+	    else wctl.getDateOfEddy(); */
+	  }
+	  if (trackLen >= minLength &&
+	      (TracksParams.maxLength == -1 || trackLen <= maxLength)) {
+	    /* NOTE: Rapid state changes are generally discouraged due
+	       to their negative effects on performance.  The only way
+	       to avoid this would be to traverse two separate
+	       kd-trees for anticyclonic and cyclonic tracks.  That
+	       doesn't seem worthwhile.  */
+	    if (trackType == 0) { // Anticyclonic
+	      if (ctx.strokeStyle != "#ff0000")
+		ctx.strokeStyle = "#ff0000";
+	    } else { // Cyclonic
+	      if (ctx.strokeStyle != "#0000ff")
+		ctx.strokeStyle = "#0000ff";
+	    }
+	    ctx.stroke();
 	  }
 	  numRendered++; j++;
-	  ctx.stroke();
 	  if (numRendered % 128 == 0 && ctnow() - startTime >= timeout)
 	    { quitLoop = true; break; }
 	}
@@ -1203,7 +1290,7 @@ WCKdDbgTracksLayer.drawVBox = function(vbox, scale) {
 
 WCKdDbgTracksLayer.render = function() {
   var curDate = Dates.curDate;
-  var scale = ViewParams.viewport[0] / 360;
+  var scale = this.vp.viewport[0] / 360;
   var ranges = this.ranges;
   var maxDepth = this.maxDepth;
 

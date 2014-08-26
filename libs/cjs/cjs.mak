@@ -5,6 +5,7 @@
 TARGETS = $(SOURCES:.js=.hjs)
 # TARGETS = $(SOURCES:.cjs=.hjs)
 # BSD style: TARGETS = $(SOURCES:S/.js$/.hjs/g:S/.cjs$/.hjs/g)
+DEPS = $(TARGETS:.hjs=.hjs.d)
 
 .SUFFIXES:: .c .js .cjs .hjs .hjs.d .djs
 
@@ -23,13 +24,16 @@ TARGETS = $(SOURCES:.js=.hjs)
 .js.djs:
 	CPP=$(CPP) $(cjs_dir)/djsprep.sh $< -o $@
 
-.hjs.hjs.d: $(TARGETS)
+.hjs.hjs.d:
 	@set -e; $(CPP) -M $< | \
 	  sed -e 's,\($*\)\.hjs,\1.js,g' \
 	    -e 's,\($*\)\.o[ :]*,\1.hjs $@ : ,g' >$@
 
+$(DEPS): $(TARGETS)
+depend: $(DEPS)
+
 # Note: This include line only works in GNU Make.
-include $(TARGETS:.hjs=.hjs.d)
+include $(DEPS)
 
 # BSD Make uses the following alternate syntax:
 # .include "$(FILE1_HJSD)"

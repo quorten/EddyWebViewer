@@ -11,10 +11,11 @@
    4. Within the webpage, define and set the `TestLayer' variable to
       point to the RenderLayer object that should be tested.
 
-   5. Add the attribute-value pair `onload="setup(width, height)' to
-      the body element of your HTML test container, with `width' and
+   5. Add the attribute-value pair `onload="setup(width, height, mouse)"'
+      to the body element of your HTML test container, with `width'
       `height' replaced with the desired width and height of the
-      canvas.
+      canvas, and `mouse' set to `true' if you want a mouse connected
+      by default.
 
    The idea of this JavaScript file is to provide not only setup
    routines for a test webpage, but also convenient functions for
@@ -36,6 +37,11 @@
 
    * setTestLayer(layer) -- Dynamically switch the layer to be tested
      to the given layer, performing all necessary reconfiguration.
+
+   * OEV.connectMouse(TestLayer.frontBuf, OEV.gViewParams,
+                      tmMove, tmStop, tmMove) -- Connect mouse event
+     handlers to the current TestLayer that manipulate the global
+     ViewParams.
 
 */
 
@@ -144,15 +150,15 @@ var halt = function() {
 var stop = halt;
 
 var setViewport = function(width, height) {
-  OEV.ViewParams.viewport[0] = width;
-  OEV.ViewParams.viewport[1] = height;
-  OEV.ViewParams.aspectXY = width / height;
+  OEV.gViewParams.viewport[0] = width;
+  OEV.gViewParams.viewport[1] = height;
+  OEV.gViewParams.aspectXY = width / height;
   TestLayer.setViewport(width, height);
 };
 
 var setScale = function(scale) {
-  OEV.ViewParams.scale = scale;
-  OEV.ViewParams.inv_scale = 1 / scale;
+  OEV.gViewParams.scale = scale;
+  OEV.gViewParams.inv_scale = 1 / scale;
 };
 
 var finishSetup = function() {
@@ -165,7 +171,7 @@ var finishSetup = function() {
   }
 };
 
-var setup = function(width, height) {
+var setup = function(width, height, mouse) {
   // Append a progress counter element to the document body.
   progElmt = document.createElement("p");
   progElmt.id = "progElmt";
@@ -196,7 +202,10 @@ var setup = function(width, height) {
   }
 
   setViewport(width, height);
-  OEV.ViewParams.projector = OEV.EquirectProjector;
+
+  if (mouse)
+    OEV.connectMouse(TestLayer.frontBuf, OEV.gViewParams,
+		     tmMove, tmStop, tmMove);
 
   // Load the dates.
   OEV.Dates.timeout = 15;
@@ -206,7 +215,6 @@ var setup = function(width, height) {
 
 var setTestLayer = function(layer) {
   var oldTestEl = document.getElementById("testLayer");
-  oldTestEl.parentNode.removeChild(oldTestEl);
   TestLayer = layer;
   TestLayer.frontBuf.id = "testLayer";
   TestLayer.frontBuf.style.cssText =
@@ -214,7 +222,32 @@ var setTestLayer = function(layer) {
   TestLayer.timeout = 15;
   TestLayer.notifyFunc = execTime;
   var body = document.getElementById("topBody");
-  body.appendChild(TestLayer.frontBuf);
+  body.replaceChild(TestLayer.frontBuf, oldTestEl);
 
-  setViewport(OEV.ViewParams.viewport[0], OEV.ViewParams.viewport[1]);
-}
+  setViewport(OEV.gViewParams.viewport[0], OEV.gViewParams.viewport[1]);
+
+  /* If a mouse was connected to the old TestLayer but not yet
+     connected to the new TestLayer, then connect it.  */
+  if (oldTestEl.onmousedown && !TestLayer.frontBuf.onmousedown)
+    OEV.connectMouse(TestLayer.frontBuf, OEV.gViewParams,
+		     tmMove, tmStop, tmMove);
+};
+
+/* This is something that really should be possible directly within
+   the original code, but circular includes prevent that from being
+   viable...  */
+OEV.gViewParams.projector = OEV.EquirectProjector;
+
+var tmMove = function() {
+  /* Only allow one iteration:
+  var doit = function() { TestLayer.start(); };
+  if (OEV.allocRenderJob(doit)) doit(); */
+  if (OEV.allocRenderJob(start)) start();
+  return false;
+};
+
+var tmStop = function() {
+  /* Finish the remaining iterations:
+  if (OEV.allocRenderJob(start)) start(); */
+  return false;
+};

@@ -49,7 +49,7 @@ SSHParams.shadeScale = 4;
  * transparent.  Positions where the projection is undefined are
  * always rendered as transparent.
  */
-SSHParams.whiteAtUndef = false;
+SSHParams.whiteAtUndef = true;
 
 /********************************************************************/
 
@@ -70,6 +70,9 @@ GenSSHLayer.render = new RayTracer(null, 1, 1);
 GenSSHLayer.frontBuf = GenSSHLayer.render.frontBuf;
 GenSSHLayer.setViewport = function(width, height) {
   return this.render.setViewport(width, height);
+};
+GenSSHLayer.setViewParams = function(vp) {
+  this.vp = vp; return this.render.setViewParams(vp);
 };
 
 GenSSHLayer.initCtx = function() {

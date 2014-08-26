@@ -246,9 +246,9 @@ PerspProjector.project = function(polToMap) {
     { polToMap[0] = NaN; polToMap[1] = NaN; return; }
   // r must be one: this simplifies the calculations
   var r = 1; // 6371; // radius of the earth in kilometers
-  var d = ViewParams.perspAltitude / 6371; // altitude in kilometers
+  var d = gViewParams.perspAltitude / 6371; // altitude in kilometers
   // focal length in units of the screen dimensions
-  var f = 1 / Math.tan(DEG2RAD * ViewParams.perspFOV / 2);
+  var f = 1 / Math.tan(DEG2RAD * gViewParams.perspFOV / 2);
   var latitude = DEG2RAD * polToMap[1];
   var cos_latitude = Math.cos(latitude);
   // Point3D r3src { x, y, z } -> exploded ->
@@ -266,9 +266,9 @@ PerspProjector.unproject = function(mapToPol) {
 
   // r must be one: this simplifies the calculations
   var r = 1; // 6371; // radius of the earth in kilometers
-  var d = ViewParams.perspAltitude / 6371; // altitude in kilometers
+  var d = gViewParams.perspAltitude / 6371; // altitude in kilometers
   // focal length in units of the screen dimensions
-  var f = 1 / Math.tan(DEG2RAD * ViewParams.perspFOV / 2);
+  var f = 1 / Math.tan(DEG2RAD * gViewParams.perspFOV / 2);
   var x_pix = mapToPol[0];
   var y_pix = mapToPol[1];
 
@@ -312,7 +312,7 @@ TDProjector.prototype.project = function(polToMap, projType) {
     { polToMap[0] = NaN; polToMap[1] = NaN; return; }
 
   /* 1. Get the 3D rectangular coordinate of the point.  */
-  var longitude = polToMap[0] - ViewParams.polCenter[0];
+  var longitude = polToMap[0] - gViewParams.polCenter[0];
   var latitude = DEG2RAD * polToMap[1];
   var cos_latitude = Math.cos(latitude);
   // Point3D r3src { x, y, z } -> exploded ->
@@ -324,11 +324,11 @@ TDProjector.prototype.project = function(polToMap, projType) {
      tilt.  */
   // Point3D r3dest { x, y, z } -> exploded ->
   var r3dest_x, r3dest_y, r3dest_z;
-  if (ViewParams.polCenter[1] != 0) {
+  if (gViewParams.polCenter[1] != 0) {
     /* FIXME: This should theoretically be positive, but from testing,
        negative is what works correctly.  Probably due to a problem in
        TracksLayer.  */
-    var tilt = -DEG2RAD * ViewParams.polCenter[1];
+    var tilt = -DEG2RAD * gViewParams.polCenter[1];
     var cos_tilt = Math.cos(tilt); var sin_tilt = Math.sin(tilt);
     r3dest_x = r3src_x;
     r3dest_y = r3src_y * cos_tilt - r3src_z * sin_tilt;
@@ -344,9 +344,9 @@ TDProjector.prototype.project = function(polToMap, projType) {
   } else { // Perspective projection
     // r must be one: this simplifies the calculations
     var r = 1; // 6371; // radius of the earth in kilometers
-    var d = ViewParams.perspAltitude / 6371; // altitude in kilometers
+    var d = gViewParams.perspAltitude / 6371; // altitude in kilometers
     // focal length in units of the screen dimensions
-    var f = 1 / Math.tan(DEG2RAD * ViewParams.perspFOV / 2);
+    var f = 1 / Math.tan(DEG2RAD * gViewParams.perspFOV / 2);
     polToMap[0] = r3dest_x * f / (-r3dest_z + (r + d));
     polToMap[1] = r3dest_y * f / (-r3dest_z + (r + d));
   }
@@ -374,9 +374,9 @@ TDProjector.prototype.unproject = function(mapToPol, projType) {
   } else { // Perspective projection
     // r must be one: this simplifies the calculations
     var r = 1; // 6371; // radius of the earth in kilometers
-    var d = ViewParams.perspAltitude / 6371; // altitude in kilometers
+    var d = gViewParams.perspAltitude / 6371; // altitude in kilometers
     // focal length in units of the screen dimensions
-    var f = 1 / Math.tan(DEG2RAD * ViewParams.perspFOV / 2);
+    var f = 1 / Math.tan(DEG2RAD * gViewParams.perspFOV / 2);
     var x_pix = mapToPol[0];
     var y_pix = mapToPol[1];
 
@@ -395,7 +395,7 @@ TDProjector.prototype.unproject = function(mapToPol, projType) {
 
   /* 2. Inverse rotate this coordinate around the x axis by the
      current globe tilt.  */
-  var tilt = DEG2RAD * ViewParams.polCenter[1];
+  var tilt = DEG2RAD * gViewParams.polCenter[1];
   var cos_tilt = Math.cos(tilt); var sin_tilt = Math.sin(tilt);
   // Point3D r3src { x, y, z } -> exploded ->
   var r3dest_x, r3dest_y, r3dest_z;
@@ -410,7 +410,7 @@ TDProjector.prototype.unproject = function(mapToPol, projType) {
   /* 4. Shift by the longitudinal rotation around the pole.  For the
      sake of the normalization calculation below, move the prime
      meridian to 180 degrees.  */
-  longitude += 180 + ViewParams.polCenter[0];
+  longitude += 180 + gViewParams.polCenter[0];
 
   /* 5. Verify that the coordinates are in bounds.  */
   if (latitude < -90) latitude = -90;

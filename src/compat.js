@@ -24,6 +24,8 @@ var makeEventWrapper = function(callObj, handler) {
   return function(event) { return callObj[handler](this, event); };
 };
 
+OEV.makeEventWrapper = makeEventWrapper;
+
 /********************************************************************/
 /* Browser Detection
 
@@ -49,6 +51,8 @@ var getMsieVersion = function() {
   return 0; // is a different browser
 };
 
+OEV.getMsieVersion = getMsieVersion;
+
 /********************************************************************/
 /* Mouse Pointer and Wheel Compatibility */
 
@@ -71,6 +75,8 @@ var MousePos_checkRead = function(event) {
   return false;
 };
 
+OEV.MousePos_checkRead = MousePos_checkRead;
+
 /**
  * Set the mouse position calibration point.
  *
@@ -88,6 +94,8 @@ var MousePos_checkRead = function(event) {
 var MousePos_setCalibPt = function(x, y) {
   calibPt = [ x, y ];
 };
+
+OEV.MousePos_setCalibPt = MousePos_setCalibPt;
 
 /**
  * Read the position of the mouse pointer in a cross-browser
@@ -127,6 +135,8 @@ var MousePos_get = function(out, event) {
 
   return out;
 };
+
+OEV.MousePos_get = MousePos_get;
 
 /**
  * Create a mouse wheel event listener in a cross-browser compatible
@@ -209,6 +219,8 @@ var addWheelListener = (function(window, document) {
   return addWheelListenerInternal;
 })(window, document);
 
+OEV.addWheelListener = addWheelListener;
+
 /**
  * Capture the mouse pointer in a way that is cross-browser
  * compatible.  The function crossReleaseCapture() must be called when
@@ -229,6 +241,8 @@ var crossSetCapture = function(elmt, onMouseMove, onMouseUp) {
   }
 };
 
+OEV.crossSetCapture = crossSetCapture;
+
 /**
  * Release a captured mouse pointer in a way that is cross-browser
  * compatible.
@@ -241,6 +255,8 @@ var crossReleaseCapture = function() {
     window.onmouseup = null;
   }
 };
+
+OEV.crossReleaseCapture = crossReleaseCapture;
 
 /********************************************************************/
 /* Screen Update Helpers */
@@ -281,9 +297,8 @@ var crossReleaseCapture = function() {
   }
 })();
 
-/* The following functions help maintain smooth animation in Firefox.
-   The new code architecture does not need them anymore, though: the
-   cothreading architecture has subsumed their functionality.  */
+/* The following functions help maintain smooth animation in
+   Firefox.  */
 
 /**
  * Try to allocate a new render job.  This will either preempt an
@@ -304,6 +319,8 @@ var allocRenderJob = function(rendQFunc) {
   return true;
 };
 
+OEV.allocRenderJob = allocRenderJob;
+
 /**
  * Free a render job from the queue.  This function should only be
  * called from `allocRenderJob()` and never by any code that uses
@@ -318,21 +335,28 @@ var freeRenderJob = function() {
   }
 };
 
+OEV.freeRenderJob = freeRenderJob;
+
 /********************************************************************/
 /* Global Variables */
 
 /** Cached getMsieVersion() */
 var msieVersion = getMsieVersion();
+OEV.msieVersion = msieVersion;
 
 /** Mouse Calibration Point */
 var calibPt = null;
+OEV.calibPt = calibPt;
 
 /** Static storage for MousePos_Get() */
 var MousePos_getStorage = [];
+OEV.MousePos_getStorage = MousePos_getStorage;
 
 /** For allocRenderJob() and freeRenderJob(): Whether or not a render
  * job is in progress.   */
 var renderInProg = false;
+OEV.renderInProg = renderInProg;
 /** For allocRenderJob() and freeRenderJob(): A render queue that can
  * store up to one pending job.  */
 var renderQueue = null;
+OEV.renderQueue = renderQueue;

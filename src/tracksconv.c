@@ -1,7 +1,30 @@
 /* Convert a JSON tracks file to the format that is optimized for the
    web viewer.
 
-   Usage: tracksconv TYPE <INPUT >OUTPUT
+Copyright (C) 2014 University of Minnesota
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+*/
+
+/* Usage: tracksconv TYPE <INPUT >OUTPUT
 
    TYPE is 0 for a cyclonic tracks JSON and 1 for an acyclonic tracks JSON.
 
@@ -82,7 +105,7 @@ void display_help(FILE *fout, const char *progname);
 bool put_short_in_range(FILE *fout, unsigned value);
 int parse_json(FILE *fp, unsigned eddy_type);
 int add_eddy(InputEddy *ieddy, unsigned eddy_type,
-	      bool start_of_track);
+	     bool start_of_track);
 int qs_date_cmp(const void *p1, const void *p2, void *arg);
 int qs_lat_cmp(const void *p1, const void *p2);
 int qs_lon_cmp(const void *p1, const void *p2);

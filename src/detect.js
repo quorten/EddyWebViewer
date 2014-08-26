@@ -24,6 +24,9 @@ Web API
 
 document: getElementById(), createElement()
 
+appendChild, insertBefore, replaceChild, removeChild, childNodes,
+firstChild, lastChild, hasChildNodes()
+
 excanvas depends on getElementsByTagName
 
 new Image()

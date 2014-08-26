@@ -516,7 +516,7 @@ FThostObjects = function() {
 // -------------------------------------------------------------------
 
 if (typeof(FTsaneJSRuntime) != 'undefined' &&
-    /* FTonerror && */ FTnativeObjects() && FThostObjects()) {
+    FTonerror && FTnativeObjects() && FThostObjects()) {
   /* Go ahead and give the rest of the startup routines the okay to go
      signal.  Normal feature tests will be performed in the main
      script body.  */
@@ -644,7 +644,7 @@ element in the document (but not after errorBar).  -->
    <ul class="iconBtns noSelect">
    <li class="imgbtn" id="btn-minimize" title="Auto-Hide">
    <span>Auto-Hide</span></li><!--
---><li class="imgbtn" id="btn-legend" title="Legend">
+--><li class="imgbtn" id="btn-legend" title="Show/Hide Legend">
    <span>Legend</span></li>
    </ul><!--
 

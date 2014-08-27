@@ -57,6 +57,7 @@ Compositor.datesProg = null;
 Compositor.earthTexProg = null;
 Compositor.sshProg = null;
 Compositor.tracksProg = null;
+Compositor.dispLoadBar = false;
 
 /** Perform startup initialization for the whole web viewer.  */
 Compositor.init = function() {
@@ -117,6 +118,8 @@ Compositor.init = function() {
   this.tracksProg = document.createTextNode("Tracks data: 0%");
   loadingScreen.appendChild(this.tracksProg);
   loadingScreen.appendChild(document.createElement("br"));
+
+  this.loadingBar = document.getElementById("loadingBar");
 
   return this.finishStartup();
 };
@@ -215,9 +218,10 @@ Compositor.startRender = function(layers) {
 	layers[i].initCtx();
     }
   }
+  this.renderStart = Cothread.now();
   if (!this.renderInProg) {
     this.renderPart = 0;
-    this.renderStart = this.frameStart = Cothread.now();
+    this.frameStart = this.renderStart;
     return this.finishRenderJobs();
   }
 };
@@ -283,6 +287,10 @@ Compositor.finishRenderJobs = function() {
   }
 
   if (this.stopSignal) {
+    if (this.dispLoadBar) {
+      this.loadingBar.style.cssText = "";
+      this.dispLoadBar = false;
+    }
     this.renderInProg = false;
     this.stopSignal = false;
     if (this.playMode) {
@@ -291,13 +299,29 @@ Compositor.finishRenderJobs = function() {
     }
   } else if (earthTexStatus.returnType != CothreadStatus.FINISHED ||
 	     sshStatus.returnType != CothreadStatus.FINISHED ||
-	     tracksStatus.returnType != CothreadStatus.FINISHED)
+	     tracksStatus.returnType != CothreadStatus.FINISHED) {
+    if ((sshStatus.preemptCode == CothreadStatus.IOWAIT ||
+	 tracksStatus.preemptCode == CothreadStatus.IOWAIT) &&
+	ctnow() - this.renderStart > 4000) {
+      if (!this.dispLoadBar) {
+	this.loadingBar.style.cssText = "display: block";
+	this.dispLoadBar = true;
+      }
+      /* TODO: Add properly detailed loading diagnostics.  */
+    } else if (this.dispLoadBar) {
+      this.loadingBar.style.cssText = "";
+      this.dispLoadBar = false;
+    }
     return requestAnimationFrame(
 		    makeEventWrapper(Compositor, "finishRenderJobs"));
-  else if (earthTexStatus.returnType == CothreadStatus.FINISHED &&
+  } else if (earthTexStatus.returnType == CothreadStatus.FINISHED &&
 	   sshStatus.returnType == CothreadStatus.FINISHED &&
 	   tracksStatus.returnType == CothreadStatus.FINISHED &&
 	   this.playMode) {
+    if (this.dispLoadBar) {
+      this.loadingBar.style.cssText = "";
+      this.dispLoadBar = false;
+    }
     if ((this.playSpeed > 0 && Dates.curDate >= Dates.dateList.length - 1) ||
 	(this.playSpeed < 0 && Dates.curDate <= 0)) {
       this.playMode = false;
@@ -334,6 +358,10 @@ Compositor.finishRenderJobs = function() {
                  makeEventWrapper(Compositor, "startRenderAnim"),
 		 nextTime);
   } else {
+    if (this.dispLoadBar) {
+      this.loadingBar.style.cssText = "";
+      this.dispLoadBar = false;
+    }
     this.renderInProg = false;
   }
 };

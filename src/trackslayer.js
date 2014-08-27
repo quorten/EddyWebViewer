@@ -45,7 +45,8 @@ var JSONTracksLayer = new RenderLayer();
 OEV.JSONTracksLayer = JSONTracksLayer;
 
 JSONTracksLayer.initCtx = function() {
-  if (!this.acTracksData || !this.cTracksData) {
+  if ((!this.acTracksData || !this.cTracksData) &&
+      this.loadData.status.returnType != CothreadStatus.PREEMPTED) {
     this.loadData.timeout = this.timeout;
     this.acLoad.timeout = this.timeout;
     this.cLoad.timeout = this.timeout;
@@ -81,7 +82,11 @@ JSONTracksLayer.contExec = function() {
   }
 
   // Otherwise, render.
-  return this.render.continueCT();
+  var status = this.render.continueCT();
+  this.status.returnType = status.returnType;
+  this.status.preemptCode = status.preemptCode;
+  this.status.percent = status.percent;
+  return this.status;
 };
 
 /** Anticyclonic tracks loader.  */
@@ -399,9 +404,11 @@ OEV.WCTracksLayer = WCTracksLayer;
 WCTracksLayer.initCtx = function() {
   if (!this.textBuf) {
     if (!this.loadData.textBuf) {
-      this.loadData.timeout = this.timeout;
-      this.loadData.notifyFunc = this.notifyFunc;
-      this.loadData.initCtx();
+      if (this.loadData.status.returnType != CothreadStatus.PREEMPTED) {
+	this.loadData.timeout = this.timeout;
+	this.loadData.notifyFunc = this.notifyFunc;
+	this.loadData.initCtx();
+      }
     } else {
       this.textBuf = this.loadData.textBuf;
       this.loadData.textBuf = null;
@@ -428,7 +435,7 @@ WCTracksLayer.contExec = function() {
     var status = this.loadData.continueCT();
     this.status.returnType = CothreadStatus.PREEMPTED;
     this.status.preemptCode = status.preemptCode;
-    this.status.percent = status.percent / 2;
+    this.status.percent = status.percent;
     if (status.returnType == CothreadStatus.FINISHED) {
       if (this.loadData.retVal == 200) {
 	this.textBuf = this.loadData.textBuf;
@@ -449,7 +456,11 @@ WCTracksLayer.contExec = function() {
   }
 
   // Otherwise, render.
-  return this.render.continueCT();
+  var status = this.render.continueCT();
+  this.status.returnType = status.returnType;
+  this.status.preemptCode = status.preemptCode;
+  this.status.percent = status.percent;
+  return this.status;
 };
 
 WCTracksLayer.loadData = new XHRLoader("../data/tracks.wtxt");
@@ -1224,7 +1235,7 @@ WCKdDbgTracksLayer.contExec = function() {
     var status = this.loadData.continueCT();
     this.status.returnType = CothreadStatus.PREEMPTED;
     this.status.preemptCode = status.preemptCode;
-    this.status.percent = status.percent / 2;
+    this.status.percent = status.percent;
     if (status.returnType == CothreadStatus.FINISHED) {
       if (this.loadData.retVal == 200) {
 	this.textBuf = this.loadData.textBuf;

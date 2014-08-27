@@ -362,8 +362,7 @@ GenSSHLayer.render.pixelPP = function(value, data, destIdx,
     blue = this.mlColorTbl[value++];
     break;
   case 2: // Contour bands
-    value += 128;
-    value = (value - SSHParams.shadeBase) * SSHParams.shadeScale;
+    value = (value - SSHParams.shadeBase) * SSHParams.shadeScale + 128;
     if (value & 0x100) value = ~value;
     value &= 0xff;
     red = green = blue = value;

@@ -74,6 +74,12 @@
                 font-size: 24pt; font-weight: bold;
                 background-color: #c00000; display: none; }
 
+    #loadingBar { position: absolute; left: 0px; top: 0px;
+                  width: 100%; height: auto; overflow: auto;
+                  text-align: center; line-height: 200%;
+                  font-size: 24pt; font-weight: bold;
+                  background-color: #808000; display: none; }
+
     #popupInfo { position: absolute; left: 8px; top: 8px;
                    max-width: 10cm; }
     #popupLegend { position: absolute; left: 8px; bottom: 42px;
@@ -151,11 +157,13 @@ filter:progid:DXImageTransform.Microsoft.gradient(startColorstr=#40000000, endCo
         box-sizing: content-box;
         display: inline-block; width: 32px; height: 32px;
         background-color: red; list-style-type: none; }
-    .iconBtns .nbimgbtn { display: inline-block; width: 32px; height: 32px;
+    .iconBtns .nbimgbtn { display: inline-block; width: 34px; height: 34px;
+                          margin-right: 1px;
                           background-color: red; list-style-type: none; }
     .ie6 .iconBtns .imgbtn, .ie7 .iconBtns .imgbtn { display: inline; }
     .ie6 .iconBtns .nbimgbtn, .ie7 .iconBtns .nbimgbtn { display: inline; }
     .imgbtn span { display: none; }
+    .imgbtn:focus { outline: dotted red 1px; border-color: red; }
     .spacer { display: inline-block; width: 10px; margin: 0px; padding: 0px; }
     .ie6 .spacer, .ie7 .spacer { display: inline; }
 
@@ -168,37 +176,54 @@ filter:progid:DXImageTransform.Microsoft.gradient(startColorstr=#40000000, endCo
     input#cfg-curDate { width: 7em; }
     input#cfg-latLon { width: 10em; }
     label img { vertical-align: middle; }
-    .textBtns { display: inline; border: solid white 1px;
-                background-color: #111117; }
-    .textBtns:active { background-color: #6a6a96; }
+    .textBtns
+      { border: solid white 1px; margin: 0px; padding: 0px;
+        vertical-align: top;
+        -moz-box-sizing: content-box; -webkit-box-sizing: content-box;
+        box-sizing: content-box;
+        display: inline;
+        color: white; background-color: #111117; }
+    .textBtns:focus { outline: dotted red 1px; border-color: red; }
+    .textBtns:active /* , .textBtns:focus */ { background-color: #6a6a96; }
 
     /* Note: Button highlight color is "#6a6a96".  */
 
     #btn-minimize { background-image: url("minimize.png"); }
-    #btn-minimize:active { background-image: url("minimize_light.png"); }
+    #btn-minimize:active /* , #btn-minimize:focus */
+      { background-image: url("minimize_light.png"); }
     #btn-legend { background-image: url("legend.png"); }
-    #btn-legend:active { background-image: url("legend_light.png"); }
+    #btn-legend:active /* , #btn-legend:focus */
+      { background-image: url("legend_light.png"); }
     #btn-begin { background-image: url("beginning.png"); }
-    #btn-begin:active { background-image: url("beginning_light.png"); }
+    #btn-begin:active /* , #btn-begin:focus */
+      { background-image: url("beginning_light.png"); }
     #btn-rewind { background-image: url("rewind.png"); }
-    #btn-rewind:active { background-image: url("rewind_light.png"); }
+    #btn-rewind:active /* , #btn-rewind:focus */
+      { background-image: url("rewind_light.png"); }
     #btn-bstep { background-image: url("step_back.png"); }
-    #btn-bstep:active { background-image: url("step_back_light.png"); }
+    #btn-bstep:active /* , #btn-bstep:focus */
+      { background-image: url("step_back_light.png"); }
     #btn-pause { background-image: url("pause.png"); }
-    #btn-pause:active { background-image: url("pause_light.png"); }
+    #btn-pause:active /* , #btn-pause:focus */
+      { background-image: url("pause_light.png"); }
     #btn-play { background-image: url("play.png"); }
-    #btn-play:active { background-image: url("play_light.png"); }
+    #btn-play:active /* , #btn-play:focus */
+      { background-image: url("play_light.png"); }
     #btn-fstep { background-image: url("step_fwd.png"); }
-    #btn-fstep:active { background-image: url("step_fwd_light.png"); }
+    #btn-fstep:active /* , #btn-fstep:focus */
+      { background-image: url("step_fwd_light.png"); }
     #btn-ffwd { background-image: url("fast_forward.png"); }
-    #btn-ffwd:active { background-image: url("fast_forward_light.png"); }
+    #btn-ffwd:active /* , #btn-ffwd:focus */
+      { background-image: url("fast_forward_light.png"); }
     #btn-end { background-image: url("end.png"); }
-    #btn-end:active { background-image: url("end_light.png"); }
+    #btn-end:active /* , #btn-end:focus */
+      { background-image: url("end_light.png"); }
     #btn-config { background-image: url("config.png"); }
-    #btn-config:active { background-image: url("config_light.png"); }
+    #btn-config:active /* , #btn-config:focus */
+      { background-image: url("config_light.png"); }
     #btn-help { background-image: url("help.png"); }
-    #btn-help:active { background-image: url("help_light.png");
-                       outline: none; }
+    #btn-help:active /* , #btn-help:focus */
+      { background-image: url("help_light.png"); /* outline: none; */ }
   </style>
   <script type="text/javascript">
     <!--//--><![CDATA[//><!--
@@ -556,6 +581,8 @@ if (typeof(FTsaneJSRuntime) != 'undefined' &&
 </div>
 </div>
 
+<div id="loadingBar">Loading data...</div>
+
 <div id="popupInfo" class="popup" style="visibility: hidden">
 <div id="popupInfoClose" class="popupClose noSelect"><!-- &#xd7; --></div>
   <strong class="popupTitle">Eddy #43859</strong><br />
@@ -570,7 +597,7 @@ if (typeof(FTsaneJSRuntime) != 'undefined' &&
 
 <div id="popupLegend" class="popup" style="visibility: hidden">
 <!-- <div id="popupClose" class="popupClose noSelect">
-<\!-- &#xd7; --\></div> -->
+<\!-\- &#xd7; -\-\></div> -->
   <b>Legend</b>
   <ul>
     <li>Circles mark the center of the eddy at the current date, not
@@ -633,7 +660,17 @@ if (typeof(FTsaneJSRuntime) != 'undefined' &&
       <option>MATLAB</option>
       <option>Contour Bands</option>
       <option>Waters</option>
-    </select>
+    </select><br />
+    <label for="cfg-sshBaseVal" title="Sea Surface Height Base Value">
+      SSH Base Value (cm):</label>
+    <input id="cfg-sshBaseVal" type="text" value="0"
+	   class="numinput" title="Sea Surface Height Base Value" /><br />
+    <label for="cfg-sshScaleFac" title="Sea Surface Height Scale Factor">
+      SSH Scale Factor:</label>
+    <input id="cfg-sshScaleFac" type="text" value="4"
+	   class="numinput" title="Sea Surface Height Scale Factor" /><!-- <br />
+    <label for="cfg-sshAutoScale">Auto-Fit SSH Values</label>
+    <input id="cfg-sshAutoScale" type="checkbox" /> -->
   </fieldset>
 </form></div>
 
@@ -642,37 +679,56 @@ element in the document (but not after errorBar).  -->
 <div id="bbwrap"><form id="bottomBar" action="">
 
    <ul class="iconBtns noSelect">
-   <li class="imgbtn" id="btn-minimize" title="Auto-Hide">
-   <span>Auto-Hide</span></li><!--
---><li class="imgbtn" id="btn-legend" title="Show/Hide Legend">
-   <span>Legend</span></li>
+   <li class="nbimgbtn">
+     <button type="button" class="imgbtn" id="btn-minimize"
+	     title="Auto-Hide">
+   <span>Auto-Hide</span></button></li><!--
+--><li class="nbimgbtn">
+     <button type="button" class="imgbtn" id="btn-legend"
+	     title="Show/hide legend">
+   <span>Legend</span></button></li>
    </ul><!--
 
 --><div class="spacer"></div><!--
 
 --><ul class="iconBtns noSelect">
-   <li class="imgbtn" id="btn-begin" title="Beginning">
-   <span>Beginning</span></li><!--
---><li class="imgbtn" id="btn-rewind" title="Backward faster">
-   <span>Backward faster</span></li><!--
---><li class="imgbtn" id="btn-bstep" title="Step backward">
-   <span>Step backward</span></li><!--
---><li class="imgbtn" id="btn-play" title="Play">
-   <span>Play</span></li><!--
---><li class="imgbtn" id="btn-fstep" title="Step forward">
-   <span>Step forward</span></li><!--
---><li class="imgbtn" id="btn-ffwd" title="Forward faster">
-   <span>Forward faster</span></li><!--
---><li class="imgbtn" id="btn-end" title="End">
-   <span>End</span></li>
+   <li class="nbimgbtn">
+     <button type="button" class="imgbtn" id="btn-begin"
+	     title="Beginning">
+   <span>Beginning</span></button></li><!--
+--><li class="nbimgbtn">
+     <button type="button" class="imgbtn" id="btn-rewind"
+	     title="Backward faster">
+   <span>Backward faster</span></button></li><!--
+--><li class="nbimgbtn">
+     <button type="button" class="imgbtn" id="btn-bstep"
+	     title="Step backward">
+   <span>Step backward</span></button></li><!--
+--><li class="nbimgbtn">
+     <button type="button" class="imgbtn" id="btn-play"
+	     title="Play">
+   <span>Play</span></button></li><!--
+--><li class="nbimgbtn">
+     <button type="button" class="imgbtn" id="btn-fstep"
+	     title="Step forward">
+   <span>Step forward</span></button></li><!--
+--><li class="nbimgbtn">
+     <button type="button" class="imgbtn" id="btn-ffwd"
+	     title="Forward faster">
+   <span>Forward faster</span></button></li><!--
+--><li class="nbimgbtn">
+     <button type="button" class="imgbtn" id="btn-end"
+	     title="End">
+   <span>End</span></button></li>
    </ul><!--
 
 --><div class="spacer"></div><!--
 
 --><ul class="iconBtns noSelect">
-   <li class="imgbtn" id="btn-config"
-	title="Advanced Configuration">
-   <span>Advanced Configuration</span></li>
+   <li class="nbimgbtn">
+     <button type="button" class="imgbtn" id="btn-config"
+	     title="Advanced Configuration">
+   <span>Advanced Configuration</span></button></li>
    </ul><!--
 
 --><div class="spacer"></div><!--
@@ -721,14 +777,14 @@ element in the document (but not after errorBar).  -->
    </label>
    <input id="cfg-lenRange" type="text" value="0-max"
 	  title="Filter eddies by length in weeks (Format: min-max)" />
-   <div id="cfg-showCyc"
+   <button type="button" id="cfg-showCyc"
 	class="textBtns noSelect" style="background-color: #6a6a96"
 	title="Show/hide cyclonic eddies">
-     &nbsp;C&nbsp;</div>
-   <div id="cfg-showAntiCyc"
+     &nbsp;C&nbsp;</button>
+   <button type="button" id="cfg-showAntiCyc"
 	class="textBtns noSelect" style="background-color: #6a6a96"
 	title="Show/hide anticyclonic eddies">
-     &nbsp;A&nbsp;</div>
+     &nbsp;A&nbsp;</button>
    </div>
 
 </form></div>
@@ -842,8 +898,6 @@ function dispLatLon() {
   cfg_latLon.value = dispLat + ' ' + dispLon;
 }
 
-var inhibitKey = false;
-
 function initGUIHooks() {
   var btn_minimize = document.getElementById('btn-minimize');
   btn_minimize.ondblclick = btn_minimize.onclick = function(event) {
@@ -913,21 +967,6 @@ function initGUIHooks() {
     return applyCurDate(event != null);
   };
 
-  /* Keyboard handling has not been tested enough.  */
-  /* document.onkeydown = function(event) {
-    if (inhibitKey) { inhibitKey = false; return; }
-    if (event.keyCode == 32) // Space
-      return btn_play.onclick(event);
-    if (event.keyCode == 37) // ArrowLeft
-      return btn_bstep.onclick(event);
-    if (event.keyCode == 39) // ArrowRight
-      return btn_fstep.onclick(event);
-  }; */
-
-  document.getElementById('topBody').onkeydown = function(event) {
-    inhibitKey = true;
-  };
-
   var btn_ffwd = document.getElementById('btn-ffwd');
   btn_ffwd.ondblclick = btn_ffwd.onclick = function(event) {
     if (!OEV.Compositor.playMode) btn_play.onclick(event);
@@ -989,16 +1028,30 @@ function initGUIHooks() {
     var parts = this.value.split(' ');
     var parseNum1 = +parts[0]; var parseNum2 = +parts[2];
     if (isNaN(parseNum1) || isNaN(parseNum2))
-      { dispLatLon(OEV.gViewParams); return; }
+      { dispLatLon(); return; }
+    if (parts[1] == 'S') parseNum1 = -parseNum1;
+    if (parts[3] == 'W') parseNum2 = -parseNum2;
+    var changed = false;
+    if (parseNum1 > 90) { parseNum1 = 90; changed = true; }
+    if (parseNum1 < -90) { parseNum1 = -90; changed = true; }
+    if (parseNum2 < -360 || parseNum2 > 360)
+      { parseNum2 %= 360; changed = true; }
+    if (parseNum2 >= 180)
+      { parseNum2 = -360 + parseNum2; changed = true; }
+    if (parseNum2 < -180)
+      { parseNum2 = 360 + parseNum2; changed = true; }
 
-    if (parts[1] == 'S')
-      OEV.gViewParams.mapCenter[1] = -(-parseNum1) / 180 *
-        OEV.gViewParams.scale;
-    else OEV.gViewParams.mapCenter[1] = (-parseNum1) / 180 *
-           OEV.gViewParams.scale;
-    if (parts[3] == 'W')
-      OEV.gViewParams.polCenter[0] = -parseNum2;
-    else OEV.gViewParams.polCenter[0] = parseNum2;
+    var vp = OEV.gViewParams;
+    if (vp.projector == OEV.EquirectProjector) {
+      vp.mapCenter[1] = -parseNum1 / 180 * vp.scale;
+      if (isNaN(vp.mapCenter[1])) vp.mapCenter[1] = 0;
+      vp.polCenter[1] = 0;
+    } else {
+      vp.mapCenter[1] = 0;
+      vp.polCenter[1] = parseNum1;
+    }
+    vp.polCenter[0] = parseNum2;
+    if (changed) dispLatLon();
 
     if (event != null)
       OEV.Compositor.startRender();
@@ -1009,8 +1062,29 @@ function initGUIHooks() {
     var parseNum = +this.value;
     if (isNaN(parseNum))
     { this.value = OEV.gViewParams.scale.toFixed(3); return; }
-    OEV.gViewParams.scale = parseNum;
-    OEV.gViewParams.inv_scale = 1 / parseNum;
+    var changed = false;
+    if (parseNum < 0) { parseNum = -parseNum; changed = true; }
+    if (parseNum > 32767) { parseNum = 32767; changed = true; }
+    if (parseNum < 1e-323) { parseNum = 1e-323; changed = true; }
+    if (changed) this.value = parseNum.toFixed(3);
+
+    var vp = OEV.gViewParams;
+    var factor = parseNum / vp.scale;
+    vp.scale = parseNum;
+    vp.inv_scale = 1 / parseNum;
+    /* Assuming the user wants the 2D center of the view to
+       correspond to the same latitude and longitude...  */
+    vp.mapCenter[0] *= factor;
+    vp.mapCenter[1] *= factor;
+    if (isNaN(vp.mapCenter[0])) vp.mapCenter[0] = 0;
+    if (isNaN(vp.mapCenter[1])) vp.mapCenter[1] = 0;
+    if (vp.projector == OEV.EquirectProjector) {
+      vp.mapCenter[0] = 0;
+      if (vp.mapCenter[1] < -0.5 * vp.scale)
+	vp.mapCenter[1] = -0.5 * vp.scale;
+      else if (vp.mapCenter[1] > 0.5 * vp.scale)
+	vp.mapCenter[1] = 0.5 * vp.scale;
+    }
     if (event != null)
       OEV.Compositor.startRender();
   };
@@ -1126,6 +1200,9 @@ function initGUIHooks() {
     var parseNum = +this.value;
     if (isNaN(parseNum))
     { this.value = OEV.gViewParams.perspAltitude.toString(); return; }
+    var changed = false;
+    if (parseNum < 0) { parseNum = -parseNum; changed = true; }
+    if (changed) this.value = parseNum.toString();
     OEV.gViewParams.perspAltitude = parseNum;
     if (event != null) OEV.Compositor.startRender();
   };
@@ -1135,6 +1212,10 @@ function initGUIHooks() {
     var parseNum = +this.value;
     if (isNaN(parseNum))
     { this.value = OEV.gViewParams.perspFOV.toFixed(1); return; }
+    var changed = false;
+    if (parseNum < 0) { parseNum = -parseNum; changed = true; }
+    if (parseNum > 179) { parseNum = 179; changed = true; }
+    if (changed) this.value = parseNum.toFixed(1);
     OEV.gViewParams.perspFOV = parseNum;
     if (event != null) OEV.Compositor.startRender();
   };
@@ -1172,22 +1253,50 @@ function initGUIHooks() {
     }
   };
 
+  var cfg_sshBaseVal = document.getElementById('cfg-sshBaseVal');
+  cfg_sshBaseVal.onchange = function(event) {
+    var parseNum = +this.value;
+    if (isNaN(parseNum))
+    { this.value = OEV.SSHParams.shadeBase.toFixed(2); return; }
+    OEV.SSHParams.shadeBase = parseNum;
+    if (event != null) {
+      OEV.Compositor.optiRenderImp();
+      OEV.Compositor.startRender([ OEV.SSHLayer ]);
+    }
+  };
+
+  var cfg_sshScaleFac = document.getElementById('cfg-sshScaleFac');
+  cfg_sshScaleFac.onchange = function(event) {
+    var parseNum = +this.value;
+    if (isNaN(parseNum))
+    { this.value = OEV.SSHParams.shadeScale.toFixed(2); return; }
+    OEV.SSHParams.shadeScale = parseNum;
+    if (event != null) {
+      OEV.Compositor.optiRenderImp();
+      OEV.Compositor.startRender([ OEV.SSHLayer ]);
+    }
+  };
+
   /* Once all the GUI hooks have been initialized, call all of the
      event handlers for the FORM controls so that any settings that
      have been saved by the browser will be picked up by the
      internal code.  */
   // cfg_curDate.onchange(null); // Delayed initialization
-  cfg_latLon.onchange(null);
   cfg_scaleFac.onchange(null);
   cfg_graticule.onchange(null);
   // cfg_showCyc.onclick(null); // No longer a checkbox
   // cfg_showAntiCyc.onclick(null); // No longer a checkbox
   cfg_lenRange.onchange(null);
   cfg_projMethod.onchange(null);
+  /* Initialize the projection method before the coordinates so that
+     render parameters are properly optimized.  */
+  cfg_latLon.onchange(null);
   cfg_perspAltitude.onchange(null);
   cfg_perspFOV.onchange(null);
   cfg_landMass.onchange(null);
   cfg_sshPal.onchange(null);
+  cfg_sshBaseVal.onchange(null);
+  cfg_sshScaleFac.onchange(null);
 
   /* Setup Compositor event handlers.  */
   OEV.Compositor.onloaded = function() {
@@ -1274,6 +1383,9 @@ loadImages();
 /* Configure the "Help" button to prefer opening the link in a new
    window/tab.  */
 document.getElementById('btn-help').target = '_blank';
+
+/* Enable tab indexes on CSS controls.  */
+document.getElementById('btn-play').tabIndex = 1;
 //--><!]]>
 </script>
 

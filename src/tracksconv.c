@@ -570,7 +570,7 @@ int parse_json(FILE *fp, unsigned eddy_type) {
   int c;
   int nest_level = 0;
   bool start_of_track = false;
-  unsigned track_len = 0;
+  unsigned track_len = 0, last_date_idx;
   /* nest_level == 1: Top-level tracks array
      nest_level == 2: Eddies array within one track
      nest_level == 3: Parameters of one eddy */
@@ -635,10 +635,19 @@ int parse_json(FILE *fp, unsigned eddy_type) {
 		  tot_num_tracks - 1);
 	  return 1;
 	}
+	if (!start_of_track && cur_eddy.date_index - last_date_idx != 1) {
+	  fprintf(stderr,
+	"Error: In track %u: All date indexes in a track must strictly be\n"
+	"increasing consecutive integers.  The viewer uses this assumption\n"
+	"to optimize filtering tracks by length.\n",
+		  tot_num_tracks - 1);
+	  return 1;
+	}
 	if (add_eddy(&cur_eddy, eddy_type, start_of_track) != 0)
 	  return 1;
 	start_of_track = false;
 	track_len++;
+	last_date_idx = cur_eddy.date_index;
       } else if (nest_level == 2) {
 	if (track_len > max_track_len)
 	  max_track_len = track_len;

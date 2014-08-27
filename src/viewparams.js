@@ -37,6 +37,15 @@ var ViewParams = function(existParams) {
   this.perspFOV = 17.5;
   /** Perspective altitude in kilometers */
   this.perspAltitude = 35786;
+
+  /** Zoom speed multiplier for mouse wheel scrolling by lines.  */
+  this.lineZoomFac = 1.1 / 3;
+  /** Zoom speed multiplier for mouse wheel scrolling by pixels.  */
+  this.pixZoomFac = 1.1 / 60;
+
+  /* FIXME: A good default for the pixel zoom factor is wildly
+     different across systems.  A GUI configuration option might be a
+     tolerable solution.  */
 };
 
 OEV.ViewParams = ViewParams;
@@ -198,20 +207,26 @@ var makeMouseHandlers = function(vp, moveFunc, relFunc, zoomFunc) {
     if (tilt > 90) tilt = 90;
     if (tilt < -90) tilt = -90;
 
-    vp.polCenter[0] = lon;
-    /* NOTE: Currently, we don't have a clean way in the GUI for the
-       user to specify whether vertical pan motion should be tilting
-       or 2D shifting, so we use this heuristic that favors fast
-       equirectangular projection.  */
-    if (vp.projector == EquirectProjector)
-      { vp.mapCenter[1] = -tilt / 180 * vp.scale; vp.polCenter[1] = 0; }
-    else { vp.mapCenter[1] = 0; vp.polCenter[1] = tilt; }
+    if (!isNaN(lon) && !isNaN(tilt)) {
+      vp.polCenter[0] = lon;
+      /* NOTE: Currently, we don't have a clean way in the GUI for the
+	 user to specify whether vertical pan motion should be tilting
+	 or 2D shifting, so we use this heuristic that favors fast
+	 equirectangular projection.  */
+      if (vp.projector == EquirectProjector) {
+	vp.mapCenter[1] = -tilt / 180 * vp.scale;
+	if (isNaN(vp.mapCenter[1])) vp.mapCenter[1] = 0;
+	vp.polCenter[1] = 0;
+      } else { vp.mapCenter[1] = 0; vp.polCenter[1] = tilt; }
 
-    return moveFunc(event);
+      return moveFunc(event);
+    } /* else
+      No change: The calculated latitude and longitude was invalid,
+      probably because of an outrageous scale factor.  */
 
     /* if (ptMSIE <= 6 && ptMSIE > 0)
        event.cancelBubble = true; */
-    // return false; // Cancel the default, or at least attempt to do so.
+    return false; // Cancel the default, or at least attempt to do so.
   };
 
   var zoomGlobe = function(event) {
@@ -219,25 +234,40 @@ var makeMouseHandlers = function(vp, moveFunc, relFunc, zoomFunc) {
     var factor = 1;
     if (event.deltaMode == 0x01) { // DOM_DELTA_LINE
       if (event.deltaY < 0)
-	factor *= (event.deltaY / 3) * -1.1;
-      else factor /= (event.deltaY / 3) * 1.1;
+	factor *= event.deltaY * -vp.lineZoomFac;
+      else factor /= event.deltaY * vp.lineZoomFac;
     } else if (event.deltaMode == 0x00) { // DOM_DELTA_PIXEL
-      /* FIXME: a good factor for this is wildly different across
-	 systems.  */
       if (event.deltaY < 0)
-	factor *= (event.deltaY / 51) * -1.1;
-      else factor /= (event.deltaY / 51) * 1.1;
+	factor *= event.deltaY * -vp.pixZoomFac;
+      else factor /= event.deltaY * vp.pixZoomFac;
     }
 
     if (vp.projector != PerspProjector) {
+      var oldScale = vp.scale;
       vp.scale *= factor;
+      if (vp.scale > 32767)
+	{ vp.scale = 32767; factor = vp.scale / oldScale; }
+      /* The following limit occurs naturally from these algorithms:
+      if (vp.scale < 1e-323)
+        { vp.scale = 1e-323; factor = vp.scale / oldScale; } */
       vp.inv_scale = 1 / vp.scale;
       /* Assuming the user wants the 2D center of the view to
 	 correspond to the same latitude and longitude...  */
       vp.mapCenter[0] *= factor;
       vp.mapCenter[1] *= factor;
+      if (isNaN(vp.mapCenter[0])) vp.mapCenter[0] = 0;
+      if (isNaN(vp.mapCenter[1])) vp.mapCenter[1] = 0;
+      if (vp.projector == EquirectProjector) {
+	vp.mapCenter[0] = 0;
+	if (vp.mapCenter[1] < -0.5 * vp.scale)
+	  vp.mapCenter[1] = -0.5 * vp.scale;
+	else if (vp.mapCenter[1] > 0.5 * vp.scale)
+	  vp.mapCenter[1] = 0.5 * vp.scale;
+      }
     } else {
       vp.perspFOV /= factor;
+      /* if (vp.perspFOV < 0) vp.perspFOV = -vp.perspFOV; */
+      if (vp.perspFOV > 179) vp.perspFOV = 179;
     }
 
     if (!zoomFunc(event) /* && typeof() == "boolean" */) {

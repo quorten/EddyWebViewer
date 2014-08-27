@@ -1,6 +1,6 @@
-/* Composite rendering of 2D RenderLayers, either as a 2D map or
-   through a 3D raytrace renderer.  Also contains main loop and hooks
-   to integrate with the GUI, if available.  */
+/* Composite rendering of RenderLayers, either as a 2D map or through
+   a 3D raytrace renderer.  Also contains main loop and hooks to
+   integrate with the GUI, if available.  */
 
 import "oevns";
 import "compat";
@@ -13,6 +13,11 @@ import "earthtexlayer";
 import "trackslayer";
 import "sshlayer";
 
+/**
+ * Manages composite rendering of RenderLayers, either as a 2D map or
+ * through a 3D raytrace renderer.  Also contains main loop and hooks
+ * to integrate with the GUI, if available.
+ */
 var Compositor = {};
 OEV.Compositor = Compositor;
 

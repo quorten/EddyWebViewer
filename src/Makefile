@@ -40,6 +40,7 @@ optracks: tracksconv
 	1 ../data/tracks/cyc_bu_tracks.json
 
 install: bundle.js
+	rm -rf ../htdocs # We shouldn't have to do this...
 	mkdir -p ../htdocs
 	cp bundle.js ../htdocs/
 	sed -i -e 's/\.\.\///g' ../htdocs/bundle.js

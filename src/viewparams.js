@@ -11,6 +11,8 @@ import "compat";
  * parameters.  If a parameter is given, the given object is an
  * existing ViewParams object that is used to initialize the new
  * ViewParams object.
+ * @constructor
+ * @param existParams
  */
 var ViewParams = function(existParams) {
   if (existParams) { this.init(existParams); return; }
@@ -22,7 +24,7 @@ var ViewParams = function(existParams) {
   this.polCenter = [ 0, 0 ];
   /** Current projection as a pointer to a Projector object.  */
   this.projector = null; // EquirectProjector;
-  /** Clip projected points that exceed +/- 90/180 degrees.  */
+  /** (Boolean) Clip projected points that exceed +/- 90/180 degrees.  */
   this.clip = true;
   /** 2D scale factor for map rendering.  */
   this.scale = 1;

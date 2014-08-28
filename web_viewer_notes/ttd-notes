@@ -649,8 +649,12 @@ Quick Checklist:
 
 ----------------------------------------
 
-NOTE The compression filter on Apache cannot send out the size of very
-large files.  The way it is written is such that the entire file would
-have to be buffered before being sent.  To avoid these problems,
+NOTE: The compression filter on Apache cannot send out the size of
+very large files.  The way it is written is such that the entire file
+would have to be buffered before being sent.  To avoid these problems,
 compress the file ahead-of-time and make it available via content
 negotiation.
+
+NOTE: The reason why I have not officially used the sprite and SVG
+images in the GUI is because I need to do more compatibility testing
+on various aspects of each.

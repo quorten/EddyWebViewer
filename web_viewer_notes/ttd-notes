@@ -646,3 +646,11 @@ Quick Checklist:
 * Add dynamic loading screen
 
 * Finish documentation
+
+----------------------------------------
+
+NOTE The compression filter on Apache cannot send out the size of very
+large files.  The way it is written is such that the entire file would
+have to be buffered before being sent.  To avoid these problems,
+compress the file ahead-of-time and make it available via content
+negotiation.

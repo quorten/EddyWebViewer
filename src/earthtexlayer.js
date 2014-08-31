@@ -350,8 +350,9 @@ SVGEarthTexLayer.render = function() {
   var height = this.vp.viewport[1];
 
   var scale = this.vp.scale * width / 360;
-  var xofs = (1 - this.vp.mapCenter[0]) / 2 * width;
-  var yofs = (1 - this.vp.mapCenter[1]) / 2 * height;
+  var xofs = (1 + this.vp.mapCenter[0] -
+	      this.vp.polCenter[0] / 180 * this.vp.scale) / 2 * width;
+  var yofs = (1 - this.vp.mapCenter[1] * this.vp.aspectXY) / 2 * height;
 
   var landxform = document.getElementById("landxform");
   landxform.setAttribute("transform", "matrix(" +

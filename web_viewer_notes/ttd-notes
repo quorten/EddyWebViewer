@@ -493,6 +493,8 @@ read the first README before diving into the code, put developer
 documentation backreferences (hyperlinks) throughout the source code
 where each such piece of documentation is applicable.
 
+Marked in the code via @ref doc comments.
+
 Put a table of contents at the very beginning of the developer
 documentation (good).
 
@@ -658,3 +660,118 @@ negotiation.
 NOTE: The reason why I have not officially used the sprite and SVG
 images in the GUI is because I need to do more compatibility testing
 on various aspects of each.
+
+Caveats with the current source code:
+
+* Some API syntaxes and names are quite long.  It would be nice if
+  they were a bit shorter.
+
+* Not all ways of doing things in the old code are yet ported to the
+  new code.
+
+* All tracks data must be loaded at once.  This is a practical
+  consideration due to the way the tracks must be rendered.  Some
+  tracks are hundreds of date indexes long, so it is only practical to
+  download all data at once to coup with this, since the entire such
+  track must be rendered.
+
+* Auto-local SSH fitting is not yet available.
+
+* Upper-case objects named after JavaScript global Math object.
+
+Verify that all necessary code places place restrictions on the type
+of variables that come from division, etc. integers.
+
+NOTE identify all concurrency sections and annotate with mutexes where
+applicable.
+
+mutexLock(var);
+mutexUnlock(var);
+
+Defined by cjs/oev commons to do nothing.
+
+Places for mutex lock/unlock:
+
+* At the beginning and end of each cothread intended to be run
+  concurrently.
+
+* Whenever a function modifies non-private data of a different
+  concurrency context.
+
+* At the end of each cothread run, to yield an in-progress image back
+  to... this doesn't really make sense.  With full threads, much less
+  sharing could go on.  So for full threads, assume little sharing and
+  only document mutexes for message passing objects.
+
+Basically, parameters and switches used for communication.
+
+Some cothreads are used just to logically group within a concurrency
+context.  Others mark a top-level concurrency context that would be
+run as separate threads, thus needing synchronization.
+
+Coarse locking.  It doesn't make sense to use fine-grained locking in
+the code, since most times when fine-grained locking would make a
+difference, the code is incorrect anyways, i.e. changing ViewParams
+during an unfinished render to get two halves of the image rendered
+with different render styles.
+
+Use a NEWS notifications section where current limitations are
+documented, that will probably be removed in a later version.
+
+Coding conventions, table of abbreviations.
+
+ASCII Art!
+
+http://thegrrl.com/2012/02/ascii-art-history/
+
+----------------------------------------
+
+Ocean Eddies Web Viewer Architecture
+
+More than just a web viewer.  However, it turned out that in order to
+get sufficient browser compatibility, a lot of code had to be written
+specifically for the web platform, so this idea was not as viable as
+it seemed from first start.  Either way, some quirks of the web
+viewer, simply cannot make sense in the much more efficient OS-level
+environment.
+
+There are two core components that permeate the implementation of the
+Ocean Eddies Web Viewer:
+
+* Cothread
+* RenderLayer
+
+Cothread was introduced for the following reasons:
+
+1. The Web Platform originally did not support Web Workers.
+
+2. Early implementations of Web Workers did not support "moving" data
+between Workers, so sharing data was expensive.
+
+3. Sharing data across modern Web Workers is not practical without
+implementing a mutex system on top of the base level primitives.
+
+4. Sharing the data of render images in progress is essential to
+provide responsiveness in the GUI, showing that the viewer is indeed
+rendering the respective images.
+
+At the core of the is the Cothread implementation.  This is a
+near-mirror of thread in native programs on multithreaded operating
+systems.
+
+Multithreaded operating systems often feature a kernel thread
+construct that user-mode programs may use.  However, the web platform
+traditionally offered no such construct.  Web Workers were introduced
+later as a means to offer concurrency; however, they were primarily
+intended to be used for segmented processes, and thus tight sharing of
+data is not practical via Web Workers.
+
+Walk-through of example command-line session for RenderLayer test
+bench.  Start with a walkthrough of the overall code base, at a high
+level, general organizational guidelines.
+
+Mandatory iterative chunking should be replaced with adaptive
+iterative chunking to be jsruntime-speed independent.
+
+TODO list projection lookup tables, vector EarthTex, seasonal
+EarthTex.

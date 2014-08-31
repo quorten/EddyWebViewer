@@ -40,7 +40,7 @@
 
    * OEV.connectMouse(TestLayer.frontBuf, OEV.gViewParams,
                       tmMove, tmStop, tmMove) -- Connect mouse event
-     handlers to the current TestLayer that manipulate the global
+     handlers to the current TestLayer that manipulates the global
      ViewParams.
 
 */
@@ -52,6 +52,7 @@ import "../src/dates";
 import "../src/earthtexlayer";
 import "../src/sshlayer";
 import "../src/trackslayer";
+import "../src/gratlayer";
 import "../src/projector";
 import "../src/viewparams";
 
@@ -239,10 +240,12 @@ var setTestLayer = function(layer) {
 OEV.gViewParams.projector = OEV.EquirectProjector;
 
 var tmMove = function() {
+  var reset = function() { TestLayer.start(); };
   /* Only allow one iteration:
-  var doit = function() { TestLayer.start(); };
-  if (OEV.allocRenderJob(doit)) doit(); */
-  if (OEV.allocRenderJob(start)) start();
+  if (OEV.allocRenderJob(reset)) reset(); */
+  if (TestLayer.status.returnType != OEV.CothreadStatus.FINISHED) {
+    if (OEV.allocRenderJob(reset)) reset();
+  } else if (OEV.allocRenderJob(start)) start();
   return false;
 };
 

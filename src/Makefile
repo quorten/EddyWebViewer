@@ -2,7 +2,7 @@ CPP = cpp # C preprocessor
 cjs_dir = ../libs/cjs
 DOCSRC = triglut.js oevmath.js cothread.js ajaxloaders.js projector.js \
 	renderlayer.js trackslayer.js sshlayer.js earthtexlayer.js \
-	csv.js compat.js dates.js compositor.js viewparams.js
+	gratlayer.js csv.js compat.js dates.js compositor.js viewparams.js
 #	chunkloader.js detect.js hpcarray.js
 SOURCES = oevns.js oevnsend.js  $(DOCSRC)
 

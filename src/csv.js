@@ -8,7 +8,7 @@ import "oevns";
  * and each element of this array is an array of cells (columns).
  * Note that this algorithm needs a newline at the end of the file.
  * It also does not handle files with non-Unix line endings or
- * quoting.
+ * quoted cell data.
  *
  * @param {String} csvText - The text to parse.
  * @returns Nested arrays of the parsed data.
@@ -46,7 +46,7 @@ OEV.csvParse = csvParse;
  * in cells of the last row.  All cell data is stored in a single
  * outermost array.  Note that this algorithm needs a newline at the
  * end of the file.  It also does not handle files with non-Unix line
- * endings or quoting.
+ * endings or quoted cell data.
  *
  * @param {String} csvText - The text to parse.
  * @returns {} { data, width, height } object describing the parsed data.

@@ -22,7 +22,7 @@ Math: sin, cos, tan, atan2, asin, acos, sqrt, PI
 Web API
 *******
 
-document: getElementById(), createElement()
+document: getElementById(), createElement(), documentElement
 
 appendChild, insertBefore, replaceChild, removeChild, childNodes,
 firstChild, lastChild, hasChildNodes()

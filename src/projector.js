@@ -4,36 +4,16 @@ import "oevns";
 import "oevmath";
 import "viewparams";
 
-/*
-
-Absolute formalism is what's required.  A /projection/ is a pure
-mathematical construct for transforming a 2D point to a latitude and a
-longitude on a generic globe.  However, practical application of a
-projection typically requires more than just this pure definition.
-
-1. Convert a screen coordinate to normalized 2D coordinates,
-performing any needed 2D shift and scale operations.  The projections
-only work with normalized 2D coordinates.
-
-2. Run the projection on the normalized 2D coordinate.  You'll get a
-latitude and a longitude on a generic globe.
-
-3. Convert this generic point to the specific point by applying the
-current globe tilt and pole shift (and yaw if specified).
-
-This allows for all possible variations and everything in between.  It
-has no holes, no gaps, no loopholes, no margins for error.  However,
-it is also not guaranteed to be the most optimal process.  Certain
-algorithms are available "precomposed": hand-optimized combinations
-designed for maximum performance, in case the compiler is lacking in
-this regard, which it almost certainly is.
-
+/**
+ * Pseudo-namespace for objects in `projector.js`.
+ * @namespace ProjectorJS
  */
 
 /**
  * Base class for map projections.  This is an abstract class that
  * specifies the calling convention.  Use one of the concrete classes
  * for the actual projection.
+ * @memberof ProjectorJS
  * @constructor
  */
 var Projector = function() {
@@ -74,6 +54,7 @@ Projector.prototype.unproject = function(mapToPol) {
 
 /**
  * Equirectangular map projector.
+ * @memberof ProjectorJS
  * @type Projector
  */
 var EquirectProjector = new Projector();
@@ -91,6 +72,7 @@ EquirectProjector.unproject = function(mapToPol) {
 
 /**
  * Mercator map projector.
+ * @memberof ProjectorJS
  * @type Projector
  */
 var MercatorProjector = new Projector();
@@ -112,6 +94,7 @@ MercatorProjector.unproject = function(mapToPol) {
 
 /**
  * Robinson map projector.
+ * @memberof ProjectorJS
  * @type Projector
  */
 var RobinsonProjector = new Projector();
@@ -181,6 +164,7 @@ RobinsonProjector.unproject = function(mapToPol) {
 
 /**
  * Sinusoidal map projector.
+ * @memberof ProjectorJS
  * @type Projector
  */
 var SinProjector = new Projector();
@@ -199,6 +183,7 @@ SinProjector.unproject = function(mapToPol) {
 /**
  * Mollweide map projector.  Currently, this projector only has an
  * inverse projection method available.
+ * @memberof ProjectorJS
  * @type Projector
  */
 var MollweideProjector = new Projector();
@@ -215,6 +200,7 @@ MollweideProjector.unproject = function(mapToPol) {
 
 /**
  * Orthographic map projector.
+ * @memberof ProjectorJS
  * @type Projector
  */
 var OrthoProjector =  new Projector();
@@ -236,6 +222,7 @@ OrthoProjector.unproject = function(mapToPol) {
 
 /**
  * Perspective map projector.
+ * @memberof ProjectorJS
  * @type Projector
  */
 var PerspProjector = new Projector();
@@ -293,6 +280,7 @@ PerspProjector.unproject = function(mapToPol) {
  * and perspective projectors can be contained in the same functions.
  *
  * Base class: {@linkcode Projector}
+ * @memberof ProjectorJS
  * @constructor
  */
 var TDProjector = function() {
@@ -424,6 +412,7 @@ TDProjector.prototype.unproject = function(mapToPol, projType) {
 /**
  * Orthographic map projector with optimized tilt transformation
  * embedded.
+ * @memberof ProjectorJS
  * @type TDProjector
  */
 var OrthoTDProjector = new TDProjector();
@@ -440,6 +429,7 @@ OrthoTDProjector.unproject = function(mapToPol) {
 /**
  * Perspective map projector with optimized tilt transformation
  * embedded.
+ * @memberof ProjectorJS
  * @type TDProjector
  */
 var PerspTDProjector = new TDProjector();

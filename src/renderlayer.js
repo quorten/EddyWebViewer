@@ -10,6 +10,22 @@ import "viewparams";
  * Cothreaded abstract class for a render layer.  A derived class must
  * be created that has methods that do something useful.
  *
+ * Basic usage:
+ *
+ * ~~~
+ * // Replace RenderLayer() with a derived class that does something
+ * // useful.
+ * var layer = new RenderLayer();
+ * document.getElementById("topBody").appendChild(layer.frontBuf);
+ * layer.setViewport(gViewParams.viewport[0], gViewParams.viewport[1]);
+ * layer.setViewParams(gViewParams);
+ * layer.start();
+ * // Enter the main loop, wait for finish condition...
+ * var status = layer.continueCT();
+ * if (status.returnType == CothreadStatus.FINISHED)
+ *   return;
+ * ~~~
+ *
  * Basically, this class is a single cothread, and when called as a
  * cothreaded function by a cothread controller, it will produce an
  * updated render in `this.frontBuf`.  Normally, `this.retVal` will be
@@ -34,17 +50,18 @@ import "viewparams";
  * RenderLayers with pipelined loading and rendering do not expose
  * this quirk.
  *
- * By convention, most RenderLayer implementations provide two
- * standard methods, `loadData()` and `render()`, which may or may not
- * be cothreaded.  The return value from `loadData()` and its
- * interpretation is implementation-specific, but for the `render()`
- * method, the return value is always the final return value of the
- * RenderLayer.  Some `loadData()` implementations may be designed in
- * a pipelined manner where rendering can be performed with partially
- * available data while `loadData()` is still fetching more data that
- * needs to be rendered.  Calling `loadData()` directly from an
- * external routine can also be used to preload some data, but the
- * calling convention is implementation-specific.
+ * By convention, most RenderLayer implementations that need to load
+ * additional data provide two standard methods, `loadData()` and
+ * `render()`, which may or may not be cothreaded.  The return value
+ * from `loadData()` and its interpretation is
+ * implementation-specific, but for the `render()` method, the return
+ * value is always the final return value of the RenderLayer.  Some
+ * `loadData()` implementations may be designed in a pipelined manner
+ * where rendering can be performed with partially available data
+ * while `loadData()` is still fetching more data that needs to be
+ * rendered.  Calling `loadData()` directly from an external routine
+ * can also be used to preload some data, but the calling convention
+ * is implementation-specific.
  *
  * @constructor
  */
@@ -65,8 +82,9 @@ var RenderLayer = function() {
   this.frontBuf = document.createElement("canvas");
 
   /**
-   * RenderLayer-local ViewParams object.  Normally, this corresponds
+   * RenderLayer-local ViewParams object.  Normally, this is a pointer
    * to the global ViewParams object.
+   * @protected
    */
   this.vp = gViewParams;
 };
@@ -101,6 +119,10 @@ RenderLayer.prototype.setViewport = function(width, height) {
  * changing the ViewParams.  Normally, the internal ViewParams is just
  * a pointer to the given ViewParams object, so calling this function
  * every time one view parameter is changed is not necessary.
+ *
+ * Note that the `setViewport()` method *must* be called for viewport
+ * changes to be picked up by the RenderLayer: `setViewParams()` does
+ * not attempt to pickup changes to the `viewport` ViewParams member.
  *
  * @param {ViewParams} vp - The new ViewParams object to use.
  */
@@ -236,6 +258,16 @@ RayTracer.prototype.initCtx = function() {
     this.fastEqui = true;
   else this.fastEqui = false; */
 
+  /* Precomputed quantities that speed up later calculations, used to
+     calculate normalized 2D coordinates in `contExec()'.  */
+  var vp = this.vp;
+  var inv_aspectXY = 1 / vp.aspectXY;
+  var inv_scale = vp.inv_scale;
+  this.multX = 2 / this.destImg.width * inv_scale;
+  this.multY = -2 / this.destImg.height * inv_aspectXY * inv_scale;
+  this.addX = (-1 - vp.mapCenter[0]) * inv_scale;
+  this.addY = (1 * inv_aspectXY - vp.mapCenter[1]) * inv_scale;
+
   this.status.returnType = CothreadStatus.PREEMPTED;
   this.status.preemptCode = 0;
   this.status.percent = 0;
@@ -269,6 +301,11 @@ RayTracer.prototype.contExec = function() {
   var maxOsaPasses = this.maxOsaPasses;
   var blockFactor = this.blockFactor;
 
+  var multX = this.multX;
+  var multY = this.multY;
+  var addX = this.addX;
+  var addY = this.addY;
+
   var osaFac = 1 / osaPass;
   var inv_osaFac = 1 - osaFac;
   var wrapOver = false;
@@ -288,9 +325,11 @@ RayTracer.prototype.contExec = function() {
 
       /* Compute normalized coordinates, applying 2D shift and scale
          factors as necessary.  */
-      mapToPol[0] = (((x + xj) / destImg_width) * 2 - 1 - mcx) * inv_scale;
+      /* mapToPol[0] = (((x + xj) / destImg_width) * 2 - 1 - mcx) * inv_scale;
       mapToPol[1] = (-(((y + yj) / destImg_height) * 2 - 1) *
-		     inv_aspectXY - mcy) * inv_scale;
+		     inv_aspectXY - mcy) * inv_scale; */
+      mapToPol[0] = (x + xj) * multX + addX;
+      mapToPol[1] = (y + yj) * multY + addY;
 
       // Unproject.
       /* if (fastEqui)
@@ -392,6 +431,7 @@ RayTracer.prototype.contExec = function() {
  * code is hand-lined into this RayTracer.  Oversampling is done in a
  * single pass.  This RayTracer also does not support processing of
  * non-pixel-based backbuffers.
+ * @constructor
  */
 var TDRayTracer = function(backBuf, backBufType, maxOsaPasses) {
   /* Note: We must be careful to make sure that the base cothread
@@ -414,14 +454,23 @@ TDRayTracer.prototype = new RayTracer();
 TDRayTracer.prototype.constructor = TDRayTracer;
 
 TDRayTracer.prototype.initCtx = function() {
+  var vp = this.vp;
   this.ctx = this.frontBuf.getContext("2d");
   this.destIdx = 0;
   this.x = 0;
   this.y = 0;
-  if (this.vp.projector == PerspProjector)
+  if (vp.projector == PerspProjector)
     this.perspProject = true;
-  else
-    this.perspProject = false;
+  else this.perspProject = false;
+
+  /* Precomputed quantities that speed up later calculations, used to
+     calculate normalized 2D coordinates in `contExec()'.  */
+  var inv_aspectXY = 1 / vp.aspectXY;
+  var inv_scale = vp.inv_scale;
+  this.multX = 2 / this.destImg.width * inv_scale;
+  this.multY = 2 / this.destImg.height * inv_aspectXY * inv_scale;
+  this.addX = (-1 - vp.mapCenter[0]) * inv_scale;
+  this.addY = (-1 * inv_aspectXY - vp.mapCenter[1]) * inv_scale;
 
   this.status.returnType = CothreadStatus.PREEMPTED;
   this.status.preemptCode = 0;
@@ -459,10 +508,10 @@ TDRayTracer.prototype.contExec = function() {
   var maxOsaPasses = this.maxOsaPasses;
   var blockFactor = this.blockFactor;
 
-  var multX = 2 / destImg_width * inv_scale;
-  var multY = 2 / destImg_height * inv_aspectXY * inv_scale;
-  var addX = (-1 - mcx) * inv_scale;
-  var addY = (-1 * inv_aspectXY - mcy) * inv_scale;
+  var multX = this.multX;
+  var multY = this.multY;
+  var addX = this.addX;
+  var addY = this.addY;
 
   var ctnow = Cothread.now;
 
@@ -471,7 +520,7 @@ TDRayTracer.prototype.contExec = function() {
 
   while (y < destImg_height) {
     while (x < destImg_width) {
-      // OSA Sample:
+      // Pixel from combined OSA samples:
       var os_r = 0, os_g = 0, os_b = 0, os_a = 0;
       for (var osaPass = 0; osaPass < maxOsaPasses; osaPass++) {
 	var xj = 0, yj = 0; // X and Y jitter for oversampling
@@ -616,6 +665,24 @@ TDRayTracer.prototype.contExec = function() {
  * `this.backBuf' in this object.
  *
  * Base class: {@linkcode RenderLayer}
+ *
+ * Parameters:
+ *
+ * "fixLat" (this.fixLat) -- This one is a bit hard to explain, so
+ * read carefully.  Suppose you have an equirectangular backbuffer
+ * that is 5 pixels high, and those 5 pixels are specified to evenly
+ * cover the range -90 to 90 degrees latitude, inclusive.  Thus, the
+ * latitude values of each coordinate are [ -90, -45, 0, 45, 90 ].
+ * Now suppose the *reference* point for these coordinates is the
+ * *top* edge of the respective pixel.  If the image height is
+ * measured from the *top* edge of the *top* pixel to the *bottom*
+ * edge of the *bottom* pixel, then the map is presumed to have a
+ * height of 225 degrees latitude, which is incorrect.  If this option
+ * is set to `true`, then the positioning algorithms are modified to
+ * provide compensation for this measurement style.  Otherwise, the
+ * distance from the top edge of the top pixel to the bottom edge of
+ * the bottom pixel is assumed to be exactly 180 degrees latitude.
+ * @constructor
  */
 var EquiRenderLayer = function() {
   /* Note: We must be careful to make sure that the base cothread
@@ -690,6 +757,10 @@ EquiRenderLayer.prototype.render = function() {
        top, right, and bottom edges of the image lie.  */
     var width = fbwidth * vp.scale;
     var height = fbheight * vp.scale * vp.aspectXY / 2;
+    if (this.fixLat) {
+      var fix = height / this.backBuf.height;
+      height += 1 * fix; y += 0.5 * fix;
+    }
     if (i == 1) x -= width;
     if (i == 2) x += width;
     var left = x - width / 2;
@@ -750,6 +821,24 @@ EquiRenderLayer.prototype.render = function() {
  * `this.backBuf' in this object.
  *
  * Base class: {@linkcode RenderLayer}
+ *
+ * Parameters:
+ *
+ * "fixLat" (this.fixLat) -- This one is a bit hard to explain, so
+ * read carefully.  Suppose you have an equirectangular backbuffer
+ * that is 5 pixels high, and those 5 pixels are specified to evenly
+ * cover the range -90 to 90 degrees latitude, inclusive.  Thus, the
+ * latitude values of each coordinate are [ -90, -45, 0, 45, 90 ].
+ * Now suppose the *reference* point for these coordinates is the
+ * *top* edge of the respective pixel.  If the image height is
+ * measured from the *top* edge of the *top* pixel to the *bottom*
+ * edge of the *bottom* pixel, then the map is presumed to have a
+ * height of 225 degrees latitude, which is incorrect.  If this option
+ * is set to `true`, then the positioning algorithms are modified to
+ * provide compensation for this measurement style.  Otherwise, the
+ * distance from the top edge of the top pixel to the bottom edge of
+ * the bottom pixel is assumed to be exactly 180 degrees latitude.
+ * @constructor
  */
 var EquiCSSRenderLayer = function() {
   /* Note: We must be careful to make sure that the base cothread
@@ -840,6 +929,10 @@ EquiCSSRenderLayer.prototype.render = function() {
      top, right, and bottom edges of the image lie.  */
   var width = fbwidth * vp.scale;
   var height = fbheight * vp.scale * vp.aspectXY / 2;
+  if (this.fixLat && this.backBuf.naturalHeight) {
+    var fix = height / this.backBuf.naturalHeight;
+    height += 1 * fix; y += 0.5 * fix;
+  }
   var left = x - width / 2;
   var top = y - height / 2;
   var right = x + width / 2;

@@ -6,21 +6,39 @@
 
 import "oevns";
 
-/** Degrees to radians conversion constant.  */
+/**
+ * Pseudo-namespace for objects in `oevmath.js`.
+ * @namespace OEVMathJS
+ */
+
+/**
+ * Degrees to radians conversion constant.
+ * @memberof OEVMathJS
+ */
 var DEG2RAD = Math.PI / 180;
 OEV.DEG2RAD = DEG2RAD;
 
-/** Radians to degrees conversion constant.  */
+/**
+ * Radians to degrees conversion constant.
+ * @memberof OEVMathJS
+ */
 var RAD2DEG = 180 / Math.PI;
 OEV.RAD2DEG = RAD2DEG;
 
-/** 1 / 180 */
+/**
+ * 1 / 180 constant
+ * @memberof OEVMathJS
+ */
 var inv_180 = 1 / 180;
-/** 1 / 360 */
+/**
+ * 1 / 360 constant
+ * @memberof OEVMathJS
+ */
 var inv_360 = 1 / 360;
 
 /**
  * Polar coordinate point.  "r" is always 1.
+ * @memberof OEVMathJS
  * @constructor
  * @param {Number} lat - latitude
  * @param {Number} lon - longitude
@@ -135,6 +153,7 @@ PolarPoint.prototype.yppToPoint3D = function() {
 
 /**
  * 2D rectangular coordinates point.
+ * @memberof OEVMathJS
  * @constructor
  * @param x
  * @param y
@@ -170,6 +189,7 @@ Point2D.prototype.normalize = function() {
 
 /**
  * 3D rectangular coordinates point.
+ * @memberof OEVMathJS
  * @constructor
  * @param x
  * @param y
@@ -370,6 +390,7 @@ Point3D.prototype.toYPolarPoint = function() {
 /**
  * This function is the same as {@linkcode polShiftOrigin}, except
  * that it is decomposed into the respective conceptual modules.
+ * @memberof OEVMathJS
  */
 var modPolShiftOrigin = function(polarPt, fwd) {
   var objPolarPt = new PolarPoint(polarPt[1], polarPt[0]);
@@ -388,6 +409,7 @@ OEV.modPolShiftOrigin = modPolShiftOrigin;
 /**
  * Rotate a point to so that it is on a globe with
  * `gViewParams.polCenter` as the center.
+ * @memberof OEVMathJS
  * @param {Array} polarPt - The polar point to transform
  * @param {integer} fwd - +1 if this is for forward transformation, -1
  * if it is for reverse transformation.
@@ -456,6 +478,7 @@ OEV.polShiftOrigin = polShiftOrigin;
  * Check if a line is partially contained within a bounding box.  Note
  * that for this algorithm, lines that only touch the outside of the
  * box, but don't go through it, are excluded.
+ * @memberof OEVMathJS
  * @param {Array} line - Line segment defined in the form [ minX,
  * minY, maxX, maxY ].
  * @param {Array} vbox - Bounding box defined in the form [ minX,
@@ -503,6 +526,7 @@ OEV.lineInVBox = lineInVBox;
  * Check if a box is partially contained within a bounding box.  Note
  * that for this algorithm, boxes that only touch on the edges, but do
  * not intersect at the interiors, are excluded.
+ * @memberof OEVMathJS
  * @param box1 - Box to test defined in the form [ minX, minY, maxX,
  * maxY ].
  * @param vbox - Bounding box defined in the form [ minX, minY, maxX,
@@ -539,6 +563,7 @@ OEV.boxInVBox = boxInVBox;
  * Check if a point is contained within a bounding box.  Note that for
  * this algorithm, points that only touch the edge of the box, but are
  * not contained within it, are excluded.
+ * @memberof OEVMathJS
  * @param {Number} pt_x - x coordinate
  * @param {Number} pt_y - y coordinate
  * @param {Array} vbox [ minX, minY, maxX, maxY ]
@@ -565,6 +590,7 @@ OEV.ptInVBox = ptInVBox;
  * reasonable size.  The center of the vbox must be located on a
  * normalized polar coordinate, i.e. it cannot be way off the edges of
  * the map.
+ * @memberof OEVMathJS
  * @param {Array} vbox - The vbox [ minLat, minLon, maxLat, maxLon ]
  * to clip by modifying in place.
  */

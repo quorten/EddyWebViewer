@@ -8,9 +8,15 @@ import "ajaxloaders";
 import "dates";
 
 /**
+ * Pseudo-namespace for objects in `trackslayer.js`.
+ * @namespace TracksLayerJS
+ */
+
+/**
  * This object has many important parameters for TracksLayer
  * rendering.  However, they do not show up in the JSDocs.  See the
  * source code for these details.
+ * @memberof TracksLayerJS
  */
 var TracksParams = {};
 OEV.TracksParams = TracksParams;
@@ -40,6 +46,8 @@ TracksParams.maxLength = -1;
  *
  * `this.notifyFunc` is used to wake up the main loop to load more
  * data, if provided.
+ * @memberof TracksLayerJS
+ * @type RenderLayer
  */
 var JSONTracksLayer = new RenderLayer();
 OEV.JSONTracksLayer = JSONTracksLayer;
@@ -395,8 +403,8 @@ JSONTracksLayer.render = (function() {
  *
  * `this.notifyFunc` is used to wake up the main loop to load more
  * data, if provided.
- *
- * NOTE: This renderer is currently unable to filter tracks by length.
+ * @memberof TracksLayerJS
+ * @type RenderLayer
  */
 var WCTracksLayer = new RenderLayer();
 OEV.WCTracksLayer = WCTracksLayer;
@@ -1197,6 +1205,8 @@ WCTracksLayer.render = (function() {
  * `this.ranges` holds the result of the last PVS run.  If it is null
  * or undefined, then no PVS classification information is displayed
  * during rendering.
+ * @memberof TracksLayerJS
+ * @type RenderLayer
  */
 var WCKdDbgTracksLayer = new RenderLayer();
 OEV.WCKdDbgTracksLayer = WCKdDbgTracksLayer;
@@ -1409,5 +1419,8 @@ WCKdDbgTracksLayer.render = function() {
 
 /********************************************************************/
 
-/** Pointer to the current TracksLayer implementation.  */
+/**
+ * Pointer to the current TracksLayer implementation.
+ * @memberof TracksLayerJS
+ */
 var TracksLayer = OEV.TracksLayer = WCTracksLayer;

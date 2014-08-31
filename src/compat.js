@@ -5,6 +5,11 @@
    Some of these functions may rely on feature detections performed in
    `detect.js' at startup.  */
 
+/**
+ * Pseudo-namespace for objects in `compat.js`.
+ * @namespace CompatJS
+ */
+
 /********************************************************************/
 /* Generic Event Handling */
 
@@ -13,6 +18,7 @@
  * within an event handler.  The function wrapper guarantees that
  * `this` points to the object that the method is being called from.
  * No parameters are passed to the method.
+ * @memberof CompatJS
  *
  * @param {Object} callObj - the object on which to call the method.
  * @param {String} handler - a quoted string specifying the name of
@@ -61,6 +67,7 @@ OEV.getMsieVersion = getMsieVersion;
  * mouse pointer position.  `true` is returned on success, `false` on
  * failure.  If this check is used, it should only be used once on the
  * first mouse pointer event.
+ * @memberof CompatJS
  *
  * @param {MouseEvent} event - The mouse event to check
  */
@@ -87,6 +94,7 @@ OEV.MousePos_checkRead = MousePos_checkRead;
  * position from `event.clientX` and `event.clientY` and subtract the
  * values of the calibration point from the position that has been
  * read.
+ * @memberof CompatJS
  *
  * @param {integer} x - The calibration point x coordinate
  * @param {integer} y - The calibration point y coordinate
@@ -100,6 +108,7 @@ OEV.MousePos_setCalibPt = MousePos_setCalibPt;
 /**
  * Read the position of the mouse pointer in a cross-browser
  * compatible way.
+ * @memberof CompatJS
  *
  * @param {Array} out - Storage for output value.  If
  * `null`, then static storage is used.
@@ -147,6 +156,7 @@ OEV.MousePos_get = MousePos_get;
  *
  * This function originated from sample code on Mozilla Developer
  * Network.
+ * @memberof CompatJS
  *
  * @function
  * @param {Element} elem - The element to add the event listener to.
@@ -225,6 +235,7 @@ OEV.addWheelListener = addWheelListener;
  * Capture the mouse pointer in a way that is cross-browser
  * compatible.  The function crossReleaseCapture() must be called when
  * mouse capture is no longer needed.
+ * @memberof CompatJS
  *
  * @param {Element} elmt - The element to set capture on
  * @param {function} onMouseMove - The event handler for `onmousemove`
@@ -246,6 +257,7 @@ OEV.crossSetCapture = crossSetCapture;
 /**
  * Release a captured mouse pointer in a way that is cross-browser
  * compatible.
+ * @memberof CompatJS
  */
 var crossReleaseCapture = function() {
   if (document.releaseCapture)
@@ -304,6 +316,7 @@ OEV.crossReleaseCapture = crossReleaseCapture;
  * Try to allocate a new render job.  This will either preempt an
  * existing job or deny rendering if preemption is disabled.  Returns
  * true if the render job can proceed, false if rendering is denied.
+ * @memberof CompatJS
  *
  * @param {function} rendQFunc - If the render job gets queued
  * (denied from immediate execution), this is the function that will
@@ -325,6 +338,7 @@ OEV.allocRenderJob = allocRenderJob;
  * Free a render job from the queue.  This function should only be
  * called from `allocRenderJob()` and never by any code that uses
  * `allocRenderJob()`.
+ * @memberof CompatJS
  */
 var freeRenderJob = function() {
   renderInProg = false;
@@ -340,23 +354,38 @@ OEV.freeRenderJob = freeRenderJob;
 /********************************************************************/
 /* Global Variables */
 
-/** Cached getMsieVersion() */
+/**
+ * Cached getMsieVersion()
+ * @memberof CompatJS
+ */
 var msieVersion = getMsieVersion();
 OEV.msieVersion = msieVersion;
 
-/** Mouse Calibration Point */
+/**
+ * Mouse Calibration Point
+ * @memberof CompatJS
+ */
 var calibPt = null;
 OEV.calibPt = calibPt;
 
-/** Static storage for MousePos_Get() */
+/**
+ * Static storage for MousePos_Get()
+ * @memberof CompatJS
+ */
 var MousePos_getStorage = [];
 OEV.MousePos_getStorage = MousePos_getStorage;
 
-/** For allocRenderJob() and freeRenderJob(): Whether or not a render
- * job is in progress.   */
+/**
+ * For allocRenderJob() and freeRenderJob(): Whether or not a render
+ * job is in progress.
+ * @memberof CompatJS
+ */
 var renderInProg = false;
 OEV.renderInProg = renderInProg;
-/** For allocRenderJob() and freeRenderJob(): A render queue that can
- * store up to one pending job.  */
+/**
+ * For allocRenderJob() and freeRenderJob(): A render queue that can
+ * store up to one pending job.
+ * @memberof CompatJS
+ */
 var renderQueue = null;
 OEV.renderQueue = renderQueue;

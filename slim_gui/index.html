@@ -663,7 +663,7 @@ if (typeof(FTsaneJSRuntime) != 'undefined' &&
     </select><br />
     <label for="cfg-sshBaseVal" title="Sea Surface Height Base Value">
       SSH Base Value (cm):</label>
-    <input id="cfg-sshBaseVal" type="text" value="0"
+    <input id="cfg-sshBaseVal" type="text" value="-3"
 	   class="numinput" title="Sea Surface Height Base Value" /><br />
     <label for="cfg-sshScaleFac" title="Sea Surface Height Scale Factor">
       SSH Scale Factor:</label>
@@ -1188,7 +1188,7 @@ function initGUIHooks() {
     }
 
     if (event != null) {
-      OEV.Compositor.switchYPan(newProj);
+      OEV.Compositor.gracefulProj(newProj);
       OEV.Compositor.optiRenderImp();
       OEV.Compositor.startRender(); return;
     }
@@ -1338,6 +1338,14 @@ function initGUIHooks() {
   OEV.Compositor.ondatechange = function() {
     var dateStr = OEV.Dates.dateList[OEV.Dates.curDate];
     document.getElementById('cfg-curDate').value = dateStr;
+  };
+
+  OEV.Compositor.onscalechange = function() {
+    cfg_scaleFac.value = OEV.gViewParams.scale.toFixed(3);
+  };
+
+  OEV.Compositor.onfovchange = function() {
+    cfg_perspFOV.value = OEV.gViewParams.perspFOV.toFixed(1);
   };
 
   OEV.Compositor.onstop = function() {

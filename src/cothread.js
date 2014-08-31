@@ -10,10 +10,11 @@ import "oevns";
  * contextual data necessary for implementing a single cothread of
  * execution.
  *
- * The three main run control functions that a cothreading controller
- * should call are {@linkcode Cothread#start}, {@linkcode Cothread#continueCT},
+ * The four main run control functions that a cothreading controller
+ * should call are {@linkcode Cothread#initCtx},
+ * {@linkcode Cothread#start}, {@linkcode Cothread#continueCT},
  * and {@linkcode Cothread#loop}.  Note that none of these functions
- * take any arguments and all of them return a
+ * take any arguments and all of them except initCtx return a
  * {@linkcode CothreadStatus} object.
  *
  * For function call-like semantics, use the `args` member to pass in
@@ -274,6 +275,8 @@ CothreadStatus.MAX_PERCENT = 32767;
  * immediately with the same preemptCode, with the expectation that
  * the controller will be resumed once I/O is available.
  *
+ * Base class: {@linkcode Cothread}
+ *
  * Basic usage:
  *
  * ~~~
@@ -402,6 +405,8 @@ SeriesCTCtl.prototype.contExec = function() {
  * returns with a preemptCode of `CothreadStatus.IOWAIT`, with the
  * expectation that the controller will be resumed once I/O is
  * available.
+ *
+ * Base class: {@linkcode Cothread}
  *
  * Basic usage:
  *

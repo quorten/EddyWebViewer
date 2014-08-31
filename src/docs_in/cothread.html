@@ -122,6 +122,10 @@ function setup() {
   OEV.computeSumOfSquares.timeout = 15;
   OEV.computeSumOfSquares.args.push(65536 * 20); // N
   OEV.computeSumOfSquares.start();
+  /* Use the following instead if you simply want to start the
+     cothread without the latency of executing the first preemption
+     interval:
+  OEV.computeSumOfSquares.initCtx(); */
   return browserTime();
 }</pre>
 

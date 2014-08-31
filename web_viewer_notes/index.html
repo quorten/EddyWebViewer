@@ -39,11 +39,19 @@
   <li><a href="#icosahedron">
       Mathematically Build an Icosahedron</a></li>
   <li><a href="#projections">
+      Projections</a>
+    <ul>
+      <li><a href="#render_proc">The Rendering Process of
       Projections</a></li>
+    </ul>
+  </li>
   <li><a href="#draw_graticule">
       Drawing an Orthographic Graticule as Ellipses</a></li>
+  <li><a href="#deriv_tracks_format">
+      Derivation of Optimized Eddy Tracks Storage Format</a></li>
   <li><a href="#tracks_format">
-      Optimized Eddy Tracks Storage Format</a></li>
+      Technical Specifications for the Optimized Eddy-Keyed Tracks
+      Format</a></li>
   <li><a href="#imp_center">
       Implementation Center</a></li>
   <li><a href="#comp_center">
@@ -134,10 +142,11 @@ quick walk-through on how to setup the web viewer with some data:</p>
   eddy tracks data in.  The anticyclonic tracks should be stored in a
   file named "<code>acyc_bu_tracks.json</code>", and the cyclonic
   tracks file should be named "<code>cyc_bu_tracks.json</code>".  See
-  the top of the section <a href="#tracks_format">Optimized Eddy
-  Tracks Storage Format</a> for details on this format.  Note that for
-  these files, you are recommended not to use any space or newline
-  characters between any of the semantic delimiters.</li>
+  the top of the section <a href="#tracks_format">Technical
+  Specifications for the Optimized Eddy-Keyed Tracks Format</a> for
+  details on this format.  Note that for these files, you are
+  recommended not to use any space or newline characters between any
+  of the semantic delimiters.</li>
   <li>Change to the "<code>src</code>" directory to run the
   converters:<br />
   <code>cd src &amp;&amp; make sshdata optracks</code></li>
@@ -477,6 +486,15 @@ implementation of the Eddy Web Viewer.</p>
   3D model of the icosahedron.</li>
 </ol>
 
+<p>NOTE: These instructions were previously written down as a part of
+an algorithm that generates a triangle mesh that approximates a sphere
+by subdividing an icosahedron.  This is useful for accelerated
+rendering a 3D sphere on lower-end graphics hardware that does not
+support fragment shaders.  However, there is a superior method of
+generating a sphere based off of computing the surface area and
+distributing points to occupy even subdivisions thereof, which would
+be used in place of the old algorithm, time permitting.</p>
+
 <hr />
 <!-- ________________________________________ -->
 
@@ -531,10 +549,13 @@ images:</p>
   equal area projection.<br />
   <a href="http://en.wikipedia.org/wiki/Sinusoidal_projection">
     http://en.wikipedia.org/wiki/Sinusoidal_projection</a></li>
-  <li><strong>Orthographic projection:</strong> See the next
-  section.</li>
-  <li><strong>Perspective projection:</strong> See the next
-  section.</li>
+  <li><strong>Orthographic projection:</strong> The earth as a sphere
+  is flattened onto a 2D surface.  See the next section for more
+  details.</li>
+  <li><strong>Perspective projection:</strong> The earth as a sphere
+  is flattened onto a 2D surface, using a focal point to foreshorten
+  points of greater distance.  See the next section for more
+  details.</li>
 </ul>
 
 <p>Although there are many more map projections of the Earth then the
@@ -546,24 +567,54 @@ algebraically closed form solution.  Simple projection calculations
 are important to be able to take advantage of GPGPU acceleration on
 less powerful GPGPUs.</p>
 
-<h3>3D Rendering Projections</h3>
+<h3><a name="render_proc" id="render_proc">
+    The Rendering Process of Projections</a></h3>
 
-<p>First of all, what factor distinguishes a 3D projection from a 2D
-projection?  For the purposes of this application, it is basically the
-need to carry around three of some kind of position variables in the
-projection/unprojection equations.  Tilting the pole of the globe
-before or after projection computations basically requires
-three-dimensional mathematics in the intermediate equations.  Although
-previous versions of this document considered only orthographic and
-perspective projections to be 3D projections, it turns out that they
-too can be specified to have identical semantics to the projections
-above and vice versa.</p>
+<p>Projection methods by themselves are not enough to create an
+interactive viewer.  The user must be able to pan and zoom the
+projected map of the globe too.  Yet there are <em>two</em> ways to
+render the map, <em>and</em> there are two ways to pan the "map"!
+It's important to be absolutely formal in which transformations are
+being used to avoid confusing these methods.</p>
 
-<p>Raytrace rendering a 3D view of the Earth is less trivial than one
-would think at first.  The process of backtracing from screen pixels
-to a map pixel is a multistep process.</p>
+<p>Rendering methods:</p>
+
+<ul>
+  <li>Raytrace rendering: Using a pixel on screen, unproject to
+  determine the point on the globe.  This rendering method is best for
+  raster image maps, such as the sea surface height data.</li>
+  <li>Projection rendering: Exactly the reverse: Using a point on the
+  globe, project to determine the point on the screen.  This rendering
+  method is best for vector data, such as the eddy tracks.</li>
+</ul>
+
+<p>Panning methods:</p>
+
+<ul>
+  <li>2D shifting and scaling of the projected map: For example, you
+  have a Robinson projection of a map, and you center in on a specific
+  latitude and longitude by shifting and scaling the already projected
+  map.  This is the first step in raytrace rendering and the last step
+  in projection rendering.</li>
+  <li>Rotation of the globe: Suppose you want the south pole to appear
+  at the center of the projected map with minimal distortion.  You
+  would go about this by rotating the geographic coordinate system so
+  that latitude zero runs right through the north and south poles.
+  This is the last step in raytrace rendering and the first step in
+  projection rendering.</li>
+</ul>
+
+<p>For a concrete example, here is the entire process of raytrace
+rendering a view of the Earth, focusing on orthographic and
+perspective projections that are defined in three-space.</p>
 
 <p class="image-flow">
+<object type="image/svg+xml" data="2dshift.svg"
+	width="202" height="142">
+  <img src="2dshift.png" alt="2D transformation diagram."
+       width="202" height="142" />
+</object>
+
 <object type="image/svg+xml" data="orthographic.svg"
 	width="202" height="142">
   <img src="orthographic.png" alt="Orthographic projection diagram."
@@ -584,23 +635,35 @@ to a map pixel is a multistep process.</p>
 </p>
 
 <ol>
-<li>The first step of the process is to backtrace from a screen pixel
-to a point on a generic globe that the pixel maps to.  The main point
-of this process is to determine a vector from the center of the globe
-to this point.  To keep things simple, assume this vector will be
-represented as a normalized 3-dimensional rectangular vector.  The
-coordinate system at this step will be assumed to have the X-Y plane
-be parallel with the screen, with the 3D origin (0, 0, 0) at the
-center of the globe and quadrant I of the X-Y plane at the top-right
-corner.  The camera will be located somewhere on the Z-axis, looking
-down the negative direction toward the globe.</li>
+<li>The first step of the process is to perform the 2D shift and scale
+transformations on the screen pixel to obtain a point in relative 2D
+coordinates suitable for unprojection.  Relative 2D coordinates have
+the origin (0, 0) as center, quadrant I is in the top-right corner,
+and the minimum and maximum axis extents on the x-axis are -1 and +1
+respectively.  The y-axis scale is proportional to the x-axis scale,
+so if the screen is not a 1:1 square, the minimum and maximum y-axis
+extents will be different.</li>
+
+<li>Next, backtrace from a relative 2D coordinate to a point on a
+generic globe that the pixel maps to.  The main point of this process
+is to determine a vector from the center of the globe to this point.
+To keep things simple, assume this vector will be represented as a
+normalized 3-dimensional rectangular vector.  The coordinate system at
+this step will be assumed to have the X-Y plane be parallel with the
+screen, with the 3D origin (0, 0, 0) at the center of the globe and
+quadrant I of the X-Y plane at the top-right corner.  The camera will
+be located somewhere on the Z-axis, looking down the negative
+direction toward the globe.</li>
 
 <li>Once a vector describing the point on the globe in relation to the
 center has been found, the vector should be inverse rotated by the
 current rotation of the Earth to generate a vector that describes a
 position on the Earth.  It is critical that the pole tilt
 transformation is the independent transformation and the longitudinal
-rotation transformation is the dependent transformation.</li>
+rotation transformation is the dependent transformation.  Projections
+that are not defined in three-space require transformation from polar
+coordinates to rectangular coordinates before performing the pole tilt
+transformation.</li>
 
 <li>Now it is possible to determine the latitude and longitude of the
 point.  The longitude can be determined by using <code>atan2()</code>
@@ -615,7 +678,7 @@ the geometry, determine if the projected point is visible or not.  If
 it is not visible, don't render it.</p>
 
 <p>The specific mathematics used for backtracing a ray or projecting a
-vector in step 1 depends on which projection method is chosen for
+vector in step 2 depends on which projection method is chosen for
 rendering.  For raytracing, the reverse projection method is used.
 The mathematics for all projection methods other than orthographic and
 perspective projection were given in the previous section.
@@ -751,7 +814,7 @@ flawed.</p>
 
 <p>Luckily, it turns out that the solution with a 3D sphere equation
 is not that much more difficult.  Starting with the equation of a
-sphere and two equations for X and Y screen coordinates, the Z
+sphere and two equations for X and Y relative 2D coordinates, the Z
 coordinate on the sphere is solved for, which gives the quadratic
 formula.  Only the "near" solution needs to be considered, since the
 "far" solution is occluded by the front of the sphere.  After the Z
@@ -795,13 +858,17 @@ window.setTimeout(function setupPM2() {
 <h3>Display Considerations</h3>
 
 <p>All of the above algorithms assume that there is no rotation along
-the axis that points directly away from the viewer.  Any such rotation
-along this axis would simply result in the 2D image onscreen appearing
-at a different rotation.  Thus, it is not necessary to factor this
-rotation into these calculations that are concerned with the more
-difficult math.  If there is any rotation along this axis, then an
-inverse rotation can simply be used to preprocess the screen
-coordinate before backtracing it to the globe.</p>
+the axis that points directly away from the viewer.  For azimuthal
+projections (orthographic and perspective), any such rotation along
+this axis would simply result in the 2D image onscreen appearing at a
+different rotation.  Thus, it is not necessary to factor this rotation
+into these calculations that are concerned with the more complicated
+math.  If there is any rotation along this axis, then an inverse
+rotation can simply be used to preprocess the relative 2D coordinate
+before backtracing it to the globe.</p>
+
+<p>Non-azimuthal projections, on the other hand, will require an
+additional 3D rotation step for this kind of rotation.</p>
 
 <h3>Gracefully switch between different projections</h3>
 
@@ -863,24 +930,31 @@ equal -1.  Now for the solution:</p>
 
 <pre>
 (x_g, y_g) = point on surface of globe
-(0, y_f) = focal point
+(0, y_f) = focal point, distance from center of globe
 r = 1 = radius of globe
+d = altitude
 
 (y_g - y_f) / (x_g - 0) * y_g / x_g  = -1
 (y_g^2 - y_f * y_g) / x_g^2  = -1
 y_g^2 - y_f * y_g + x_g^2  = 0
 
-x_g^2 + y_g^2 = 1
-x_g^2 = 1 - y_g^2
+x_g^2 + y_g^2 = r^2
+x_g^2 = r^2 - y_g^2
 
-y_g^2 - y_f * y_g + 1 - y_g^2  = 0
--y_f * y_g + 1 = 0
-y_g = 1 / y_f
+y_g^2 - y_f * y_g + r^2 - y_g^2  = 0
+-y_f * y_g + r^2 = 0
+y_g = r^2 / y_f
+x_g = sqrt(1 - y_g^2)
+y_f = r + d</pre>
 
-fov = field of view, radians from left edge of view to right edge
-max_lat = asin(y_g)
-scale = (fov / 2) / max_lat
-scale = fov / (2 * asin(1 / y_f))</pre>
+<p>Once the point on the globe has been solved for using the equations
+above, the scale factor can be computed from the ratio of the point's
+projection position to its real position.</p>
+
+<pre>
+f = projection focal point
+px_g = x_g * f / (-y_g + (r + d))
+scale = px_g / x_g</pre>
 
 <p>Actually, since this equation is so simple, this same mechanism can
 be accurately used both when the globe does fill the entire screen and
@@ -1229,8 +1303,8 @@ visible range of latitudes or longitudes.</p>
 <hr />
 <!-- ________________________________________ -->
 
-<h2><a name="tracks_format" id="tracks_format">
-    Optimized Eddy Tracks Storage Format</a></h2>
+<h2><a name="deriv_tracks_format" id="deriv_tracks_format">
+    Derivation of Optimized Eddy Tracks Storage Format</a></h2>
 
 <p>In the alpha version of the web viewer, the eddy tracks were stored
 as a simple series of nested arrays in JSON format.  Two separate JSON
@@ -1286,13 +1360,15 @@ having a usable program versus not being able to run the program at
 all.  Thus, even though kd-trees have longer lookup times, the lower
 memory consumption is their big win, and the lookup time is well
 justified at O(log n).  (Some kd-tree algorithms have a worst-case
-runtime of O(n).)</p>
+runtime of O(n), which is no worse than an exhaustive search.)</p>
 
 <p>Now that a tree building algorithm has been picked, how should the
 data be built into the tree?  The most natural choice would be to
-build the eddies into the tree, since they are just points.  Each eddy
-has a latitude, longitude, and date, so a three-dimensional kd-tree
-can be built using these metrics.</p>
+build the eddies into the tree (eddy-keyed format), since they are
+just points.  The other option, which is currently not considered by
+the optimized tracks format, is to build the tracks into the tree
+(tracks-keyed format).  Each eddy has a latitude, longitude, and date,
+so a three-dimensional kd-tree can be built using these metrics.</p>
 
 <p>However, this poses one problem: It would be nice to arrange the
 data such that chronologically-early data points are downloaded first.
@@ -1386,8 +1462,8 @@ on the kd-tree construction diagram on the side. -->
 </ol>
 
 <p>The algorithm will finish with the fully constructed kd-tree in the
-current dimension working array.  The remaining arrays are just
-temporary workspaces once the algorithm has been completed.</p>
+first (current dimension) working array.  The remaining arrays are
+just temporary workspaces once the algorithm has been completed.</p>
 
 <p>Note: Within recursive steps, the length of the working arrays can
 be constrained to only work with the necessary range of elements
@@ -1508,8 +1584,12 @@ a previous date index rather than forward.  For the current data, this
 allows for the "next" and "prev" pointers to be faithfully encoded
 without running afoul of the 15/16-bit range's limits.</p>
 
-<h3>Technical Specifications for the Optimized Eddy-Keyed Tracks
-Format</h3>
+<hr />
+<!-- ________________________________________ -->
+
+<h2><a name="tracks_format" id="tracks_format">
+    Technical Specifications for the Optimized Eddy-Keyed Tracks
+    Format</a></h2>
 
 <p>The tracks data is a text file, encoded in UTF-16 little endian
 with byte order mask (BOM).  Little endian was chosen mainly for
@@ -1534,7 +1614,7 @@ fixed-point numbers can first be encoded into unsigned integers, then
 the unsigned integer encoding mechanism can be applied on top of the
 previous encoding to obtain a character code point.</p>
 
-<h4>Human Readable Header</h4>
+<h3>Human Readable Header</h3>
 
 <p>At the start of the file is a "human readable header."  This serves
 both as a file type and as a convenient place to embed additional
@@ -1552,7 +1632,7 @@ BEGIN_DATA</code>" on a single line by itself.  A newline must
 immediately follow this string.  The machine-readable header starts
 immediately after the terminating newline.</p>
 
-<h4>Machine Readable Header</h4>
+<h3>Machine Readable Header</h3>
 
 <p>The machine readable header is currently a single UTF-16 character
 with the following fields defined in the given bit positions.  Bit
@@ -1584,7 +1664,7 @@ null character.</p>
 <p>15. Must be set to zero.  Disused to avoid generating a surrogate
 pair code point.</p>
 
-<h4>Date Index Sizes Header</h4>
+<h3>Date Index Sizes Header</h3>
 
 <p>Immediately following the machine readable header is a character
 that indicates the number of date indexes that the data spans.  This
@@ -1604,7 +1684,7 @@ inserted, if newline padding has been enabled.  Note that in some
 cases, this may result in there being two newlines padding the end of
 this structure.</p>
 
-<h4>Eddy Records Array</h4>
+<h3>Eddy Records Array</h3>
 
 <p>Immediately following the date indexes array is the eddy records
 themselves.  The date index sizes array above is used to figure out
@@ -2608,6 +2688,13 @@ task.  One such script is included in the browser test suite.</p>
 <p>Internet Explorer 6 also has an almost entirely different box model
 than is described by the CSS Specification.  The details are described
 in the next section.</p>
+
+<p>Avoid using CSS and JavaScript to create script buttons out of
+regular <code>&lt;div&gt;</code> elements.  According to the HTML 4.01
+specification, these elemenets cannot have tab indexes and therefore
+cannot be navigated via the keyboard.  Use HTML
+form <code>&lt;button&gt;</code> elements to ensure navigability from
+the keyboard.</p>
 
 <h3>Internet Explorer Compatibility</h3>
 

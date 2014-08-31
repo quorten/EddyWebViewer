@@ -6,6 +6,11 @@ import "renderlayer";
 import "ajaxloaders";
 
 /**
+ * Pseudo-namespace for objects in `earthtexlayer.js`.
+ * @namespace EarthTexLayerJS
+ */
+
+/**
  * Earth Texture data loader object.  Contains the following members
  * once `loadData()` has finished:
  *
@@ -15,6 +20,8 @@ import "ajaxloaders";
  *   HTML canvas.
  *
  * * `this.dataTex` -- The image data of the above canvas.
+ *
+ * @memberof EarthTexLayerJS
  */
 var EarthTexData = {};
 OEV.EarthTexData = EarthTexData;
@@ -86,6 +93,8 @@ EarthTexData.loadColors.procData = function(image) {
  *
  * `this.notifyFunc` is used to wake up the main loop to load more
  * data, if provided.
+ * @memberof EarthTexLayerJS
+ * @type RenderLayer
  */
 var GenEarthTexLayer = new RenderLayer();
 OEV.GenEarthTexLayer = GenEarthTexLayer;
@@ -131,7 +140,11 @@ GenEarthTexLayer.contExec = function() {
   }
 
   // Otherwise, render.
-  return this.render.continueCT();
+  var status = this.render.continueCT();
+  this.status.returnType = status.returnType;
+  this.status.preemptCode = status.preemptCode;
+  this.status.percent = status.percent;
+  return this.status;
 };
 
 /********************************************************************/
@@ -139,6 +152,8 @@ GenEarthTexLayer.contExec = function() {
 /**
  * A specialized EarthTexLayer implementation for raytacing a 3D
  * projection (orthographic or perspective) of the Earth.
+ * @memberof EarthTexLayerJS
+ * @type RenderLayer
  */
 var TDEarthTexLayer = new RenderLayer();
 OEV.TDEarthTexLayer = TDEarthTexLayer;
@@ -165,6 +180,9 @@ TDEarthTexLayer.setViewParams = function(vp) {
  *
  * * tiling the source image to a front-buffer HTML Canvas via
  *   drawImage().
+ *
+ * @memberof EarthTexLayerJS
+ * @type EquiRenderLayer
  */
 
 var EquiEarthTexLayer = new EquiRenderLayer();
@@ -194,6 +212,8 @@ EquiEarthTexLayer.initCtx = function() {
  *
  * This specialization probably isn't useful, though, since it doesn't
  * render an Earth texture with transparent oceans.
+ * @memberof EarthTexLayerJS
+ * @type EquiCSSRenderLayer
  */
 var EquiCSSEarthTexLayer = new EquiCSSRenderLayer();
 OEV.EquiCSSEarthTexLayer = EquiCSSEarthTexLayer;
@@ -216,5 +236,137 @@ EquiCSSEarthTexLayer.initCtx = function() {
 
 /********************************************************************/
 
-/** Pointer to the current EarthTexLayer implementation.  */
+/**
+ * A specialized EarthTexLayer implementation for:
+ *
+ * * equirectangular projection, and
+ *
+ * * SVG image for background map.
+ *
+ * @memberof EarthTexLayerJS
+ * @type EquiCSSRenderLayer
+ */
+var SVGEarthTexLayer = new RenderLayer();
+OEV.SVGEarthTexLayer = SVGEarthTexLayer;
+SVGEarthTexLayer.loadData = new XHRLoader("../misc_earth/land.svg");
+SVGEarthTexLayer.frontBuf = document.createElement("div");
+SVGEarthTexLayer.frontBuf.appendChild(document.createElement("div"));
+SVGEarthTexLayer.setViewport = EquiCSSRenderLayer.prototype.setViewport;
+
+SVGEarthTexLayer.initCtx = function() {
+  if (!this.backBuf) {
+    this.loadData.timeout = this.timeout;
+    this.loadData.notifyFunc = this.notifyFunc;
+    this.loadData.initCtx();
+  }
+
+  this.status.returnType = CothreadStatus.PREEMPTED;
+  this.status.preemptCode = 0;
+  this.status.percent = 0;
+};
+
+SVGEarthTexLayer.loadData.procData = function(httpRequest, responseText) {
+  var doneProcData = false;
+  var procError = false;
+
+  if (httpRequest.readyState == 3) { // LOADING
+    /* Process partial data here (possibly with timed cothread
+       loop).  */
+  }
+  else if (httpRequest.readyState == 4) { // DONE
+    /* Determine if the HTTP status code is an acceptable success
+       condition.  */
+    if ((httpRequest.status == 200 || httpRequest.status == 206) &&
+	responseText == null)
+      this.retVal = XHRLoader.LOAD_FAILED;
+    if (httpRequest.status != 200 && httpRequest.status != 206 ||
+	responseText == null) {
+      // Error
+      httpRequest.onreadystatechange = null;
+      this.httpRequest = null;
+      this.status.returnType = CothreadStatus.FINISHED;
+      this.status.preemptCode = 0;
+      return this.status;
+    }
+
+    /* Perform final cothreaded (or possibly synchronous) data
+       processing here.  */
+    var xmlDoc = httpRequest.responseXML;
+    if (!xmlDoc)
+      procError = true;
+    else this.backBuf = xmlDoc.documentElement;
+    doneProcData = true;
+  }
+
+  if (procError) {
+    httpRequest.abort();
+    httpRequest.onreadystatechange = null;
+    this.httpRequest = null;
+    this.retVal = XHRLoader.PROC_ERROR;
+    this.status.returnType = CothreadStatus.FINISHED;
+    this.status.preemptCode = 0;
+    return this.status;
+  }
+
+  if (httpRequest.readyState == 4 && doneProcData) {
+    /* Only manipulate the CothreadStatus object from within this
+       function when processing is entirely finished.  */
+    httpRequest.onreadystatechange = null;
+    this.httpRequest = null;
+    this.status.returnType = CothreadStatus.FINISHED;
+    this.status.preemptCode = 0;
+  }
+
+  return this.status;
+};
+
+SVGEarthTexLayer.contExec = function() {
+  // Load the data if it has not yet been loaded.
+  if (this.loadData.status.returnType != CothreadStatus.FINISHED) {
+    var status = this.loadData.continueCT();
+    this.status.returnType = CothreadStatus.PREEMPTED;
+    this.status.preemptCode = status.preemptCode;
+    this.status.percent = status.percent;
+    if (status.returnType == CothreadStatus.FINISHED) {
+      if (this.loadData.retVal == 200) {
+	this.backBuf = this.loadData.backBuf;
+	this.loadData.backBuf = null;
+	this.frontBuf.firstChild.appendChild(this.backBuf);
+	this.retVal = 0;
+      } else {
+	this.status.returnType = CothreadStatus.FINISHED;
+	this.retVal = RenderLayer.LOAD_ERROR;
+	return this.status;
+      }
+    } else return this.status;
+  }
+
+  // Otherwise, render.
+  return this.render();
+};
+
+SVGEarthTexLayer.render = function() {
+  var width = this.vp.viewport[0];
+  var height = this.vp.viewport[1];
+
+  var scale = this.vp.scale * width / 360;
+  var xofs = (1 - this.vp.mapCenter[0]) / 2 * width;
+  var yofs = (1 - this.vp.mapCenter[1]) / 2 * height;
+
+  var landxform = document.getElementById("landxform");
+  landxform.setAttribute("transform", "matrix(" +
+	[ scale, 0, 0, -scale, xofs, yofs ].join(",") + ")");
+
+  this.status.returnType = CothreadStatus.FINISHED;
+  this.status.preemptCode = 0;
+  this.status.percent = CothreadStatus.MAX_PERCENT;
+  return this.status;
+};
+
+/********************************************************************/
+
+/**
+ * Pointer to the current EarthTexLayer implementation.
+ * @memberof EarthTexLayerJS
+ */
 var EarthTexLayer = OEV.EarthTexLayer = GenEarthTexLayer;

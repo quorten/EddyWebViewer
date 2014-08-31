@@ -27,7 +27,11 @@ THE SOFTWARE.
 import "oevns";
 
 /**
- *   Make the look up table
+ *   Create a trigonometric the look up table, useful for improving
+ *   the performance of the static functions found in the Math class.
+ *
+ *   See {@link http://jacksondunstan.com/articles/1190} for a more
+ *   detailed introduction to this class.
  *   @constructor
  *   @param {function} mathFunc - Math function to call to generate
  *   stored values. Must be valid on [0,range).

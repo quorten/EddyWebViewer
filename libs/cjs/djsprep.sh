@@ -12,4 +12,4 @@ fi
 
 . ${I}/getiofiles.sh
 
-sed -e '/^import\(.*\)";$/d' "$INPUT" > "$OUTPUT"
+sed -e 's/^import\(.*\)";$//g' "$INPUT" > "$OUTPUT"

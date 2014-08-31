@@ -58,3 +58,10 @@ else if (typeof(OEV) != "object") {
 /* Wrap all OEV code within a closure so that we don't clutter our own
    code with OEV prefixes.  */
 (function() {
+
+/** Null mutex lock function, used for syntatic sugar in the source
+    code.  */
+var mutexLock = function(mutex) {};
+/** Null mutex unlock function, used for syntatic sugar in the source
+    code.  */
+var mutexUnlock = function(mutex) {};

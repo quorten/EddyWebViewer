@@ -7,20 +7,33 @@ import "oevns";
 import "compat";
 
 /**
+ * Pseudo-namespace for objects in `viewparams.js`.
+ * @namespace ViewParamsJS
+ */
+
+/**
  * A class that contains a logical grouping of view-related
  * parameters.  If a parameter is given, the given object is an
  * existing ViewParams object that is used to initialize the new
  * ViewParams object.
+ *
+ * See <a href="/web_viewer_notes/#render_proc">
+ * /web_viewer_notes/#render_proc</a> for background information on
+ * how these various parameters fit into the overall rendering
+ * process.
+ * @memberof ViewParamsJS
  * @constructor
  * @param existParams
  */
 var ViewParams = function(existParams) {
   if (existParams) { this.init(existParams); return; }
 
+  /** Viewport [ width, height ] in CSS pixels.  */
   this.viewport = [ 32, 32 ];
   /** Viewport width / height */
   this.aspectXY = 1;
-  /** [ longitude, latitude ] of center of view.  */
+  /** [ longitude, latitude ] of center of view, for which 3D rotation
+      is used to position this coordinate at the center.  */
   this.polCenter = [ 0, 0 ];
   /** Current projection as a pointer to a Projector object.  */
   this.projector = null; // EquirectProjector;
@@ -35,9 +48,9 @@ var ViewParams = function(existParams) {
       of the scale factor.  */
   this.mapCenter = [ 0, 0 ];
 
-  /** Perspective field of view */
+  /** Perspective projection field of view */
   this.perspFOV = 17.5;
-  /** Perspective altitude in kilometers */
+  /** Perspective projection altitude in kilometers */
   this.perspAltitude = 35786;
 
   /** Zoom speed multiplier for mouse wheel scrolling by lines.  */
@@ -55,6 +68,7 @@ OEV.ViewParams = ViewParams;
 /**
  * Initialize the current ViewParams object from the given ViewParams
  * object.
+ * @param existParams
  */
 ViewParams.prototype.init = function(existParams) {
   this.viewport = [ 32, 32 ];
@@ -76,6 +90,8 @@ ViewParams.prototype.init = function(existParams) {
 /**
  * A global object that contains the logical grouping of general
  * view-related properties, relevant to the entire application.
+ * @memberof ViewParamsJS
+ * @type ViewParamsJS.ViewParams
  */
 var gViewParams = new ViewParams();
 OEV.gViewParams = gViewParams;
@@ -88,6 +104,7 @@ OEV.gViewParams = gViewParams;
 /**
  * Connect a mouse panning functions to the given element, and call
  * the given callbacks when each mouse event is processed.
+ * @memberof ViewParamsJS
  * @param {Element} elmt - The element to connect the event processors
  * to.
  * @param {ViewParams} vp - The ViewParams object that should be
@@ -124,6 +141,7 @@ OEV.connectMouse = connectMouse;
 /**
  * Helper function for {@linkcode connectMouse}, used to prevent
  * memory leaks due to circular closure references.
+ * @memberof ViewParamsJS
  */
 var makeMouseHandlers = function(vp, moveFunc, relFunc, zoomFunc) {
   var mouseDown = false;
@@ -131,7 +149,6 @@ var makeMouseHandlers = function(vp, moveFunc, relFunc, zoomFunc) {
   var topLeft = [ 0, 0 ];
   var firstPoint = [ 0, 0 ];
   var firstProjPoint = [ NaN, NaN ];
-  var firstPolCenter = [ NaN, NaN ];
   var curPoint = [ 0, 0 ];
   var curProjPoint = [ NaN, NaN ];
 
@@ -161,8 +178,8 @@ var makeMouseHandlers = function(vp, moveFunc, relFunc, zoomFunc) {
                         gViewParams.inv_scale;
     gViewParams.projector.unproject(firstProjPoint);
     polShiftOrigin(firstProjPoint, -1);
-    firstPolCenter[0] = gViewParams.polCenter[0];
-    firstPolCenter[1] = gViewParams.polCenter[1];
+    if (vp.projector == EquirectProjector)
+      firstProjPoint[1] -= vp.mapCenter[1] * 180 / vp.scale;
   };
 
   var panGlobe = function(event) {
@@ -175,8 +192,7 @@ var makeMouseHandlers = function(vp, moveFunc, relFunc, zoomFunc) {
     /* First try to unproject the point and compute the
        latitude/longitude difference between the first point and the
        current point.  If this is not possible, then revert back to
-       the heuristic scale factor approach.  NOTE: The unprojection
-       panning still isn't quite perfect.  */
+       the heuristic scale factor approach.  */
     var lon, tilt;
     curProjPoint[0] = ((curPoint[0] / gViewParams.viewport[0]) * 2 - 1 -
 		       gViewParams.mapCenter[0]) *
@@ -185,13 +201,11 @@ var makeMouseHandlers = function(vp, moveFunc, relFunc, zoomFunc) {
 		       gViewParams.aspectXY /* - gViewParams.mapCenter[1] */) *
                       gViewParams.inv_scale;
     gViewParams.projector.unproject(curProjPoint);
-    gViewParams.polCenter[0] = firstPolCenter[0];
-    gViewParams.polCenter[1] = firstPolCenter[1];
     polShiftOrigin(curProjPoint, -1);
 
     if (!isNaN(firstProjPoint[0]) && !isNaN(curProjPoint[0])) {
-      lon = oldLonRot + firstProjPoint[0] - curProjPoint[0];
-      tilt = oldTilt + firstProjPoint[1] - curProjPoint[1];
+      lon = vp.polCenter[0] + firstProjPoint[0] - curProjPoint[0];
+      tilt = vp.polCenter[1] + firstProjPoint[1] - curProjPoint[1];
     } else {
       var projScale = 360;
       if (vp.projector == OrthoProjector ||

@@ -1424,3 +1424,11 @@ WCKdDbgTracksLayer.render = function() {
  * @memberof TracksLayerJS
  */
 var TracksLayer = OEV.TracksLayer = WCTracksLayer;
+
+/**
+ * List of all TracksLayer implementations by name.
+ * @memberof TracksLayerJS
+ */
+var TracksLayerImps =
+  [ "JSONTracksLayer", "WCTracksLayer" ];
+OEV.TracksLayerImps = TracksLayerImps;

@@ -63,10 +63,10 @@ EarthTexData.loadColors.procData = function(image) {
 
   this.image = null;
   EarthTexData.imageTex = image;
-  EarthTexData.loadTrans.image = null;
   EarthTexData.canvasTex = tmpCanvas;
   EarthTexData.dataTex =
     ctx.getImageData(0, 0, tmpCanvas.width, tmpCanvas.height);
+  EarthTexData.loadTrans.image = null;
   tmpCanvas = null; ctx = null;
 
   /* Initialize all the backbuffers of the various
@@ -239,21 +239,31 @@ EquiCSSEarthTexLayer.initCtx = function() {
 /**
  * A specialized EarthTexLayer implementation for:
  *
- * * equirectangular projection, and
+ * * equirectangular projection,
  *
- * * SVG image for background map.
+ * * with background alpha composited in-browser, and
  *
+ * * positioning and scaling the source image as an HTML element via
+ *   CSS.
+ *
+ * This specialization probably isn't useful, though, since it doesn't
+ * render an Earth texture with transparent oceans.
  * @memberof EarthTexLayerJS
  * @type EquiCSSRenderLayer
  */
-var SVGEarthTexLayer = new RenderLayer();
-OEV.SVGEarthTexLayer = SVGEarthTexLayer;
-SVGEarthTexLayer.loadData = new XHRLoader("../misc_earth/land.svg");
-SVGEarthTexLayer.frontBuf = document.createElement("div");
-SVGEarthTexLayer.frontBuf.appendChild(document.createElement("div"));
-SVGEarthTexLayer.setViewport = EquiCSSRenderLayer.prototype.setViewport;
+var EquiCSSSilEarthTexLayer = new EquiCSSRenderLayer();
+OEV.EquiCSSSilEarthTexLayer = EquiCSSSilEarthTexLayer;
+EquiCSSSilEarthTexLayer.loadData =
+  new ImageLoader("../misc_earth/oland.png");
 
-SVGEarthTexLayer.initCtx = function() {
+EquiCSSSilEarthTexLayer.loadData.procData = function(image) {
+  this.backBuf = image; this.image = null;
+  this.status.returnType = CothreadStatus.FINISHED;
+  this.status.preemptCode = 0;
+  return this.status;
+};
+
+EquiCSSSilEarthTexLayer.initCtx = function() {
   if (!this.backBuf) {
     this.loadData.timeout = this.timeout;
     this.loadData.notifyFunc = this.notifyFunc;
@@ -265,7 +275,37 @@ SVGEarthTexLayer.initCtx = function() {
   this.status.percent = 0;
 };
 
-SVGEarthTexLayer.loadData.procData = function(httpRequest, responseText) {
+/********************************************************************/
+
+/**
+ * A specialized EarthTexLayer implementation for:
+ *
+ * * equirectangular projection, and
+ *
+ * * SVG silhouette image for background map.
+ *
+ * @memberof EarthTexLayerJS
+ * @type EquiCSSRenderLayer
+ */
+var EquiSVGEarthTexLayer = new RenderLayer();
+OEV.EquiSVGEarthTexLayer = EquiSVGEarthTexLayer;
+EquiSVGEarthTexLayer.loadData = new XHRLoader("../misc_earth/land.svg");
+EquiSVGEarthTexLayer.frontBuf = document.createElement("div");
+EquiSVGEarthTexLayer.frontBuf.appendChild(document.createElement("div"));
+
+EquiSVGEarthTexLayer.initCtx = function() {
+  if (!this.backBuf) {
+    this.loadData.timeout = this.timeout;
+    this.loadData.notifyFunc = this.notifyFunc;
+    this.loadData.initCtx();
+  }
+
+  this.status.returnType = CothreadStatus.PREEMPTED;
+  this.status.preemptCode = 0;
+  this.status.percent = 0;
+};
+
+EquiSVGEarthTexLayer.loadData.procData = function(httpRequest, responseText) {
   var doneProcData = false;
   var procError = false;
 
@@ -320,7 +360,28 @@ SVGEarthTexLayer.loadData.procData = function(httpRequest, responseText) {
   return this.status;
 };
 
-SVGEarthTexLayer.contExec = function() {
+EquiSVGEarthTexLayer.setViewport = function(width, height) {
+  var inner = this.frontBuf.firstChild;
+  var fbstyle = this.frontBuf.style;
+  fbstyle.width = width + "px";
+  fbstyle.height = height + "px";
+  var cssText = "";
+  /* NOTE: You must have the "ie-inline-block" class defined in your
+     HTML for this to work.  */
+  var className = document.getElementById("topBody").className;
+  if (className == "ie6" || className =="ie7")
+    inner.className = "ie-inline-block";
+  else cssText = "display: inline-block; ";
+  cssText += "position: relative; width: " + width +
+    "px; height: " + height + "px; overflow: hidden";
+  inner.style.cssText = cssText;
+  if (this.backBuf) {
+    this.backBuf.setAttribute("width", width.toString());
+    this.backBuf.setAttribute("height", height.toString());
+  }
+};
+
+EquiSVGEarthTexLayer.contExec = function() {
   // Load the data if it has not yet been loaded.
   if (this.loadData.status.returnType != CothreadStatus.FINISHED) {
     var status = this.loadData.continueCT();
@@ -332,6 +393,8 @@ SVGEarthTexLayer.contExec = function() {
 	this.backBuf = this.loadData.backBuf;
 	this.loadData.backBuf = null;
 	this.frontBuf.firstChild.appendChild(this.backBuf);
+	this.backBuf.setAttribute("width", this.vp.viewport[0]);
+	this.backBuf.setAttribute("height", this.vp.viewport[1]);
 	this.retVal = 0;
       } else {
 	this.status.returnType = CothreadStatus.FINISHED;
@@ -345,7 +408,7 @@ SVGEarthTexLayer.contExec = function() {
   return this.render();
 };
 
-SVGEarthTexLayer.render = function() {
+EquiSVGEarthTexLayer.render = function() {
   var width = this.vp.viewport[0];
   var height = this.vp.viewport[1];
 
@@ -359,7 +422,7 @@ SVGEarthTexLayer.render = function() {
 	[ scale, 0, 0, -scale, xofs, yofs ].join(",") + ")");
 
   this.status.returnType = CothreadStatus.FINISHED;
-  this.status.preemptCode = 0;
+  this.status.preemptCode = RenderLayer.RENDERING;
   this.status.percent = CothreadStatus.MAX_PERCENT;
   return this.status;
 };
@@ -371,3 +434,13 @@ SVGEarthTexLayer.render = function() {
  * @memberof EarthTexLayerJS
  */
 var EarthTexLayer = OEV.EarthTexLayer = GenEarthTexLayer;
+
+/**
+ * List of all EarthTexLayer implementations by name.
+ * @memberof EarthTexLayerJS
+ */
+var EarthTexLayerImps =
+  [ "GenEarthTexLayer", "TDEarthTexLayer", "EquiEarthTexLayer",
+    "EquiCSSEarthTexLayer", "EquiCSSSilEarthTexLayer",
+    "EquiSVGEarthTexLayer" ];
+OEV.EarthTexLayerImps = EarthTexLayerImps;

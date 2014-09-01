@@ -1045,3 +1045,13 @@ EquiGrayVidCanvSSHLayer.render = EquiGraySSHLayer.render;
  * @memberof SSHLayerJS
  */
 var SSHLayer = OEV.SSHLayer = GenSSHLayer;
+
+/**
+ * List of all SSHLayer implementations by name.
+ * @memberof SSHLayerJS
+ */
+var SSHLayerImps =
+  [ "GenSSHLayer", "RecolSSHLayer", "TDGraySSHLayer", "EquiGraySSHLayer",
+    "EquiGrayCSSSSHLayer", "EquiGrayVidSSHLayer",
+    "EquiGrayVidCanvSSHLayer" ];
+OEV.SSHLayerImps = SSHLayerImps;

@@ -296,3 +296,11 @@ OrthoGratLayer.contExec = function() {
  * @memberof GratLayerJS
  */
 var GratLayer = OEV.GratLayer = EquiGratLayer;
+
+/**
+ * List of all GratLayer implementations by name.
+ * @memberof GratLayerJS
+ */
+var GratLayerImps =
+  [ "EquiGratLayer", /* "RobiGratLayer", */ "OrthoGratLayer" ];
+OEV.GratLayerImps = GratLayerImps;

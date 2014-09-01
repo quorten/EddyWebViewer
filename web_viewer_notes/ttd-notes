@@ -775,3 +775,37 @@ iterative chunking to be jsruntime-speed independent.
 
 TODO list projection lookup tables, vector EarthTex, seasonal
 EarthTex.
+
+The code you're looking at right now is the most likely thing other
+programmers will jump to.  Concentrate on making the code the main
+body for learning, and avoid external notes, unless linked to from
+within the code.  Developer should be able to glance through code to
+get a good idea of overall components.
+
+TODO plain color raster EarthTexLayer, SVG TracksLayer, VML
+TracksLayer, compat, 2D Equi Compositor Layer.  Looping rather than
+restarting render when mouse panning.
+
+Check object usage patterns.
+
+Note SVG land mass silhouettes disused due to slow rendering.  Raster
+rendering is much faster.
+
+Need to improve render loop, make it preemptable so slow fps rendering
+can be interrupted for panning.
+
+Disable dragging of images, necessary to allow correct
+interception of mouse pan events.
+
+http://developer.nokia.com/community/wiki/How_to_disable_dragging_of_images_and_text_selection_in_web_pages
+http://help.dottoro.com/lhqsqbtn.php
+
+An example is always better than giving prose on what to do.  Use only
+prose when explaining why something is the way it is.
+
+Introduction to specializations
+
+Some specializations only make sense with a narrow selection of
+ViewParams.  Check the documentation to determine which
+specializations are in place.  Usually it will be evident from the
+name.

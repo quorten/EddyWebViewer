@@ -9,7 +9,11 @@
    3. Include the bundle in a webpage.
 
    4. Within the webpage, define and set the `TestLayer' variable to
-      point to the RenderLayer object that should be tested.
+      point to the RenderLayer object that should be tested.  Also, if
+      there is more than one implementation for a single logical
+      RenderLayer, define and set the `TestLayerImps' variable that
+      lists the names (each as a string) of all alternative
+      implementations.
 
    5. Add the attribute-value pair `onload="setup(width, height, mouse)"'
       to the body element of your HTML test container, with `width'
@@ -173,6 +177,40 @@ var finishSetup = function() {
 };
 
 var setup = function(width, height, mouse) {
+  // Append an implementation selector control.
+  var form;
+  if (typeof(TestLayerImps) != "undefined") {
+    form = document.createElement("form");
+    form.action = "";
+    var fCntr = document.createElement("p");
+    form.appendChild(fCntr);
+    var impLabel = document.createElement("label");
+    impLabel.appendChild(document.createTextNode("Select implementation:"));
+    var impSel = document.createElement("select");
+    impSel.id = "impSel";
+    impLabel.htmlFor = "impSel";
+    fCntr.appendChild(impLabel);
+    fCntr.appendChild(document.createTextNode(" "));
+    fCntr.appendChild(impSel);
+    var oldSel = document.cookie.
+      replace(/(?:(?:^|.*;\s*)imp_sel\s*\=\s*([^;]*).*$)|^.*$/, "$1");
+    for (var i = 0, len = TestLayerImps.length; i < len; i++) {
+      var option = document.createElement("option");
+      option.appendChild(document.createTextNode(TestLayerImps[i]));
+      impSel.appendChild(option);
+      if (oldSel) {
+	if (TestLayerImps[i] == oldSel) {
+	  option.selected = true;
+	  TestLayer = eval("OEV." + TestLayerImps[i]);
+	}
+      } else {
+	var impObj = eval("OEV." + TestLayerImps[i]);
+	if (TestLayer == impObj) option.selected = true;
+      }
+    }
+    impSel.onchange = impSelChanged;
+  }
+
   // Append a progress counter element to the document body.
   progElmt = document.createElement("p");
   progElmt.id = "progElmt";
@@ -185,6 +223,7 @@ var setup = function(width, height, mouse) {
     "border-style: solid; margin: 0px auto; display: block";
 
   var body = document.getElementById("topBody");
+  if (typeof(form) != "undefined") body.appendChild(form);
   body.appendChild(progElmt);
   body.appendChild(rendTimeElmt);
   body.appendChild(TestLayer.frontBuf);
@@ -195,11 +234,14 @@ var setup = function(width, height, mouse) {
   /* Convenience code to render at a smaller size if the browser
      content area is smaller than the nominal render size. */
   // Warning: clientWidth and clientHeight marked as unstable in MDN.
+  var aspectXY = width / height;
   var docWidth = document.documentElement.clientWidth;
   var docHeight = document.documentElement.clientHeight;
   if (docWidth < width || docHeight < height) {
-    var dim = (docWidth < docHeight * 2) ? docWidth : docHeight * 2;
-    width = 0|dim; height = 0|(dim / 2);
+    var dim = (docWidth / width < docHeight / height) ?
+      docWidth : docHeight * aspectXY;
+    dim *= 0.9375;
+    width = 0|dim; height = 0|(dim / aspectXY);
   }
 
   setViewport(width, height);
@@ -253,4 +295,12 @@ var tmStop = function() {
   /* Finish the remaining iterations:
   if (OEV.allocRenderJob(start)) start(); */
   return false;
+};
+
+var impSelChanged = function(event) {
+  var choice = this.options[this.selectedIndex].text;
+  document.cookie = "imp_sel=" + choice +
+    ";path=" + document.location.pathname;
+  eval('setTestLayer(OEV.' + choice + ')');
+  start();
 };

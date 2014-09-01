@@ -29,6 +29,11 @@ firstChild, lastChild, hasChildNodes()
 
 excanvas depends on getElementsByTagName
 
+document.cookie (used only by test suite)
+document.location.pathname (used only by test suite)
+
+event.preventDefault
+
 new Image()
 
 performance.now

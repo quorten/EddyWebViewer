@@ -180,6 +180,8 @@ var makeMouseHandlers = function(vp, moveFunc, relFunc, zoomFunc) {
     polShiftOrigin(firstProjPoint, -1);
     if (vp.projector == EquirectProjector)
       firstProjPoint[1] -= vp.mapCenter[1] * 180 / vp.scale;
+    event.preventDefault();
+    return false;
   };
 
   var panGlobe = function(event) {
@@ -242,6 +244,7 @@ var makeMouseHandlers = function(vp, moveFunc, relFunc, zoomFunc) {
 
     /* if (ptMSIE <= 6 && ptMSIE > 0)
        event.cancelBubble = true; */
+    event.preventDefault();
     return false; // Cancel the default, or at least attempt to do so.
   };
 

@@ -5,6 +5,9 @@ all:
 install:
 	$(MAKE) -C src install
 
+docs:
+	$(MAKE) -C src docs
+
 # NOTE: `tests' must be cleaned before `src' to prevent problems with
 # missing dependencies.
 clean:

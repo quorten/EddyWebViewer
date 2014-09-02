@@ -395,7 +395,9 @@ EquiCSSEarthTexLayer.initCtx = function() {
  *
  * * equirectangular projection,
  *
- * * with background alpha composited in-browser, and
+ * * with background alpha composited in-browser,
+ *
+ * * silhouette raster image for background map, and
  *
  * * positioning and scaling the source image as an HTML element via
  *   CSS.
@@ -405,19 +407,19 @@ EquiCSSEarthTexLayer.initCtx = function() {
  * @memberof EarthTexLayerJS
  * @type EquiCSSRenderLayer
  */
-var EquiCSSSilEarthTexLayer = new EquiCSSRenderLayer();
-OEV.EquiCSSSilEarthTexLayer = EquiCSSSilEarthTexLayer;
-EquiCSSSilEarthTexLayer.loadData =
+var EquiSilCSSEarthTexLayer = new EquiCSSRenderLayer();
+OEV.EquiSilCSSEarthTexLayer = EquiSilCSSEarthTexLayer;
+EquiSilCSSEarthTexLayer.loadData =
   new ImageLoader("../misc_earth/oland.png");
 
-EquiCSSSilEarthTexLayer.loadData.procData = function(image) {
+EquiSilCSSEarthTexLayer.loadData.procData = function(image) {
   this.backBuf = image; this.image = null;
   this.status.returnType = CothreadStatus.FINISHED;
   this.status.preemptCode = 0;
   return this.status;
 };
 
-EquiCSSSilEarthTexLayer.initCtx = function() {
+EquiSilCSSEarthTexLayer.initCtx = function() {
   if (!this.backBuf) {
     this.loadData.timeout = this.timeout;
     this.loadData.notifyFunc = this.notifyFunc;
@@ -441,13 +443,13 @@ EquiCSSSilEarthTexLayer.initCtx = function() {
  * @memberof EarthTexLayerJS
  * @type EquiCSSRenderLayer
  */
-var EquiSVGEarthTexLayer = new RenderLayer();
-OEV.EquiSVGEarthTexLayer = EquiSVGEarthTexLayer;
-EquiSVGEarthTexLayer.loadData = new XHRLoader("../misc_earth/land.svg");
-EquiSVGEarthTexLayer.frontBuf = document.createElement("div");
-EquiSVGEarthTexLayer.frontBuf.appendChild(document.createElement("div"));
+var EquiSilSVGEarthTexLayer = new RenderLayer();
+OEV.EquiSilSVGEarthTexLayer = EquiSilSVGEarthTexLayer;
+EquiSilSVGEarthTexLayer.loadData = new XHRLoader("../misc_earth/land.svg");
+EquiSilSVGEarthTexLayer.frontBuf = document.createElement("div");
+EquiSilSVGEarthTexLayer.frontBuf.appendChild(document.createElement("div"));
 
-EquiSVGEarthTexLayer.initCtx = function() {
+EquiSilSVGEarthTexLayer.initCtx = function() {
   if (!this.backBuf) {
     this.loadData.timeout = this.timeout;
     this.loadData.notifyFunc = this.notifyFunc;
@@ -459,7 +461,7 @@ EquiSVGEarthTexLayer.initCtx = function() {
   this.status.percent = 0;
 };
 
-EquiSVGEarthTexLayer.loadData.procData = function(httpRequest, responseText) {
+EquiSilSVGEarthTexLayer.loadData.procData = function(httpRequest, responseText) {
   var doneProcData = false;
   var procError = false;
 
@@ -514,7 +516,7 @@ EquiSVGEarthTexLayer.loadData.procData = function(httpRequest, responseText) {
   return this.status;
 };
 
-EquiSVGEarthTexLayer.setViewport = function(width, height) {
+EquiSilSVGEarthTexLayer.setViewport = function(width, height) {
   var inner = this.frontBuf.firstChild;
   var fbstyle = this.frontBuf.style;
   fbstyle.width = width + "px";
@@ -535,7 +537,7 @@ EquiSVGEarthTexLayer.setViewport = function(width, height) {
   }
 };
 
-EquiSVGEarthTexLayer.contExec = function() {
+EquiSilSVGEarthTexLayer.contExec = function() {
   // Load the data if it has not yet been loaded.
   if (this.loadData.status.returnType != CothreadStatus.FINISHED) {
     var status = this.loadData.continueCT();
@@ -562,7 +564,7 @@ EquiSVGEarthTexLayer.contExec = function() {
   return this.render();
 };
 
-EquiSVGEarthTexLayer.render = function() {
+EquiSilSVGEarthTexLayer.render = function() {
   var width = this.vp.viewport[0];
   var height = this.vp.viewport[1];
 
@@ -595,6 +597,6 @@ var EarthTexLayer = OEV.EarthTexLayer = GenEarthTexLayer;
  */
 var EarthTexLayerImps =
   [ "GenEarthTexLayer", "TDEarthTexLayer", "EquiEarthTexLayer",
-    "EquiCSSEarthTexLayer", "EquiCSSSilEarthTexLayer",
-    "EquiSVGEarthTexLayer" ];
+    "EquiCSSEarthTexLayer", "EquiSilCSSEarthTexLayer",
+    "EquiSilSVGEarthTexLayer" ];
 OEV.EarthTexLayerImps = EarthTexLayerImps;

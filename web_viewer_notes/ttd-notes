@@ -819,3 +819,6 @@ Emacs macro.
 Note setup a test server "python -m SimpleHTTPServer 8008"
 
 Then "localhost:8008" in browser.
+
+I should probably create GUIs to access all internal parameters for
+RenderLayers.

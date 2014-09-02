@@ -815,3 +815,7 @@ rendering.  See side-by-side implementations test cases.  Too much
 high density geometry at low zoom level, need to swap to lower-detail
 version like earth.nullschool.net does if viable.  Converted via an
 Emacs macro.
+
+Note setup a test server "python -m SimpleHTTPServer 8008"
+
+Then "localhost:8008" in browser.

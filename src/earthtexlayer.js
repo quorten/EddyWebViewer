@@ -4,6 +4,7 @@ import "oevns";
 import "cothread";
 import "renderlayer";
 import "ajaxloaders";
+import "dates";
 
 /**
  * Pseudo-namespace for objects in `earthtexlayer.js`.
@@ -11,8 +12,8 @@ import "ajaxloaders";
  */
 
 /**
- * Earth Texture data loader object.  Contains the following members
- * once `loadData()` has finished:
+ * Earth Texture data loader object for non-seasonal land masses.
+ * Contains the following members once `loadData()` has finished:
  *
  * * `this.imageTex` -- Unmodified Earth colors texture.
  *
@@ -23,21 +24,21 @@ import "ajaxloaders";
  *
  * @memberof EarthTexLayerJS
  */
-var EarthTexData = {};
-OEV.EarthTexData = EarthTexData;
-EarthTexData.loadTrans =
+var NSEarthTexData = {};
+OEV.NSEarthTexData = NSEarthTexData;
+NSEarthTexData.loadTrans =
   new ImageLoader("../misc_earth/ocean.png");
-EarthTexData.loadTrans.prontoMode = true;
-EarthTexData.loadColors =
+NSEarthTexData.loadTrans.prontoMode = true;
+NSEarthTexData.loadColors =
   new ImageLoader("../blue_marble/land_shallow_topo_2048.jpg");
 // "../blue_marble/land_shallow_topo_2048.jpg";
 // "../blue_marble/world.200408.3x5400x2700.jpg";
 // "../blue_marble/world.200402.3x5400x2700.jpg";
-EarthTexData.loadColors.prontoMode = true;
-EarthTexData.loadData = new SeriesCTCtl([ EarthTexData.loadTrans,
-					  EarthTexData.loadColors ]);
+NSEarthTexData.loadColors.prontoMode = true;
+NSEarthTexData.loadData = new SeriesCTCtl([ NSEarthTexData.loadTrans,
+					    NSEarthTexData.loadColors ]);
 
-EarthTexData.initLoad = function(timeout, notifyFunc) {
+NSEarthTexData.initLoad = function(timeout, notifyFunc) {
   this.loadTrans.timeout = timeout;
   this.loadColors.timeout = timeout;
   this.loadTrans.notifyFunc = notifyFunc;
@@ -46,9 +47,8 @@ EarthTexData.initLoad = function(timeout, notifyFunc) {
   this.loadData.initCtx();
 };
 
-EarthTexData.loadColors.procData = function(image) {
-  /* Pull the pixels off of the image and fill them into the sshData
-     array as floating point numbers.  */
+NSEarthTexData.loadColors.procData = function(image) {
+  /* Mask out the ocean from the land mass image.  */
   var tmpCanvas = document.createElement("canvas");
   tmpCanvas.width = image.width;
   tmpCanvas.height = image.height;
@@ -58,31 +58,158 @@ EarthTexData.loadColors.procData = function(image) {
      ideal, but that causes problems on some computers, so we use
      "destination-out" with an ocean alpha texture instead.  */
   ctx.globalCompositeOperation = "destination-out";
-  ctx.drawImage(EarthTexData.loadTrans.image, 0, 0);
+  ctx.drawImage(NSEarthTexData.loadTrans.image, 0, 0);
   ctx.globalCompositeOperation = "source-over";
 
   this.image = null;
-  EarthTexData.imageTex = image;
-  EarthTexData.canvasTex = tmpCanvas;
-  EarthTexData.dataTex =
+  NSEarthTexData.imageTex = image;
+  NSEarthTexData.canvasTex = tmpCanvas;
+  NSEarthTexData.dataTex =
     ctx.getImageData(0, 0, tmpCanvas.width, tmpCanvas.height);
-  EarthTexData.loadTrans.image = null;
+  NSEarthTexData.loadTrans.image = null;
   tmpCanvas = null; ctx = null;
 
   /* Initialize all the backbuffers of the various
      implementations.  */
-  GenEarthTexLayer.render.backBuf = EarthTexData.dataTex;
-  TDEarthTexLayer.render.backBuf = EarthTexData.dataTex;
-  EquiEarthTexLayer.backBuf = EarthTexData.canvasTex;
-  EquiCSSEarthTexLayer.backBuf = EarthTexData.imageTex;
+  GenEarthTexLayer.render.backBuf = NSEarthTexData.dataTex;
+  TDEarthTexLayer.render.backBuf = NSEarthTexData.dataTex;
+  EquiEarthTexLayer.backBuf = NSEarthTexData.canvasTex;
+  EquiCSSEarthTexLayer.backBuf = NSEarthTexData.imageTex;
 
-  if (EarthTexData.loadTrans.retVal != ImageLoader.SUCCESS)
-    this.retVal = EarthTexData.loadTrans.retVal;
+  if (NSEarthTexData.loadTrans.retVal != ImageLoader.SUCCESS)
+    this.retVal = NSEarthTexData.loadTrans.retVal;
 
   this.status.returnType = CothreadStatus.FINISHED;
   this.status.preemptCode = 0;
   return this.status;
 };
+
+/**
+ * Earth Texture data loader object for seasonal land masses.  To
+ * prevent memory consumption issues, only one seasonal earth texture
+ * can be loaded at a time.  Contains the following members once
+ * `loadData()` has finished:
+ *
+ * * `this.imageTex` -- Unmodified Earth colors texture.
+ *
+ * * `this.canvasTex` -- Earth colors with transparent oceans on an
+ *   HTML canvas.
+ *
+ * * `this.dataTex` -- The image data of the above canvas.
+ *
+ * @memberof EarthTexLayerJS
+ */
+var SeaEarthTexData = {};
+OEV.SeaEarthTexData = SeaEarthTexData;
+SeaEarthTexData.loadTrans =
+  new ImageLoader("../misc_earth/ocean_large.png");
+SeaEarthTexData.loadTrans.prontoMode = true;
+SeaEarthTexData.loadColors = new ImageLoader();
+SeaEarthTexData.loadColors.prontoMode = true;
+SeaEarthTexData.loadData = new SeriesCTCtl([ SeaEarthTexData.loadTrans,
+					     SeaEarthTexData.loadColors ]);
+/** Current month, integer from 1 to 12 inclusive.  */
+SeaEarthTexData.month = 1;
+
+SeaEarthTexData.initLoad = function(timeout, notifyFunc) {
+  /* First verify that all allocated memory for the previous texture
+     is freed.  */
+  SeaEarthTexData.imageTex = null;
+  SeaEarthTexData.canvasTex = null;
+  SeaEarthTexData.dataTex = null;
+  GenEarthTexLayer.render.backBuf = null;
+  TDEarthTexLayer.render.backBuf = null;
+  EquiEarthTexLayer.backBuf = null;
+  EquiCSSEarthTexLayer.backBuf = null;
+
+  var m = this.month;
+  this.loadColors.url = "../blue_marble/world.2004" +
+    ((m < 10) ? "0" : "") + m.toString() + ".3x5400x2700.jpg";
+  this.loadColors.timeout = timeout;
+  this.loadColors.notifyFunc = notifyFunc;
+
+  if (this.loadTrans.image) {
+    this.loadData.jobList = [ SeaEarthTexData.loadColors ];
+  } else {
+    this.loadTrans.timeout = timeout;
+    this.loadTrans.notifyFunc = notifyFunc;
+    this.loadData.timeout = timeout;
+  }
+  this.loadData.initCtx();
+};
+
+SeaEarthTexData.loadColors.procData = function(image) {
+  /* Mask out the ocean from the land mass image.  Warning: this
+     process can cause GPU lockups.  */
+  /* var tmpCanvas = document.createElement("canvas");
+  tmpCanvas.width = image.width;
+  tmpCanvas.height = image.height;
+  var ctx = tmpCanvas.getContext("2d");
+  ctx.drawImage(image, 0, 0);
+  /\* Note: Using "destination-in" with a land alpha texture would be
+     ideal, but that causes problems on some computers, so we use
+     "destination-out" with an ocean alpha texture instead.  *\/
+  ctx.globalCompositeOperation = "destination-out";
+  ctx.drawImage(SeaEarthTexData.loadTrans.image, 0, 0);
+  ctx.globalCompositeOperation = "source-over"; */
+
+  this.image = null;
+  SeaEarthTexData.imageTex = image;
+  SeaEarthTexData.canvasTex = image /* tmpCanvas */;
+  /* No can do for this one at full size... consumes too much memory.
+     Unfortunately, we must use a downsized version instead (currently
+     none at all).  */
+  /* SeaEarthTexData.dataTex =
+    ctx.getImageData(0, 0, tmpCanvas.width, tmpCanvas.height); */
+  // tmpCanvas = null; ctx = null;
+
+  /* Initialize all the backbuffers of the various
+     implementations.  */
+  GenEarthTexLayer.render.backBuf = SeaEarthTexData.dataTex;
+  TDEarthTexLayer.render.backBuf = SeaEarthTexData.dataTex;
+  EquiEarthTexLayer.backBuf = SeaEarthTexData.canvasTex;
+  EquiCSSEarthTexLayer.backBuf = SeaEarthTexData.imageTex;
+
+  if (SeaEarthTexData.loadTrans.retVal != ImageLoader.SUCCESS)
+    this.retVal = SeaEarthTexData.loadTrans.retVal;
+
+  this.status.returnType = CothreadStatus.FINISHED;
+  this.status.preemptCode = 0;
+  return this.status;
+};
+
+/**
+ * Pointer to the current EarthTexData loader.
+ * @memberof EarthTexLayerJS
+ */
+var EarthTexData = OEV.EarthTexData = NSEarthTexData;
+
+/**
+ * Convenience function to change {@linkcode EarthTexData} between
+ * seasonal and non-seasonal variants.
+ * @memberof EarthTexLayerJS
+ * @param {Boolean} seasonal
+ */
+var switchEarthTexData = function(seasonal) {
+  if (seasonal) EarthTexData = OEV.EarthTexData = SeaEarthTexData;
+  else EarthTexData = OEV.EarthTexData = NSEarthTexData;
+
+  GenEarthTexLayer.loadData = EarthTexData.loadData;
+  TDEarthTexLayer.loadData = EarthTexData.loadData;
+  EquiEarthTexLayer.loadData = EarthTexData.loadData;
+  EquiCSSEarthTexLayer.loadData = EarthTexData.loadData;
+
+  /* Verify that all allocated memory for the previous texture is
+     freed.  */
+  SeaEarthTexData.imageTex = null;
+  SeaEarthTexData.canvasTex = null;
+  SeaEarthTexData.dataTex = null;
+  GenEarthTexLayer.render.backBuf = null;
+  TDEarthTexLayer.render.backBuf = null;
+  EquiEarthTexLayer.backBuf = null;
+  EquiCSSEarthTexLayer.backBuf = null;
+};
+OEV.switchEarthTexData = switchEarthTexData;
 
 /********************************************************************/
 
@@ -109,7 +236,16 @@ GenEarthTexLayer.setViewParams = function(vp) {
 };
 
 GenEarthTexLayer.initCtx = function() {
-  if (!this.render.backBuf)
+  /* Change the seasonal EarthTexData month, if applicable.  */
+  var newMonth = 0;
+  if (Dates.dateList)
+    newMonth = +(Dates.dateList[Dates.curDate].split("-")[1]);
+  if (newMonth != 0 && EarthTexData.month &&
+      EarthTexData.month != newMonth)
+    EarthTexData.month = newMonth;
+  else newMonth = 0;
+
+  if (!this.render.backBuf || newMonth != 0)
     EarthTexData.initLoad(this.timeout, this.notifyFunc);
 
   this.render.timeout = this.timeout;
@@ -190,7 +326,16 @@ OEV.EquiEarthTexLayer = EquiEarthTexLayer;
 EquiEarthTexLayer.loadData = EarthTexData.loadData;
 
 EquiEarthTexLayer.initCtx = function() {
-  if (!this.backBuf)
+  /* Change the seasonal EarthTexData month, if applicable.  */
+  var newMonth = 0;
+  if (Dates.dateList)
+    newMonth = +(Dates.dateList[Dates.curDate].split("-")[1]);
+  if (newMonth != 0 && EarthTexData.month &&
+      EarthTexData.month != newMonth)
+    EarthTexData.month = newMonth;
+  else newMonth = 0;
+
+  if (!this.backBuf || newMonth != 0)
     EarthTexData.initLoad(this.timeout, this.notifyFunc);
 
   this.status.returnType = CothreadStatus.PREEMPTED;
@@ -220,7 +365,16 @@ OEV.EquiCSSEarthTexLayer = EquiCSSEarthTexLayer;
 EquiCSSEarthTexLayer.loadData = EarthTexData.loadData;
 
 EquiCSSEarthTexLayer.initCtx = function() {
-  if (!this.backBuf)
+  /* Change the seasonal EarthTexData month, if applicable.  */
+  var newMonth = 0;
+  if (Dates.dateList)
+    newMonth = +(Dates.dateList[Dates.curDate].split("-")[1]);
+  if (newMonth != 0 && EarthTexData.month &&
+      EarthTexData.month != newMonth)
+    EarthTexData.month = newMonth;
+  else newMonth = 0;
+
+  if (!this.backBuf || newMonth != 0)
     EarthTexData.initLoad(this.timeout, this.notifyFunc);
   else if (!this.backBuf.parentNode) {
     var inner = this.frontBuf.firstChild;

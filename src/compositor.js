@@ -29,6 +29,10 @@ Compositor.gratDensity = 15;
 /** Boolean indicating whether the EarthTexLayer is visible or not.  */
 Compositor.landMassVis = true;
 
+/** Style to draw the Earth texture, 1 = silhouettes, 2 = textured, 3
+ * = seasonal textured.  */
+Compositor.earthTexStyle = 2;
+
 /** Boolean indicating whether the SSHLayer is visible or not.  */
 Compositor.sshVisible = true;
 

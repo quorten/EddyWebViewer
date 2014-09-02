@@ -809,3 +809,9 @@ Some specializations only make sense with a narrow selection of
 ViewParams.  Check the documentation to determine which
 specializations are in place.  Usually it will be evident from the
 name.
+
+Note Hung's old code, d3, geojson, topojson, large size, slow
+rendering.  See side-by-side implementations test cases.  Too much
+high density geometry at low zoom level, need to swap to lower-detail
+version like earth.nullschool.net does if viable.  Converted via an
+Emacs macro.

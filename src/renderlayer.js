@@ -820,6 +820,8 @@ EquiRenderLayer.prototype.render = function() {
  * named `backBuf' within itself.  This is used to initialize
  * `this.backBuf' in this object.
  *
+ * This rendering routine still has a few off-by-one-pixel problems.
+ *
  * Base class: {@linkcode RenderLayer}
  *
  * Parameters:
@@ -938,7 +940,6 @@ EquiCSSRenderLayer.prototype.render = function() {
   var right = x + width / 2;
   var bottom = y + height / 2;
 
-  /* Set the CSS parameters.  */
   this.backBuf.style.cssText =
     "position: absolute; left: " + left + "px; top: " + top + "px";
   this.backBuf.width = width;

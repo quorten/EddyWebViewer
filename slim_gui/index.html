@@ -1223,11 +1223,19 @@ function initGUIHooks() {
   var cfg_landMass = document.getElementById('cfg-landMass');
   cfg_landMass.onchange = function(event) {
     var choice = this.options[this.selectedIndex].text;
-    if (choice == 'Textured')
+    if (choice == 'None' || choice == 'Silhouettes')
+      OEV.Compositor.dispLandMasses(false);
+    else if (!OEV.Compositor.landMassVis)
       OEV.Compositor.dispLandMasses(true);
-    else OEV.Compositor.dispLandMasses(false);
-    if (event != null)
+
+    if (choice == 'Silhouettes')
+      OEV.Compositor.earthTexStyle = 1;
+    else if (choice == 'Textured')
+      OEV.Compositor.earthTexStyle = 2;
+    if (event != null) {
+      OEV.Compositor.optiRenderImp();
       OEV.Compositor.startRender([ OEV.EarthTexLayer ]);
+    }
   };
 
   var cfg_sshPal = document.getElementById('cfg-sshPal');

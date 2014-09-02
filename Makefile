@@ -5,6 +5,8 @@ all:
 install:
 	$(MAKE) -C src install
 
+.PHONY:: docs
+
 docs:
 	$(MAKE) -C src docs
 

@@ -37,4 +37,10 @@ reference documentation.  The reference documentation is generated via
 Data
 ----
 
-See the conceptual documentation for more information on this.
+To quickly set up a local development environment with all the
+necessary data, simply run the `get_data.sh` script.  It will download
+all the required data for the `blue_marble` and `data` directories
+that are not included in this repository.
+
+See the conceptual documentation for more detailed information on the
+data.

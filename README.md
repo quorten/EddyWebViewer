@@ -34,6 +34,9 @@ documentation, which is located in `web_viewer_notes`, and the
 reference documentation.  The reference documentation is generated via
 `make docs` and is placed in the directory `docs/jsdocs`.
 
+Building the reference documentation for the JavaScript code requires
+`java`, probably at least version 1.6.
+
 Data
 ----
 
